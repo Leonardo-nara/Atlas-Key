@@ -1,14 +1,35 @@
-import { useState } from "react";
-import type { FormEvent } from "react";
+import { useRef, useState } from "react";
+import type { ChangeEvent, FormEvent } from "react";
 import AppShell from "../components/AppShell";
 import { supabase } from "../lib/supabase";
 import type { CatalogKey } from "../types/catalog";
 
 function SearchKeyPage() {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   const [fotoClienteUrl, setFotoClienteUrl] = useState("");
   const [resultado, setResultado] = useState<CatalogKey | null>(null);
   const [mensagem, setMensagem] = useState("");
   const [carregando, setCarregando] = useState(false);
+
+  function abrirCameraOuGaleria() {
+    fileInputRef.current?.click();
+  }
+
+  async function handleImagemChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onloadend = () => {
+      if (typeof reader.result === "string") {
+        setFotoClienteUrl(reader.result);
+      }
+    };
+
+    reader.readAsDataURL(file);
+  }
 
   async function handleBuscar(e: FormEvent) {
     e.preventDefault();
@@ -71,16 +92,42 @@ function SearchKeyPage() {
         className="space-y-4 rounded-3xl bg-white p-4 shadow-sm"
       >
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
-            URL da foto da chave do cliente
+          <label className="mb-2 block text-sm font-medium text-slate-700">
+            Foto da chave do cliente
           </label>
+
           <input
-            value={fotoClienteUrl}
-            onChange={(e) => setFotoClienteUrl(e.target.value)}
-            className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:border-teal-600"
-            placeholder="Cole uma URL de imagem para teste"
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handleImagemChange}
+            className="hidden"
           />
+
+          <button
+            type="button"
+            onClick={abrirCameraOuGaleria}
+            className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-left font-medium text-slate-700"
+          >
+            Tirar foto ou escolher da galeria
+          </button>
+
+          <p className="mt-2 text-xs text-slate-500">
+            No celular, o navegador pode abrir câmera, galeria ou um menu de
+            escolha.
+          </p>
         </div>
+
+        {fotoClienteUrl && (
+          <div className="overflow-hidden rounded-2xl bg-slate-100">
+            <img
+              src={fotoClienteUrl}
+              alt="Prévia da chave do cliente"
+              className="h-52 w-full object-cover"
+            />
+          </div>
+        )}
 
         {mensagem && (
           <div className="rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-700">

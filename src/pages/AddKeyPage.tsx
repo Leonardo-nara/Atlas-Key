@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import AppShell from "../components/AppShell";
@@ -6,6 +6,7 @@ import { supabase } from "../lib/supabase";
 
 function AddKeyPage() {
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [nomeModelo, setNomeModelo] = useState("");
   const [marca, setMarca] = useState("");
@@ -17,9 +18,12 @@ function AddKeyPage() {
   const [mensagem, setMensagem] = useState("");
   const [carregando, setCarregando] = useState(false);
 
+  function abrirCameraOuGaleria() {
+    fileInputRef.current?.click();
+  }
+
   async function handleImagemChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-
     if (!file) return;
 
     const reader = new FileReader();
@@ -66,7 +70,6 @@ function AddKeyPage() {
     }
 
     setMensagem("Chave cadastrada com sucesso.");
-
     setNomeModelo("");
     setMarca("");
     setCategoria("");
@@ -86,6 +89,10 @@ function AddKeyPage() {
       title="Cadastrar chave"
       subtitle="Adicione uma nova chave ao catálogo"
     >
+      <p className="mb-3 text-sm font-bold text-blue-600">
+        VERSAO NOVA FOTO CELULAR
+      </p>
+
       <form
         onSubmit={handleSubmit}
         className="space-y-4 rounded-3xl bg-white p-4 shadow-sm"
@@ -169,16 +176,25 @@ function AddKeyPage() {
           </label>
 
           <input
+            ref={fileInputRef}
             type="file"
             accept="image/*"
             capture="environment"
             onChange={handleImagemChange}
-            className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-teal-600"
+            className="hidden"
           />
 
+          <button
+            type="button"
+            onClick={abrirCameraOuGaleria}
+            className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-left font-medium text-slate-700"
+          >
+            Tirar foto ou escolher da galeria
+          </button>
+
           <p className="mt-2 text-xs text-slate-500">
-            No celular, isso deve abrir a câmera traseira ou permitir escolher
-            da galeria.
+            No celular, o navegador pode abrir câmera, galeria ou um menu de
+            escolha.
           </p>
         </div>
 

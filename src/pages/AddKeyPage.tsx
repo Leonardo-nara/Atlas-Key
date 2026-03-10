@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { FormEvent } from "react";
+import type { ChangeEvent, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import AppShell from "../components/AppShell";
 import { supabase } from "../lib/supabase";
@@ -16,6 +16,22 @@ function AddKeyPage() {
   const [fotoUrl, setFotoUrl] = useState("");
   const [mensagem, setMensagem] = useState("");
   const [carregando, setCarregando] = useState(false);
+
+  async function handleImagemChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onloadend = () => {
+      if (typeof reader.result === "string") {
+        setFotoUrl(reader.result);
+      }
+    };
+
+    reader.readAsDataURL(file);
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -148,16 +164,33 @@ function AddKeyPage() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
-            URL da foto
+          <label className="mb-2 block text-sm font-medium text-slate-700">
+            Foto da chave
           </label>
+
           <input
-            value={fotoUrl}
-            onChange={(e) => setFotoUrl(e.target.value)}
-            className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:border-teal-600"
-            placeholder="Por enquanto, pode deixar vazio"
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handleImagemChange}
+            className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-teal-600"
           />
+
+          <p className="mt-2 text-xs text-slate-500">
+            No celular, isso deve abrir a câmera traseira ou permitir escolher
+            da galeria.
+          </p>
         </div>
+
+        {fotoUrl && (
+          <div className="overflow-hidden rounded-2xl bg-slate-100">
+            <img
+              src={fotoUrl}
+              alt="Prévia da chave"
+              className="h-52 w-full object-cover"
+            />
+          </div>
+        )}
 
         {mensagem && (
           <div className="rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-700">

@@ -80,6 +80,9 @@ function CatalogPage() {
 
   return (
     <AppShell title="Catálogo" subtitle="Veja as chaves cadastradas no sistema">
+      <p className="mb-3 text-sm font-bold text-blue-600">
+        VERSAO NOVA DO CATALOGO
+      </p>
       <div className="mb-4">
         <button
           onClick={() => navigate("/cadastrar-chave")}

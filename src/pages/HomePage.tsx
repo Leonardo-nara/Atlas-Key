@@ -16,6 +16,18 @@ function HomePage() {
 
         <div className="grid grid-cols-1 gap-3">
           <button
+            onClick={() => navigate("/buscar-chave")}
+            className="rounded-3xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:shadow-md"
+          >
+            <span className="block text-base font-semibold text-slate-900">
+              Buscar chave do cliente
+            </span>
+            <span className="mt-1 block text-sm text-slate-600">
+              Procurar a cópia certa para a chave do cliente
+            </span>
+          </button>
+
+          <button
             onClick={() => navigate("/cadastrar-chave")}
             className="rounded-3xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:shadow-md"
           >
@@ -67,8 +79,8 @@ function HomePage() {
 
       <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
         <p className="text-sm text-slate-600">
-          Próximo passo: buscar chave do cliente por foto e salvar imagens reais
-          no catálogo.
+          Próximo passo: trocar URL por foto real da chave do cliente e melhorar
+          a lógica de correspondência.
         </p>
       </section>
     </AppShell>

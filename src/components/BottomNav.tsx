@@ -15,6 +15,13 @@ function BottomNav() {
         </NavLink>
 
         <NavLink
+          to="/buscar-chave"
+          className={({ isActive }) => linkClass(isActive)}
+        >
+          <span>Buscar</span>
+        </NavLink>
+
+        <NavLink
           to="/catalogo"
           className={({ isActive }) => linkClass(isActive)}
         >
@@ -26,13 +33,6 @@ function BottomNav() {
           className={({ isActive }) => linkClass(isActive)}
         >
           <span>Cadastrar</span>
-        </NavLink>
-
-        <NavLink
-          to="/historico"
-          className={({ isActive }) => linkClass(isActive)}
-        >
-          <span>Histórico</span>
         </NavLink>
 
         <NavLink to="/perfil" className={({ isActive }) => linkClass(isActive)}>

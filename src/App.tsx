@@ -7,7 +7,7 @@ import CatalogPage from "./pages/CatalogPage";
 import HistoryPage from "./pages/HistoryPage";
 import ProfilePage from "./pages/ProfilePage";
 import AddKeyPage from "./pages/AddKeyPage";
-
+import SearchKeyPage from "./pages/SearchKeyPage";
 function App() {
   const [loading, setLoading] = useState(true);
   const [logado, setLogado] = useState(false);
@@ -45,6 +45,10 @@ function App() {
       <Route
         path="/"
         element={<Navigate to={logado ? "/home" : "/login"} replace />}
+      />
+      <Route
+        path="/buscar-chave"
+        element={logado ? <SearchKeyPage /> : <Navigate to="/login" replace />}
       />
       <Route
         path="/cadastrar-chave"

@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "Delivery Platform Courier",
+    "slug": "delivery-platform-courier",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": ["**/*"],
+    "scheme": "deliveryplatformcourier",
+    "android": {
+      "package": "com.deliveryplatform.courier",
+      "versionCode": 1,
+      "permissions": []
+    },
+    "extra": {
+      "eas": {
+        "projectId": "replace-with-your-eas-project-id"
+      }
+    }
+  }
+}

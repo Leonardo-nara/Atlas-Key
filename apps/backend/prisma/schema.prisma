@@ -1,0 +1,143 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  STORE_ADMIN
+  COURIER
+}
+
+enum OrderStatus {
+  PENDING
+  ACCEPTED
+  ASSIGNED
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+}
+
+enum OrderEventType {
+  CREATED
+  ACCEPTED
+  PICKED_UP
+  DELIVERED
+  CANCELLED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  phone        String
+  role         UserRole
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  ownedStore    Store?
+  courierOrders Order[] @relation("CourierOrders")
+  orderEvents   OrderEvent[]
+
+  @@map("users")
+}
+
+model Store {
+  id          String   @id @default(cuid())
+  name        String
+  address     String
+  ownerUserId String   @unique
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  owner    User      @relation(fields: [ownerUserId], references: [id])
+  products Product[]
+  orders   Order[]
+
+  @@map("stores")
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  storeId     String
+  name        String
+  description String?
+  price       Decimal  @db.Decimal(10, 2)
+  category    String
+  imageUrl    String?
+  available   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  store      Store      @relation(fields: [storeId], references: [id])
+  orderItems OrderItem[]
+
+  @@index([storeId])
+  @@map("products")
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  storeId         String
+  courierId       String?
+  customerName    String
+  customerPhone   String
+  customerAddress String
+  subtotal        Decimal     @db.Decimal(10, 2)
+  deliveryFee     Decimal     @db.Decimal(10, 2)
+  total           Decimal     @db.Decimal(10, 2)
+  status          OrderStatus @default(PENDING)
+  notes           String?
+  cancelReason    String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  store   Store       @relation(fields: [storeId], references: [id])
+  courier User?       @relation("CourierOrders", fields: [courierId], references: [id])
+  items   OrderItem[]
+  events  OrderEvent[]
+
+  @@index([storeId])
+  @@index([courierId])
+  @@map("orders")
+}
+
+model OrderItem {
+  id           String  @id @default(cuid())
+  orderId      String
+  productId    String?
+  nameSnapshot String
+  quantity     Int
+  unitPrice    Decimal @db.Decimal(10, 2)
+  totalPrice   Decimal @db.Decimal(10, 2)
+
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+model OrderEvent {
+  id          String         @id @default(cuid())
+  orderId     String
+  type        OrderEventType
+  actorUserId String?
+  actorRole   UserRole?
+  metadata    Json?
+  createdAt   DateTime       @default(now())
+
+  order      Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  actorUser  User? @relation(fields: [actorUserId], references: [id])
+
+  @@index([orderId, createdAt])
+  @@index([actorUserId])
+  @@map("order_events")
+}

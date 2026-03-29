@@ -1,0 +1,70 @@
+{
+  "name": "@deliveries/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "productName": "Delivery Platform Desktop",
+  "description": "Painel desktop do lojista para operacao do sistema de entregas.",
+  "author": "Delivery Platform",
+  "main": "dist-electron/electron/main.js",
+  "scripts": {
+    "dev": "concurrently -k \"pnpm dev:renderer\" \"pnpm dev:electron\"",
+    "dev:renderer": "vite",
+    "dev:electron": "wait-on tcp:5173 && electron .",
+    "build": "pnpm build:renderer && pnpm build:electron",
+    "build:renderer": "vite build",
+    "build:electron": "tsc -p tsconfig.electron.json",
+    "dist": "pnpm build && electron-builder",
+    "dist:win": "pnpm build && electron-builder --win nsis",
+    "dist:dir": "pnpm build && electron-builder --dir",
+    "lint": "eslint \"src/**/*.{ts,tsx}\" \"electron/**/*.ts\" vite.config.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.electron.json --noEmit",
+    "clean": "if exist dist rmdir /s /q dist & if exist dist-electron rmdir /s /q dist-electron"
+  },
+  "dependencies": {
+    "@deliveries/shared-types": "workspace:*",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "react-router-dom": "^7.6.3",
+    "socket.io-client": "^4.8.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.2",
+    "electron": "^35.1.5",
+    "electron-builder": "^26.0.12",
+    "typescript": "~5.8.3",
+    "vite": "^6.2.4",
+    "wait-on": "^8.0.3"
+  },
+  "build": {
+    "appId": "com.deliveryplatform.desktop",
+    "asar": true,
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**",
+      "dist-electron/**",
+      "package.json"
+    ],
+    "extraMetadata": {
+      "main": "dist-electron/electron/main.js"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "delivery-platform-desktop-${version}-setup.${ext}"
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "name": "delivery-platform-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.7.0",
+  "scripts": {
+    "dev": "pnpm -r --parallel --filter @deliveries/backend --filter @deliveries/desktop --filter @deliveries/mobile run dev",
+    "dev:backend": "pnpm --filter @deliveries/backend dev",
+    "dev:desktop": "pnpm --filter @deliveries/desktop dev",
+    "dev:mobile": "pnpm --filter @deliveries/mobile dev",
+    "seed:demo": "pnpm --filter @deliveries/backend prisma:seed",
+    "build:backend": "pnpm --filter @deliveries/backend build",
+    "build:desktop": "pnpm --filter @deliveries/desktop build",
+    "build:desktop:win": "pnpm --filter @deliveries/desktop dist:win",
+    "build:mobile": "pnpm --filter @deliveries/mobile build",
+    "build:mobile:android:preview": "pnpm --filter @deliveries/mobile build:android:preview",
+    "build:mobile:android:production": "pnpm --filter @deliveries/mobile build:android:production",
+    "build": "pnpm -r --filter ./packages/** --filter ./apps/** run build",
+    "lint": "pnpm -r --filter ./packages/** --filter ./apps/** run lint",
+    "typecheck": "pnpm -r --filter ./packages/** --filter ./apps/** run typecheck",
+    "clean": "pnpm -r run clean"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.23.0",
+    "@types/node": "^22.14.0",
+    "@types/react": "~19.0.10",
+    "@types/react-dom": "~19.0.4",
+    "eslint": "^9.23.0",
+    "eslint-plugin-react": "^7.37.4",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.19",
+    "globals": "^16.0.0",
+    "typescript": "~5.8.3",
+    "typescript-eslint": "^8.28.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@nestjs/core",
+      "electron",
+      "esbuild",
+      "@prisma/client",
+      "@prisma/engines",
+      "prisma"
+    ]
+  }
+}

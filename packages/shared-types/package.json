@@ -1,0 +1,17 @@
+{
+  "name": "@deliveries/shared-types",
+  "version": "0.1.0",
+  "private": true,
+  "types": "src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint \"src/**/*.d.ts\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "if exist dist rmdir /s /q dist"
+  }
+}

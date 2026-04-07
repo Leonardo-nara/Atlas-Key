@@ -1,23 +1,21 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
+import { UserRole } from "@prisma/client";
 
 import { PrismaService } from "../prisma/prisma.service";
+import { CouriersService } from "../couriers/couriers.service";
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly couriersService: CouriersService
+  ) {}
 
   async getMe(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        role: true,
-        active: true,
-        createdAt: true,
-        updatedAt: true
+      include: {
+        courierProfile: true
       }
     });
 
@@ -25,6 +23,19 @@ export class UsersService {
       throw new NotFoundException("Usuario nao encontrado");
     }
 
-    return user;
+    if (user.role === UserRole.COURIER) {
+      return this.couriersService.getMe(userId);
+    }
+
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      active: user.active,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt
+    };
   }
 }

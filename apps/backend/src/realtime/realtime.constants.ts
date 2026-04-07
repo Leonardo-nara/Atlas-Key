@@ -13,6 +13,6 @@ export function courierRoom(courierId: string) {
   return `courier:${courierId}`;
 }
 
-export function availableOrdersRoom() {
-  return "orders:available";
+export function availableOrdersStoreRoom(storeId: string) {
+  return `orders:available:${storeId}`;
 }

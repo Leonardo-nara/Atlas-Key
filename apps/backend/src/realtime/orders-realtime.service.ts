@@ -9,7 +9,7 @@ import type { Server } from "socket.io";
 import { OrdersRealtimeGateway } from "./orders-realtime.gateway";
 import {
   ORDER_SOCKET_EVENTS,
-  availableOrdersRoom,
+  availableOrdersStoreRoom,
   courierRoom,
   storeRoom
 } from "./realtime.constants";
@@ -32,14 +32,14 @@ export class OrdersRealtimeService {
   emitOrderCreated(order: BroadcastableOrder) {
     this.emitToRooms(ORDER_SOCKET_EVENTS.CREATED, order, [
       storeRoom(order.storeId),
-      availableOrdersRoom()
+      availableOrdersStoreRoom(order.storeId)
     ]);
   }
 
   emitOrderAccepted(order: BroadcastableOrder) {
     this.emitToRooms(ORDER_SOCKET_EVENTS.ACCEPTED, order, [
       storeRoom(order.storeId),
-      availableOrdersRoom(),
+      availableOrdersStoreRoom(order.storeId),
       order.courierId ? courierRoom(order.courierId) : null
     ]);
   }
@@ -54,7 +54,7 @@ export class OrdersRealtimeService {
   emitOrderCancelled(order: BroadcastableOrder) {
     this.emitToRooms(ORDER_SOCKET_EVENTS.CANCELLED, order, [
       storeRoom(order.storeId),
-      availableOrdersRoom(),
+      availableOrdersStoreRoom(order.storeId),
       order.courierId ? courierRoom(order.courierId) : null
     ]);
   }

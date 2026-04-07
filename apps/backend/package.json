@@ -9,6 +9,7 @@
     "prisma:deploy": "dotenv -e ../../.env -- prisma migrate deploy",
     "prisma:deploy:prod": "prisma migrate deploy",
     "prisma:seed": "dotenv -e ../../.env -- node prisma/seed.js",
+    "prisma:seed:prod": "node prisma/seed.js",
     "build": "nest build",
     "build:prod": "pnpm prisma:generate:prod && pnpm build",
     "start": "node dist/main.js",

@@ -8,6 +8,8 @@ import { User } from "@prisma/client";
 import * as bcrypt from "bcryptjs";
 
 import { UserRole } from "../common/enums/user-role.enum";
+import { CouriersService } from "../couriers/couriers.service";
+import { RegisterCourierDto } from "./dto/register-courier.dto";
 import { PrismaService } from "../prisma/prisma.service";
 import { LoginDto } from "./dto/login.dto";
 import { RegisterDto } from "./dto/register.dto";
@@ -16,7 +18,8 @@ import { RegisterDto } from "./dto/register.dto";
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly jwtService: JwtService
+    private readonly jwtService: JwtService,
+    private readonly couriersService: CouriersService
   ) {}
 
   async register(dto: RegisterDto) {
@@ -63,10 +66,35 @@ export class AuthService {
         });
       }
 
+      if (dto.role === UserRole.COURIER) {
+        await tx.courierProfile.create({
+          data: {
+            userId: createdUser.id
+          }
+        });
+      }
+
       return createdUser;
     });
 
     return this.buildAuthResponse(user);
+  }
+
+  async registerCourier(dto: RegisterCourierDto) {
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+    const courier = await this.couriersService.createPublicCourier(dto, passwordHash);
+
+    return this.buildAuthResponse({
+      id: courier.id,
+      name: courier.name,
+      email: courier.email,
+      phone: courier.phone,
+      role: courier.role,
+      active: courier.active,
+      createdAt: courier.createdAt,
+      updatedAt: courier.updatedAt,
+      passwordHash
+    } as User);
   }
 
   async login(dto: LoginDto) {

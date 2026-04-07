@@ -63,6 +63,48 @@ async function main() {
     }
   });
 
+  await prisma.courierProfile.upsert({
+    where: { userId: courierOne.id },
+    update: {
+      city: "Sao Paulo",
+      vehicleType: "MOTO",
+      vehicleModel: "Honda CG 160",
+      plate: "BRA2E19",
+      profilePhotoUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e",
+      vehiclePhotoUrl: "https://images.unsplash.com/photo-1558981806-ec527fa84c39"
+    },
+    create: {
+      userId: courierOne.id,
+      city: "Sao Paulo",
+      vehicleType: "MOTO",
+      vehicleModel: "Honda CG 160",
+      plate: "BRA2E19",
+      profilePhotoUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e",
+      vehiclePhotoUrl: "https://images.unsplash.com/photo-1558981806-ec527fa84c39"
+    }
+  });
+
+  await prisma.courierProfile.upsert({
+    where: { userId: courierTwo.id },
+    update: {
+      city: "Sao Paulo",
+      vehicleType: "MOTO",
+      vehicleModel: "Yamaha Factor 150",
+      plate: "QWE1A23",
+      profilePhotoUrl: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d",
+      vehiclePhotoUrl: "https://images.unsplash.com/photo-1549399542-7e3f8b79c341"
+    },
+    create: {
+      userId: courierTwo.id,
+      city: "Sao Paulo",
+      vehicleType: "MOTO",
+      vehicleModel: "Yamaha Factor 150",
+      plate: "QWE1A23",
+      profilePhotoUrl: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d",
+      vehiclePhotoUrl: "https://images.unsplash.com/photo-1549399542-7e3f8b79c341"
+    }
+  });
+
   const store = await prisma.store.upsert({
     where: { ownerUserId: storeAdmin.id },
     update: {

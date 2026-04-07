@@ -12,7 +12,12 @@ import type { Server, Socket } from "socket.io";
 import type { AuthenticatedUser } from "../common/authenticated-user.interface";
 import { UserRole } from "../common/enums/user-role.enum";
 import { PrismaService } from "../prisma/prisma.service";
-import { availableOrdersRoom, courierRoom, storeRoom } from "./realtime.constants";
+import { StoreCourierLinkStatus } from "../store-courier-links/enums/store-courier-link-status.enum";
+import {
+  availableOrdersStoreRoom,
+  courierRoom,
+  storeRoom
+} from "./realtime.constants";
 
 type SocketAuthPayload = AuthenticatedUser;
 
@@ -53,7 +58,20 @@ export class OrdersRealtimeGateway
 
       if (user.role === UserRole.COURIER) {
         await client.join(courierRoom(user.sub));
-        await client.join(availableOrdersRoom());
+
+        const approvedLinks = await this.prisma.storeCourierLink.findMany({
+          where: {
+            courierId: user.sub,
+            status: StoreCourierLinkStatus.APPROVED
+          },
+          select: {
+            storeId: true
+          }
+        });
+
+        for (const link of approvedLinks) {
+          await client.join(availableOrdersStoreRoom(link.storeId));
+        }
       }
     } catch (error) {
       const message =

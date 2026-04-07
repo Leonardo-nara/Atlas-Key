@@ -18,6 +18,7 @@ import { OrderStatus } from "../common/enums/order-status.enum";
 import { UserRole } from "../common/enums/user-role.enum";
 import { PrismaService } from "../prisma/prisma.service";
 import { OrdersRealtimeService } from "../realtime/orders-realtime.service";
+import { StoreCourierLinkStatus } from "../store-courier-links/enums/store-courier-link-status.enum";
 import { StoresService } from "../stores/stores.service";
 import { CancelOrderDto } from "./dto/cancel-order.dto";
 import { CreateOrderDto } from "./dto/create-order.dto";
@@ -186,10 +187,29 @@ export class OrdersService {
     query: ListOrdersQueryDto
   ) {
     this.ensureCourier(role);
-    void courierUserId;
+
+    const approvedStoreIds = await this.getApprovedStoreIdsForCourier(courierUserId);
+
+    if (approvedStoreIds.length === 0) {
+      const page = query.page ?? 1;
+      const limit = query.limit ?? 10;
+
+      return {
+        items: [],
+        meta: {
+          page,
+          limit,
+          total: 0,
+          totalPages: 1
+        }
+      };
+    }
 
     return this.paginateOrders(
       {
+        storeId: {
+          in: approvedStoreIds
+        },
         courierId: null,
         status: OrderStatus.PENDING
       },
@@ -229,6 +249,7 @@ export class OrdersService {
 
   async acceptOrder(orderId: string, courierUserId: string, role: UserRole) {
     this.ensureCourier(role);
+    const approvedStoreIds = await this.getApprovedStoreIdsForCourier(courierUserId);
 
     const updatedOrder = await this.prisma.$transaction(async (transaction) => {
       const order = await transaction.order.findUnique({
@@ -241,6 +262,12 @@ export class OrdersService {
 
       if (!order) {
         throw new NotFoundException("Pedido nao encontrado");
+      }
+
+      if (!approvedStoreIds.includes(order.storeId)) {
+        throw new ForbiddenException(
+          "Voce so pode aceitar pedidos de empresas com vinculo aprovado"
+        );
       }
 
       if (order.status !== OrderStatus.PENDING) {
@@ -433,6 +460,20 @@ export class OrdersService {
     if (role !== UserRole.COURIER) {
       throw new ForbiddenException("Apenas COURIER pode acessar este fluxo");
     }
+  }
+
+  private async getApprovedStoreIdsForCourier(courierUserId: string) {
+    const links = await this.prisma.storeCourierLink.findMany({
+      where: {
+        courierId: courierUserId,
+        status: StoreCourierLinkStatus.APPROVED
+      },
+      select: {
+        storeId: true
+      }
+    });
+
+    return links.map((link) => link.storeId);
   }
 
   private mapCourierStatus(input: CourierOrderStatusInput) {

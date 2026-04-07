@@ -12,6 +12,25 @@ enum UserRole {
   COURIER
 }
 
+enum CourierVehicleType {
+  MOTO
+  SCOOTER
+  BICICLETA
+  CARRO
+}
+
+enum StoreCourierLinkStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  BLOCKED
+}
+
+enum StoreCourierLinkRequestedBy {
+  COURIER
+  STORE_ADMIN
+}
+
 enum OrderStatus {
   PENDING
   ACCEPTED
@@ -41,10 +60,31 @@ model User {
   updatedAt    DateTime @updatedAt
 
   ownedStore    Store?
+  courierProfile CourierProfile?
+  storeLinks    StoreCourierLink[]
   courierOrders Order[] @relation("CourierOrders")
   orderEvents   OrderEvent[]
 
   @@map("users")
+}
+
+model CourierProfile {
+  id               String              @id @default(cuid())
+  userId           String              @unique
+  profilePhotoUrl  String?
+  vehiclePhotoUrl  String?
+  vehicleType      CourierVehicleType?
+  vehicleModel     String?
+  plate            String?
+  city             String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([city])
+  @@index([vehicleType])
+  @@map("courier_profiles")
 }
 
 model Store {
@@ -56,11 +96,32 @@ model Store {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  owner    User      @relation(fields: [ownerUserId], references: [id])
-  products Product[]
-  orders   Order[]
+  owner        User               @relation(fields: [ownerUserId], references: [id])
+  products     Product[]
+  orders       Order[]
+  courierLinks StoreCourierLink[]
 
   @@map("stores")
+}
+
+model StoreCourierLink {
+  id          String                      @id @default(cuid())
+  courierId   String
+  storeId     String
+  status      StoreCourierLinkStatus     @default(PENDING)
+  requestedBy StoreCourierLinkRequestedBy
+  approvedAt  DateTime?
+  rejectedAt  DateTime?
+  createdAt   DateTime                    @default(now())
+  updatedAt   DateTime                    @updatedAt
+
+  courier User  @relation(fields: [courierId], references: [id], onDelete: Cascade)
+  store   Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([courierId, storeId])
+  @@index([storeId, status])
+  @@index([courierId, status])
+  @@map("store_courier_links")
 }
 
 model Product {

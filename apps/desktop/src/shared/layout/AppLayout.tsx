@@ -5,7 +5,8 @@ import { useAuth } from "../../features/auth/auth-context";
 const navigationItems = [
   { to: "/", label: "Visão geral", end: true },
   { to: "/products", label: "Produtos" },
-  { to: "/orders", label: "Pedidos" }
+  { to: "/orders", label: "Pedidos" },
+  { to: "/couriers", label: "Motoboys" }
 ];
 
 export function AppLayout() {

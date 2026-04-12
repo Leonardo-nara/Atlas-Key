@@ -1,10 +1,18 @@
-function deriveSocketUrl(apiUrl: string) {
-  return apiUrl.replace(/\/api\/?$/, "");
+function normalizeUrl(url: string) {
+  return url.trim().replace(/\/+$/, "");
 }
 
-const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:3000/api";
+function deriveSocketUrl(apiUrl: string) {
+  return normalizeUrl(apiUrl).replace(/\/api$/, "");
+}
+
+const apiUrl = normalizeUrl(
+  import.meta.env.VITE_API_URL ?? "http://localhost:3000/api"
+);
 
 export const env = {
   apiUrl,
-  socketUrl: import.meta.env.VITE_SOCKET_URL ?? deriveSocketUrl(apiUrl)
+  socketUrl: normalizeUrl(
+    import.meta.env.VITE_SOCKET_URL ?? deriveSocketUrl(apiUrl)
+  )
 };

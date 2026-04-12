@@ -9,6 +9,20 @@ export interface AuthUser {
   updatedAt: string;
 }
 
+export type CourierVehicleType = "MOTO" | "SCOOTER" | "BICICLETA" | "CARRO";
+
+export interface CourierProfile {
+  id: string;
+  profilePhotoUrl?: string | null;
+  vehiclePhotoUrl?: string | null;
+  vehicleType?: CourierVehicleType | null;
+  vehicleModel?: string | null;
+  plate?: string | null;
+  city?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AuthResponse {
   accessToken: string;
   user: AuthUser;
@@ -18,10 +32,42 @@ export interface Store {
   id: string;
   name: string;
   address: string;
-  ownerUserId: string;
+  ownerUserId?: string;
   active: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export type StoreCourierLinkStatus =
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED"
+  | "BLOCKED";
+
+export type StoreCourierLinkRequestedBy = "COURIER" | "STORE_ADMIN";
+
+export interface CourierSummary {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  active: boolean;
+  profileCompleted?: boolean;
+  courierProfile?: CourierProfile | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StoreCourierLink {
+  id: string;
+  status: StoreCourierLinkStatus;
+  requestedBy: StoreCourierLinkRequestedBy;
+  approvedAt?: string | null;
+  rejectedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  store: Store;
+  courier: CourierSummary;
 }
 
 export interface Product {

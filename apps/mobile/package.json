@@ -9,8 +9,9 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "build": "tsc -p tsconfig.json --noEmit",
-    "build:android:preview": "eas build --platform android --profile preview",
-    "build:android:production": "eas build --platform android --profile production",
+    "prepare:eas-archive": "node scripts/prepare-eas-archive.cjs",
+    "build:android:preview": "pnpm prepare:eas-archive && pnpm dlx eas-cli build --platform android --profile preview",
+    "build:android:production": "pnpm prepare:eas-archive && pnpm dlx eas-cli build --platform android --profile production --clear-cache",
     "config:check": "expo config --type public",
     "lint": "eslint \"app/**/*.{ts,tsx}\" \"src/**/*.{ts,tsx}\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -31,8 +32,9 @@
     "socket.io-client": "^4.8.1"
   },
   "devDependencies": {
+    "@react-native-community/cli": "18.0.0",
+    "@react-native-community/cli-platform-android": "18.0.0",
     "@types/react": "~19.0.10",
-    "eas-cli": "^16.17.2",
     "typescript": "~5.8.3"
   }
 }

@@ -1,11 +1,20 @@
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import { useAuth } from "../features/auth/auth-context";
 import { ScreenContainer } from "../components/ScreenContainer";
 import { SectionHeader } from "../components/SectionHeader";
 
+type AuthStackParamList = {
+  Login: undefined;
+  Register: undefined;
+};
+
 export function LoginScreen() {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
   const { isLoggingIn, login, loginError } = useAuth();
   const [email, setEmail] = useState("courier@example.com");
   const [password, setPassword] = useState("StrongPass123");
@@ -79,6 +88,10 @@ export function LoginScreen() {
               {isLoggingIn ? "Entrando..." : "Entrar"}
             </Text>
           </Pressable>
+
+          <Pressable onPress={() => navigation.navigate("Register")} style={styles.secondaryButton}>
+            <Text style={styles.secondaryText}>Criar conta de motoboy</Text>
+          </Pressable>
         </View>
       </View>
     </ScreenContainer>
@@ -133,6 +146,16 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.6
+  },
+  secondaryButton: {
+    backgroundColor: "#efe1ca",
+    paddingVertical: 14,
+    borderRadius: 16,
+    alignItems: "center"
+  },
+  secondaryText: {
+    color: "#8a5a00",
+    fontWeight: "700"
   },
   buttonText: {
     color: "#fffaf0",

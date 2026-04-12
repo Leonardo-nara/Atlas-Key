@@ -10,6 +10,10 @@
       }
     },
     "production": {
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://rotapronta-api.onrender.com/api",
+        "EXPO_PUBLIC_SOCKET_URL": "https://rotapronta-api.onrender.com"
+      },
       "android": {
         "buildType": "app-bundle"
       }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+﻿import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -59,7 +59,7 @@ export function MyOrdersScreen() {
       setError(
         loadError instanceof ApiError
           ? loadError.message
-          : "Não foi possível carregar seus pedidos."
+          : "Nao foi possivel carregar seus pedidos."
       );
     } finally {
       setLoading(false);
@@ -113,7 +113,7 @@ export function MyOrdersScreen() {
       setError(
         statusError instanceof ApiError
           ? statusError.message
-          : "Não foi possível atualizar o status."
+          : "Nao foi possivel atualizar o status."
       );
     } finally {
       setActingOrderId(null);
@@ -126,8 +126,8 @@ export function MyOrdersScreen() {
         title="Meus pedidos"
         description={
           isConnected
-            ? "Atualize o andamento das entregas com sincronização em tempo real."
-            : "Atualize o andamento das entregas que você aceitou."
+            ? "Acompanhe entregas de empresas aprovadas no seu perfil, com sincronizacao em tempo real."
+            : "Acompanhe entregas das empresas em que voce ja esta aprovado."
         }
       />
 
@@ -167,7 +167,7 @@ export function MyOrdersScreen() {
               scope === "completed" ? styles.segmentTextActive : undefined
             ]}
           >
-            Concluídos
+            Concluidos
           </Text>
         </Pressable>
       </View>
@@ -195,8 +195,8 @@ export function MyOrdersScreen() {
             <View style={styles.emptyBox}>
               <Text style={styles.emptyText}>
                 {scope === "active"
-                  ? "Você ainda não tem pedidos ativos. Aceite um pedido na aba de disponíveis."
-                  : "Nenhum pedido concluído por enquanto."}
+                  ? "Voce ainda nao tem pedidos ativos nas empresas em que esta vinculado."
+                  : "Nenhum pedido concluido por enquanto."}
               </Text>
             </View>
           ) : (
@@ -232,7 +232,7 @@ export function MyOrdersScreen() {
                   <Text style={styles.pageButtonText}>Anterior</Text>
                 </Pressable>
                 <Text style={styles.pageText}>
-                  Página {page} de {totalPages}
+                  Pagina {page} de {totalPages}
                 </Text>
                 <Pressable
                   disabled={page >= totalPages}
@@ -243,7 +243,7 @@ export function MyOrdersScreen() {
                   }
                   style={styles.pageButton}
                 >
-                  <Text style={styles.pageButtonText}>Próxima</Text>
+                  <Text style={styles.pageButtonText}>Proxima</Text>
                 </Pressable>
               </View>
             </>

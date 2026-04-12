@@ -535,9 +535,45 @@ button {
   justify-content: flex-end;
 }
 
+.couriers-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.courier-card {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 20px;
+  background: rgba(24, 32, 43, 0.04);
+}
+
+.courier-card-approved {
+  background: rgba(17, 94, 89, 0.08);
+}
+
+.courier-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.courier-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.courier-card-grid p {
+  margin: 6px 0 0;
+  color: #5d6875;
+}
+
 @media (max-width: 1180px) {
   .desktop-shell,
-  .orders-grid {
+  .orders-grid,
+  .couriers-grid {
     grid-template-columns: 1fr;
   }
 

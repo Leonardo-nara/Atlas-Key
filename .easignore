@@ -1,0 +1,33 @@
+# EAS builds only the mobile app from apps/mobile. Keep the monorepo files
+# needed by pnpm workspaces and exclude unrelated app/build artifacts.
+.git
+.codex-runtime
+.expo
+**/.expo
+node_modules
+**/node_modules
+
+apps/backend
+apps/desktop
+docs
+
+dist
+**/dist
+dist-electron
+**/dist-electron
+build
+**/build
+release
+**/release
+.turbo
+.cache
+coverage
+**/coverage
+*.tsbuildinfo
+*.log
+
+.env
+.env.local
+.env.*.local
+.DS_Store
+Thumbs.db

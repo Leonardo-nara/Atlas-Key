@@ -34,6 +34,10 @@
     "typescript-eslint": "^8.28.0"
   },
   "pnpm": {
+    "overrides": {
+      "@expo/config-plugins": "10.1.2",
+      "@expo/prebuild-config": "9.0.12"
+    },
     "onlyBuiltDependencies": [
       "@nestjs/core",
       "electron",

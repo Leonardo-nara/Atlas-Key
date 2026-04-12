@@ -5,7 +5,9 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "scheme": "deliveryplatformcourier",
     "android": {
       "package": "com.deliveryplatform.courier",
@@ -14,8 +16,9 @@
     },
     "extra": {
       "eas": {
-        "projectId": "replace-with-your-eas-project-id"
+        "projectId": "6ebb569d-12af-4f00-8e5d-6b64a668c661"
       }
-    }
+    },
+    "owner": "souzanara"
   }
 }

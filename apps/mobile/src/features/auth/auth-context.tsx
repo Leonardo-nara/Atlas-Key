@@ -7,6 +7,7 @@ import {
   type ReactNode
 } from "react";
 
+import { courierService } from "../courier/courier-service";
 import { ApiError } from "../../lib/http";
 import {
   clearStoredToken,
@@ -20,10 +21,21 @@ interface AuthContextValue {
   token: string | null;
   user: AuthUser | null;
   isAuthenticated: boolean;
+  needsProfileCompletion: boolean;
   isBootstrapping: boolean;
   isLoggingIn: boolean;
+  isRegistering: boolean;
   loginError: string | null;
   login: (email: string, password: string) => Promise<void>;
+  registerCourier: (
+    name: string,
+    email: string,
+    phone: string,
+    password: string
+  ) => Promise<void>;
+  updateCourierProfile: (
+    input: Parameters<typeof courierService.updateMe>[1]
+  ) => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -35,6 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -56,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function loadProfile(authToken: string) {
     try {
-      const nextUser = await authService.me(authToken);
+      const nextUser = await courierService.me(authToken);
 
       if (nextUser.role !== "COURIER") {
         throw new ApiError("Este app é exclusivo para motoboys.", 403);
@@ -80,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const response = await authService.login(email, password);
-      const nextUser = await authService.me(response.accessToken);
+      const nextUser = await courierService.me(response.accessToken);
 
       if (nextUser.role !== "COURIER") {
         throw new ApiError("Use uma conta de motoboy para entrar no app.", 403);
@@ -104,6 +117,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function registerCourier(
+    name: string,
+    email: string,
+    phone: string,
+    password: string
+  ) {
+    setIsRegistering(true);
+    setLoginError(null);
+
+    try {
+      const response = await courierService.register({
+        name,
+        email,
+        phone,
+        password
+      });
+      const nextUser = await courierService.me(response.accessToken);
+
+      await setStoredToken(response.accessToken);
+      setToken(response.accessToken);
+      setUser(nextUser);
+    } catch (error) {
+      await clearStoredToken();
+      setToken(null);
+      setUser(null);
+      if (error instanceof ApiError) {
+        setLoginError(error.message);
+      } else {
+        setLoginError("Nao foi possivel concluir seu cadastro.");
+      }
+      throw error;
+    } finally {
+      setIsRegistering(false);
+    }
+  }
+
+  async function updateCourierProfile(
+    input: Parameters<typeof courierService.updateMe>[1]
+  ) {
+    if (!token) {
+      throw new ApiError("Sessao do motoboy nao encontrada.", 401);
+    }
+
+    const nextUser = await courierService.updateMe(token, input);
+    setUser(nextUser);
+  }
+
   async function logout() {
     await clearStoredToken();
     setToken(null);
@@ -123,14 +183,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       token,
       user,
       isAuthenticated: Boolean(token && user),
+      needsProfileCompletion: Boolean(token && user && !user.profileCompleted),
       isBootstrapping,
       isLoggingIn,
+      isRegistering,
       loginError,
       login,
+      registerCourier,
+      updateCourierProfile,
       logout,
       refreshProfile
     }),
-    [token, user, isBootstrapping, isLoggingIn, loginError]
+    [token, user, isBootstrapping, isLoggingIn, isRegistering, loginError]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

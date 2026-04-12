@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+﻿import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { Order } from "../types/api";
 
@@ -45,9 +45,15 @@ export function OrderCard({
       </View>
 
       <Text style={styles.meta}>{order.customerAddress}</Text>
-      <Text style={styles.store}>
-        Loja: {order.store?.name ?? "Loja não informada"}
-      </Text>
+
+      <View style={styles.storeBlock}>
+        <Text style={styles.store}>
+          Empresa: {order.store?.name ?? "Empresa nao informada"}
+        </Text>
+        {order.store?.address ? (
+          <Text style={styles.meta}>Origem: {order.store.address}</Text>
+        ) : null}
+      </View>
 
       <View style={styles.list}>
         {order.items.map((item) => (
@@ -104,6 +110,9 @@ const styles = StyleSheet.create({
   meta: {
     color: "#52606d",
     fontSize: 14
+  },
+  storeBlock: {
+    gap: 4
   },
   store: {
     color: "#8a5a00",

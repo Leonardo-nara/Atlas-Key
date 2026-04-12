@@ -94,8 +94,8 @@ Resumo das URLs:
 
 - Local backend API: `http://localhost:3000/api`
 - Local backend socket: `http://localhost:3000`
-- Producao backend API: `https://api.rotapronta.com/api`
-- Producao backend socket: `https://api.rotapronta.com`
+- Producao backend API: `https://rotapronta-api.onrender.com/api`
+- Producao backend socket: `https://rotapronta-api.onrender.com`
 
 Importante:
 
@@ -103,6 +103,7 @@ Importante:
 - o desktop usa `VITE_*` no momento do build do renderer
 - o mobile usa `EXPO_PUBLIC_*` no momento do bundle/build
 - `ELECTRON_RENDERER_URL` e apenas para desenvolvimento do desktop
+- se `VITE_SOCKET_URL` ou `EXPO_PUBLIC_SOCKET_URL` nao forem informadas, os apps derivam o socket removendo `/api` da URL da API
 
 ## Rodando localmente
 
@@ -153,6 +154,7 @@ pnpm install --frozen-lockfile
 ```bash
 pnpm --filter @deliveries/backend prisma:generate
 pnpm --filter @deliveries/backend prisma:deploy
+pnpm --filter @deliveries/backend prisma:seed:prod
 ```
 
 5. Buildar o backend:
@@ -172,6 +174,7 @@ pnpm --filter @deliveries/backend start:prod
 - O backend faz bind em `HOST`, por padrao `0.0.0.0`.
 - O CORS aceita a lista de `CORS_ALLOWED_ORIGINS` separada por virgula.
 - O banco continua sendo Prisma + PostgreSQL, com migrations versionadas no repositorio.
+- O seed de producao usa o `DATABASE_URL` presente no ambiente e pode ser executado com `pnpm --filter @deliveries/backend prisma:seed:prod`.
 - Para Railway/Render, configure o start command como `pnpm --filter @deliveries/backend start:prod`.
 - Para Render, use o checklist em [docs/RENDER_DEPLOY.md](C:\Users\x\OneDrive\Documentos\Playground\docs\RENDER_DEPLOY.md).
 - Para VPS, recomenda-se rodar com PM2, systemd ou Docker.
@@ -204,6 +207,14 @@ pnpm --filter @deliveries/desktop dist:win
 - `VITE_SOCKET_URL`
 
 Se o renderer nao usar o backend local, gere o build com essas variaveis apontando para o backend publicado antes de rodar `pnpm build:desktop:win`.
+
+Exemplo no PowerShell:
+
+```powershell
+$env:VITE_API_URL="https://rotapronta-api.onrender.com/api"
+$env:VITE_SOCKET_URL="https://rotapronta-api.onrender.com"
+pnpm build:desktop:win
+```
 
 ## Build mobile Android
 
@@ -246,6 +257,14 @@ pnpm build:mobile:android:production
 
 Em dispositivo fisico, use um backend acessivel pela internet ou pela rede local. `localhost` nao funciona no celular.
 
+Exemplo no PowerShell:
+
+```powershell
+$env:EXPO_PUBLIC_API_URL="https://rotapronta-api.onrender.com/api"
+$env:EXPO_PUBLIC_SOCKET_URL="https://rotapronta-api.onrender.com"
+pnpm build:mobile:android:production
+```
+
 ## Alternando entre local e producao
 
 ### Backend
@@ -256,12 +275,26 @@ Em dispositivo fisico, use um backend acessivel pela internet ou pela rede local
 ### Desktop
 
 - Local: mantenha `VITE_API_URL=http://localhost:3000/api`
-- Producao: defina `VITE_API_URL` e `VITE_SOCKET_URL` com o dominio publicado antes do build
+- Producao: defina `VITE_API_URL=https://rotapronta-api.onrender.com/api` e `VITE_SOCKET_URL=https://rotapronta-api.onrender.com` antes do build
+- Teste rapido contra producao em desenvolvimento:
+
+```powershell
+$env:VITE_API_URL="https://rotapronta-api.onrender.com/api"
+$env:VITE_SOCKET_URL="https://rotapronta-api.onrender.com"
+pnpm dev:desktop
+```
 
 ### Mobile
 
 - Local: use `EXPO_PUBLIC_API_URL` e `EXPO_PUBLIC_SOCKET_URL` apontando para o backend local ou para o IP da maquina
-- Producao: defina essas variaveis com a URL publica antes do build EAS
+- Producao: defina `EXPO_PUBLIC_API_URL=https://rotapronta-api.onrender.com/api` e `EXPO_PUBLIC_SOCKET_URL=https://rotapronta-api.onrender.com` antes do bundle ou build EAS
+- Teste rapido contra producao:
+
+```powershell
+$env:EXPO_PUBLIC_API_URL="https://rotapronta-api.onrender.com/api"
+$env:EXPO_PUBLIC_SOCKET_URL="https://rotapronta-api.onrender.com"
+pnpm dev:mobile
+```
 
 ## Fluxo completo para demo
 

@@ -5,8 +5,65 @@ export interface AuthUser {
   phone: string;
   role: "STORE_ADMIN" | "COURIER";
   active: boolean;
+  profileCompleted?: boolean;
+  courierProfile?: CourierProfile | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export type CourierVehicleType = "MOTO" | "SCOOTER" | "BICICLETA" | "CARRO";
+
+export interface CourierProfile {
+  id: string;
+  profilePhotoUrl?: string | null;
+  vehiclePhotoUrl?: string | null;
+  vehicleType?: CourierVehicleType | null;
+  vehicleModel?: string | null;
+  plate?: string | null;
+  city?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Store {
+  id: string;
+  name: string;
+  address: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type StoreCourierLinkStatus =
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED"
+  | "BLOCKED";
+
+export type StoreCourierLinkRequestedBy = "COURIER" | "STORE_ADMIN";
+
+export interface StoreCourierLink {
+  id: string;
+  status: StoreCourierLinkStatus;
+  requestedBy: StoreCourierLinkRequestedBy;
+  approvedAt?: string | null;
+  rejectedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  store: Store;
+  courier: AuthUser;
+}
+
+export interface StoreDiscoveryItem extends Store {
+  link?: {
+    id: string;
+    status: StoreCourierLinkStatus;
+    requestedBy: StoreCourierLinkRequestedBy;
+    approvedAt?: string | null;
+    rejectedAt?: string | null;
+    createdAt: string;
+    updatedAt: string;
+  } | null;
 }
 
 export interface AuthResponse {

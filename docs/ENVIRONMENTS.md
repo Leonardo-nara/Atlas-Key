@@ -51,10 +51,11 @@ Consumidas no bundle do Expo:
 
 ### Producao
 
-- Backend API: `https://api.rotapronta.com/api`
-- Backend Socket: `https://api.rotapronta.com`
+- Backend API: `https://rotapronta-api.onrender.com/api`
+- Backend Socket: `https://rotapronta-api.onrender.com`
 - Desktop build: usa `VITE_API_URL` e `VITE_SOCKET_URL` no momento do build
 - Mobile build: usa `EXPO_PUBLIC_API_URL` e `EXPO_PUBLIC_SOCKET_URL` no momento do build
+- Se `VITE_SOCKET_URL` ou `EXPO_PUBLIC_SOCKET_URL` nao forem informadas, desktop e mobile derivam o socket removendo `/api` da URL da API
 
 ## Como alternar entre local e producao
 
@@ -77,6 +78,14 @@ Antes do build do desktop, defina:
 - `VITE_API_URL`
 - `VITE_SOCKET_URL`
 
+No PowerShell:
+
+```powershell
+$env:VITE_API_URL="https://rotapronta-api.onrender.com/api"
+$env:VITE_SOCKET_URL="https://rotapronta-api.onrender.com"
+pnpm build:desktop:win
+```
+
 Depois rode:
 
 - `pnpm build:desktop:win`
@@ -87,6 +96,14 @@ Antes do build do mobile, defina:
 
 - `EXPO_PUBLIC_API_URL`
 - `EXPO_PUBLIC_SOCKET_URL`
+
+No PowerShell:
+
+```powershell
+$env:EXPO_PUBLIC_API_URL="https://rotapronta-api.onrender.com/api"
+$env:EXPO_PUBLIC_SOCKET_URL="https://rotapronta-api.onrender.com"
+pnpm build:mobile:android:production
+```
 
 Depois rode:
 

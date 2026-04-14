@@ -13,6 +13,7 @@ import type { AuthenticatedUser } from "../common/authenticated-user.interface";
 import { UserRole } from "../common/enums/user-role.enum";
 import { PrismaService } from "../prisma/prisma.service";
 import { StoreCourierLinkStatus } from "../store-courier-links/enums/store-courier-link-status.enum";
+import { isCorsOriginAllowed } from "../common/security/cors";
 import {
   availableOrdersStoreRoom,
   courierRoom,
@@ -23,8 +24,15 @@ type SocketAuthPayload = AuthenticatedUser;
 
 @WebSocketGateway({
   cors: {
-    origin: true,
-    credentials: true
+    origin(origin, callback) {
+      if (isCorsOriginAllowed(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error("Origem de socket nao permitida"), false);
+    },
+    credentials: false
   },
   transports: ["websocket"]
 })

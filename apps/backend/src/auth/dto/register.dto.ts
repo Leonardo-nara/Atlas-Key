@@ -6,18 +6,30 @@ import {
   MinLength,
   ValidateIf
 } from "class-validator";
+import { Transform } from "class-transformer";
 
 import { UserRole } from "../../common/enums/user-role.enum";
 
+function normalizeString({ value }: { value: unknown }) {
+  return typeof value === "string" ? value.trim() : value;
+}
+
+function normalizeEmail({ value }: { value: unknown }) {
+  return typeof value === "string" ? value.trim().toLowerCase() : value;
+}
+
 export class RegisterDto {
+  @Transform(normalizeString)
   @IsString()
   @MinLength(2)
   @MaxLength(120)
   name!: string;
 
+  @Transform(normalizeEmail)
   @IsEmail()
   email!: string;
 
+  @Transform(normalizeString)
   @IsString()
   @MinLength(6)
   @MaxLength(64)
@@ -31,12 +43,14 @@ export class RegisterDto {
   @IsEnum(UserRole)
   role!: UserRole;
 
+  @Transform(normalizeString)
   @ValidateIf((dto: RegisterDto) => dto.role === UserRole.STORE_ADMIN)
   @IsString()
   @MinLength(2)
   @MaxLength(160)
   storeName?: string;
 
+  @Transform(normalizeString)
   @ValidateIf((dto: RegisterDto) => dto.role === UserRole.STORE_ADMIN)
   @IsString()
   @MinLength(5)

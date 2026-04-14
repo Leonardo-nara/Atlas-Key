@@ -30,7 +30,10 @@ export class CreateProductDto {
   category!: string;
 
   @IsOptional()
-  @IsUrl()
+  @IsUrl({
+    protocols: ["http", "https"],
+    require_protocol: true
+  })
   @MaxLength(500)
   imageUrl?: string;
 

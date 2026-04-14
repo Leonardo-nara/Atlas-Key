@@ -12,8 +12,17 @@
     "android": {
       "package": "com.deliveryplatform.courier",
       "versionCode": 1,
+      "allowBackup": false,
       "permissions": []
     },
+    "plugins": [
+      [
+        "expo-secure-store",
+        {
+          "configureAndroidBackup": true
+        }
+      ]
+    ],
     "extra": {
       "eas": {
         "projectId": "6ebb569d-12af-4f00-8e5d-6b64a668c661"

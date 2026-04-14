@@ -1,5 +1,7 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
+import { APP_GUARD } from "@nestjs/core";
+import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 
 import { AuthModule } from "./auth/auth.module";
 import { CouriersModule } from "./couriers/couriers.module";
@@ -18,6 +20,16 @@ import { UsersModule } from "./users/users.module";
       isGlobal: true,
       envFilePath: ["../../.env", ".env"]
     }),
+    ThrottlerModule.forRoot({
+      errorMessage: "Muitas requisicoes. Aguarde alguns instantes e tente novamente.",
+      throttlers: [
+        {
+          name: "default",
+          ttl: 60_000,
+          limit: 120
+        }
+      ]
+    }),
     PrismaModule,
     CouriersModule,
     AuthModule,
@@ -28,6 +40,12 @@ import { UsersModule } from "./users/users.module";
     ProductsModule,
     OrdersModule
   ],
-  controllers: [HealthController]
+  controllers: [HealthController],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard
+    }
+  ]
 })
 export class AppModule {}

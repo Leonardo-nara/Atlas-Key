@@ -1,26 +1,47 @@
 import "dotenv/config";
 import { Logger, ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
+import helmet from "helmet";
 
 import { AppModule } from "./app.module";
+import { getAllowedCorsOrigins, isCorsOriginAllowed } from "./common/security/cors";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const port = Number(process.env.PORT ?? 3000);
   const host = process.env.HOST ?? "0.0.0.0";
   const apiPrefix = process.env.API_PREFIX ?? "api";
-  const corsOrigins = process.env.CORS_ALLOWED_ORIGINS
-    ? process.env.CORS_ALLOWED_ORIGINS.split(",")
-        .map((origin) => origin.trim())
-        .filter(Boolean)
-    : [
-        process.env.CORS_ORIGIN_DESKTOP ?? "http://localhost:5173",
-        process.env.CORS_ORIGIN_MOBILE ?? "exp://127.0.0.1:8081"
-      ];
+  const corsOrigins = getAllowedCorsOrigins();
+  const httpServer = app.getHttpAdapter().getInstance() as {
+    disable: (setting: string) => void;
+    set: (setting: string, value: unknown) => void;
+  };
 
+  httpServer.set("trust proxy", 1);
   app.setGlobalPrefix(apiPrefix);
+  httpServer.disable("x-powered-by");
+  app.use(
+    helmet({
+      crossOriginEmbedderPolicy: false,
+      contentSecurityPolicy: false
+    })
+  );
   app.enableCors({
-    origin: corsOrigins
+    origin(
+      origin: string | undefined,
+      callback: (error: Error | null, allow?: boolean) => void
+    ) {
+      if (isCorsOriginAllowed(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error("Origem CORS nao permitida"), false);
+    },
+    methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Authorization", "Content-Type"],
+    credentials: false,
+    maxAge: 86400
   });
   app.useGlobalPipes(
     new ValidationPipe({
@@ -34,6 +55,10 @@ async function bootstrap() {
 
   Logger.log(
     `Backend disponivel em http://${host}:${port}/${apiPrefix}`,
+    "Bootstrap"
+  );
+  Logger.log(
+    `CORS permitido para: ${corsOrigins.length ? corsOrigins.join(", ") : "nenhuma origem de browser configurada"}`,
     "Bootstrap"
   );
 }

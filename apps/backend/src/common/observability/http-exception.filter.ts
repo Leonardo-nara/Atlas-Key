@@ -7,6 +7,7 @@ import {
   Logger
 } from "@nestjs/common";
 
+import { reportUnhandledError } from "./external-error-reporter";
 import { structuredLog } from "./structured-log";
 
 interface RequestLike {
@@ -57,6 +58,16 @@ export class HttpExceptionFilter implements ExceptionFilter {
         ? { stack: exception.stack }
         : {})
     });
+
+    if (statusCode >= 500) {
+      reportUnhandledError({
+        exception,
+        requestId,
+        method: request.method,
+        path,
+        statusCode
+      });
+    }
 
     response.status(statusCode).json({
       statusCode,

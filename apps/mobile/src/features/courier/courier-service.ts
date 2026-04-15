@@ -1,5 +1,5 @@
 import { http } from "../../lib/http";
-import type { AuthUser, CourierVehicleType } from "../../types/api";
+import type { AuthResponse, AuthUser, CourierVehicleType } from "../../types/api";
 
 export interface RegisterCourierInput {
   name: string;
@@ -21,7 +21,7 @@ export interface UpdateCourierProfileInput {
 
 export const courierService = {
   register(input: RegisterCourierInput) {
-    return http<{ accessToken: string; user: AuthUser }>("/auth/register/courier", {
+    return http<AuthResponse>("/auth/register/courier", {
       method: "POST",
       body: JSON.stringify(input)
     });

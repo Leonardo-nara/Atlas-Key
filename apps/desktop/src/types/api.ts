@@ -25,6 +25,7 @@ export interface CourierProfile {
 
 export interface AuthResponse {
   accessToken: string;
+  refreshToken: string;
   user: AuthUser;
 }
 

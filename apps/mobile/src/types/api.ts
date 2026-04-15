@@ -68,6 +68,7 @@ export interface StoreDiscoveryItem extends Store {
 
 export interface AuthResponse {
   accessToken: string;
+  refreshToken: string;
   user: AuthUser;
 }
 

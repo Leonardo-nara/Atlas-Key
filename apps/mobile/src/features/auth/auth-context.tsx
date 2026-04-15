@@ -10,9 +10,10 @@ import {
 import { courierService } from "../courier/courier-service";
 import { ApiError } from "../../lib/http";
 import {
-  clearStoredToken,
-  getStoredToken,
-  setStoredToken
+  clearStoredTokens,
+  getStoredAccessToken,
+  getStoredRefreshToken,
+  setStoredTokens
 } from "../../lib/storage";
 import type { AuthUser } from "../../types/api";
 import { authService } from "./auth-service";
@@ -44,6 +45,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState<string | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -54,35 +56,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void bootstrapSession();
   }, []);
 
-  async function bootstrapSession() {
-    const storedToken = await getStoredToken();
-
-    if (!storedToken) {
-      setIsBootstrapping(false);
-      return;
+  useEffect(() => {
+    if (!refreshToken) {
+      return undefined;
     }
 
-    setToken(storedToken);
-    await loadProfile(storedToken);
+    const interval = setInterval(() => {
+      void refreshSession(refreshToken);
+    }, 10 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, [refreshToken]);
+
+  async function bootstrapSession() {
+    const storedAccessToken = await getStoredAccessToken();
+    const storedRefreshToken = await getStoredRefreshToken();
+
+    setRefreshToken(storedRefreshToken);
+
+    if (storedAccessToken) {
+      setToken(storedAccessToken);
+      await loadProfile(storedAccessToken, storedRefreshToken);
+    } else if (storedRefreshToken) {
+      await refreshSession(storedRefreshToken);
+    }
+
     setIsBootstrapping(false);
   }
 
-  async function loadProfile(authToken: string) {
+  async function loadProfile(authToken: string, fallbackRefreshToken?: string | null) {
     try {
       const nextUser = await courierService.me(authToken);
 
       if (nextUser.role !== "COURIER") {
-        throw new ApiError("Este app é exclusivo para motoboys.", 403);
+        throw new ApiError("Este app e exclusivo para motoboys.", 403);
       }
 
       setUser(nextUser);
       setLoginError(null);
     } catch (error) {
-      await logout();
+      if (fallbackRefreshToken && error instanceof ApiError && error.status === 401) {
+        const refreshed = await refreshSession(fallbackRefreshToken);
+
+        if (refreshed) {
+          return;
+        }
+      }
+
+      await clearSession();
       if (error instanceof ApiError) {
         setLoginError(error.message);
       } else {
-        setLoginError("Não foi possível restaurar a sessão.");
+        setLoginError("Nao foi possivel restaurar a sessao.");
       }
     }
   }
@@ -99,17 +124,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new ApiError("Use uma conta de motoboy para entrar no app.", 403);
       }
 
-      await setStoredToken(response.accessToken);
+      await setStoredTokens(response.accessToken, response.refreshToken);
       setToken(response.accessToken);
+      setRefreshToken(response.refreshToken);
       setUser(nextUser);
     } catch (error) {
-      await clearStoredToken();
-      setToken(null);
-      setUser(null);
+      await clearSession();
       if (error instanceof ApiError) {
         setLoginError(error.message);
       } else {
-        setLoginError("Não foi possível fazer login.");
+        setLoginError("Nao foi possivel fazer login.");
       }
       throw error;
     } finally {
@@ -135,13 +159,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       const nextUser = await courierService.me(response.accessToken);
 
-      await setStoredToken(response.accessToken);
+      await setStoredTokens(response.accessToken, response.refreshToken);
       setToken(response.accessToken);
+      setRefreshToken(response.refreshToken);
       setUser(nextUser);
     } catch (error) {
-      await clearStoredToken();
-      setToken(null);
-      setUser(null);
+      await clearSession();
       if (error instanceof ApiError) {
         setLoginError(error.message);
       } else {
@@ -165,9 +188,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function logout() {
-    await clearStoredToken();
+    const tokenToRevoke = refreshToken ?? (await getStoredRefreshToken());
+
+    try {
+      if (tokenToRevoke) {
+        await authService.logout(tokenToRevoke);
+      }
+    } finally {
+      await clearSession();
+    }
+  }
+
+  async function clearSession() {
+    await clearStoredTokens();
     setToken(null);
+    setRefreshToken(null);
     setUser(null);
+  }
+
+  async function refreshSession(nextRefreshToken = refreshToken) {
+    if (!nextRefreshToken) {
+      await clearSession();
+      return false;
+    }
+
+    try {
+      const response = await authService.refresh(nextRefreshToken);
+      const nextUser = await courierService.me(response.accessToken);
+
+      if (nextUser.role !== "COURIER") {
+        throw new ApiError("Este app e exclusivo para motoboys.", 403);
+      }
+
+      await setStoredTokens(response.accessToken, response.refreshToken);
+      setToken(response.accessToken);
+      setRefreshToken(response.refreshToken);
+      setUser(nextUser);
+      setLoginError(null);
+      return true;
+    } catch {
+      await clearSession();
+      return false;
+    }
   }
 
   async function refreshProfile() {
@@ -175,7 +237,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    await loadProfile(token);
+    await loadProfile(token, refreshToken);
   }
 
   const value = useMemo<AuthContextValue>(

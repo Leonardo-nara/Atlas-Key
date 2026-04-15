@@ -9,9 +9,10 @@ import {
 
 import { AUTH_EXPIRED_EVENT, ApiError } from "../../lib/http";
 import {
-  clearStoredToken,
-  getStoredToken,
-  setStoredToken
+  clearStoredTokens,
+  getStoredAccessToken,
+  getStoredRefreshToken,
+  setStoredTokens
 } from "../../lib/storage";
 import type { AuthUser, Store } from "../../types/api";
 import { authService } from "./auth-service";
@@ -25,14 +26,15 @@ interface AuthContextValue {
   isLoggingIn: boolean;
   loginError: string | null;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(() => getStoredToken());
+  const [token, setToken] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState<string | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [store, setStore] = useState<Store | null>(null);
   const [isBootstrapping, setIsBootstrapping] = useState(true);
@@ -40,20 +42,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loginError, setLoginError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!token) {
-      setIsBootstrapping(false);
-      return;
-    }
-
-    void loadProfile(token).finally(() => {
-      setIsBootstrapping(false);
-    });
-  }, [token]);
+    void bootstrapSession();
+  }, []);
 
   useEffect(() => {
     function handleAuthExpired() {
-      logout();
-      setLoginError("Sua sessão expirou. Entre novamente para continuar.");
+      void refreshSession().then((refreshed) => {
+        if (!refreshed) {
+          setLoginError("Sua sessao expirou. Entre novamente para continuar.");
+        }
+      });
     }
 
     window.addEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
@@ -61,9 +59,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       window.removeEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
     };
-  }, []);
+  }, [refreshToken]);
 
-  async function loadProfile(authToken: string) {
+  useEffect(() => {
+    if (!refreshToken) {
+      return undefined;
+    }
+
+    const interval = window.setInterval(() => {
+      void refreshSession(refreshToken);
+    }, 10 * 60 * 1000);
+
+    return () => window.clearInterval(interval);
+  }, [refreshToken]);
+
+  async function bootstrapSession() {
+    const storedAccessToken = getStoredAccessToken();
+    const storedRefreshToken = getStoredRefreshToken();
+
+    setRefreshToken(storedRefreshToken);
+
+    if (storedAccessToken) {
+      setToken(storedAccessToken);
+      await loadProfile(storedAccessToken, storedRefreshToken);
+    } else if (storedRefreshToken) {
+      await refreshSession(storedRefreshToken);
+    }
+
+    setIsBootstrapping(false);
+  }
+
+  async function loadProfile(authToken: string, fallbackRefreshToken?: string | null) {
     try {
       const [nextUser, nextStore] = await Promise.all([
         authService.me(authToken),
@@ -73,11 +99,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setStore(nextStore);
       setLoginError(null);
     } catch (error) {
-      logout();
+      if (fallbackRefreshToken && error instanceof ApiError && error.status === 401) {
+        const refreshed = await refreshSession(fallbackRefreshToken);
+
+        if (refreshed) {
+          return;
+        }
+      }
+
+      clearSession();
       if (error instanceof ApiError) {
         setLoginError(error.message);
       } else {
-        setLoginError("Não foi possível restaurar a sessão.");
+        setLoginError("Nao foi possivel restaurar a sessao.");
       }
     }
   }
@@ -88,8 +122,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const response = await authService.login({ email, password });
-      setStoredToken(response.accessToken);
+      setStoredTokens(response.accessToken, response.refreshToken);
       setToken(response.accessToken);
+      setRefreshToken(response.refreshToken);
       setUser(response.user);
       const nextStore = await authService.myStore(response.accessToken);
       setStore(nextStore);
@@ -97,7 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error instanceof ApiError) {
         setLoginError(error.message);
       } else {
-        setLoginError("Não foi possível fazer login.");
+        setLoginError("Nao foi possivel fazer login.");
       }
       throw error;
     } finally {
@@ -105,11 +140,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  function logout() {
-    clearStoredToken();
+  async function logout() {
+    const tokenToRevoke = refreshToken ?? getStoredRefreshToken();
+
+    try {
+      if (tokenToRevoke) {
+        await authService.logout(tokenToRevoke);
+      }
+    } finally {
+      clearSession();
+    }
+  }
+
+  function clearSession() {
+    clearStoredTokens();
     setToken(null);
+    setRefreshToken(null);
     setUser(null);
     setStore(null);
+  }
+
+  async function refreshSession(nextRefreshToken = refreshToken) {
+    if (!nextRefreshToken) {
+      clearSession();
+      return false;
+    }
+
+    try {
+      const response = await authService.refresh(nextRefreshToken);
+      const nextStore = await authService.myStore(response.accessToken);
+
+      setStoredTokens(response.accessToken, response.refreshToken);
+      setToken(response.accessToken);
+      setRefreshToken(response.refreshToken);
+      setUser(response.user);
+      setStore(nextStore);
+      setLoginError(null);
+      return true;
+    } catch {
+      clearSession();
+      return false;
+    }
   }
 
   async function refreshProfile() {
@@ -117,7 +188,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    await loadProfile(token);
+    await loadProfile(token, refreshToken);
   }
 
   const value = useMemo<AuthContextValue>(

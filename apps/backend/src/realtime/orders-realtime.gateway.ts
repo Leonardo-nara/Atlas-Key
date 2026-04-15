@@ -14,6 +14,7 @@ import { UserRole } from "../common/enums/user-role.enum";
 import { PrismaService } from "../prisma/prisma.service";
 import { StoreCourierLinkStatus } from "../store-courier-links/enums/store-courier-link-status.enum";
 import { isCorsOriginAllowed } from "../common/security/cors";
+import { structuredLog } from "../common/observability/structured-log";
 import {
   availableOrdersStoreRoom,
   courierRoom,
@@ -85,7 +86,11 @@ export class OrdersRealtimeGateway
       const message =
         error instanceof Error ? error.message : "Falha na autenticacao realtime";
 
-      this.logger.warn(`Socket rejeitado: ${message}`);
+      structuredLog(this.logger, "warn", {
+        event: "realtime_connection_rejected",
+        socketId: client.id,
+        reason: message
+      });
       client.emit("realtime.error", { message });
       client.disconnect();
     }
@@ -95,7 +100,12 @@ export class OrdersRealtimeGateway
     const user = client.data.user as AuthenticatedUser | undefined;
 
     if (user) {
-      this.logger.debug(`Socket desconectado para ${user.role}:${user.sub}`);
+      structuredLog(this.logger, "debug", {
+        event: "realtime_disconnect",
+        socketId: client.id,
+        userId: user.sub,
+        role: user.role
+      });
     }
   }
 

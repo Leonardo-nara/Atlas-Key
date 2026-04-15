@@ -19,6 +19,7 @@ import { RefreshTokenDto } from "./dto/refresh-token.dto";
 import { RegisterDto } from "./dto/register.dto";
 
 export interface AuthRequestContext {
+  requestId?: string;
   ipAddress?: string;
   userAgent?: string;
 }
@@ -533,7 +534,10 @@ export class AuthService {
         sessionId: input.sessionId,
         ipAddress: input.context?.ipAddress,
         userAgent: input.context?.userAgent,
-        metadata: input.metadata
+        metadata: {
+          ...(input.metadata ?? {}),
+          ...(input.context?.requestId ? { requestId: input.context.requestId } : {})
+        }
       }
     });
   }

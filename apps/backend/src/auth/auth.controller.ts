@@ -12,6 +12,7 @@ import type { AuthenticatedUser } from "../common/authenticated-user.interface";
 
 interface RequestLike {
   ip?: string;
+  requestId?: string;
   headers: Record<string, string | string[] | undefined>;
 }
 
@@ -94,6 +95,7 @@ export class AuthController {
     const userAgent = request.headers["user-agent"];
 
     return {
+      requestId: request.requestId,
       ipAddress: request.ip,
       userAgent: Array.isArray(userAgent) ? userAgent.join(", ") : userAgent
     };

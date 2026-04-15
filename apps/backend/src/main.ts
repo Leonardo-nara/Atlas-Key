@@ -4,6 +4,8 @@ import { NestFactory } from "@nestjs/core";
 import helmet from "helmet";
 
 import { AppModule } from "./app.module";
+import { HttpExceptionFilter } from "./common/observability/http-exception.filter";
+import { requestLoggingMiddleware } from "./common/observability/request-logging.middleware";
 import { getAllowedCorsOrigins, isCorsOriginAllowed } from "./common/security/cors";
 
 async function bootstrap() {
@@ -26,6 +28,7 @@ async function bootstrap() {
       contentSecurityPolicy: false
     })
   );
+  app.use(requestLoggingMiddleware);
   app.enableCors({
     origin(
       origin: string | undefined,
@@ -39,7 +42,8 @@ async function bootstrap() {
       callback(new Error("Origem CORS nao permitida"), false);
     },
     methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Authorization", "Content-Type"],
+    allowedHeaders: ["Authorization", "Content-Type", "x-request-id"],
+    exposedHeaders: ["x-request-id"],
     credentials: false,
     maxAge: 86400
   });
@@ -50,6 +54,7 @@ async function bootstrap() {
       forbidNonWhitelisted: true
     })
   );
+  app.useGlobalFilters(new HttpExceptionFilter());
 
   await app.listen(port, host);
 

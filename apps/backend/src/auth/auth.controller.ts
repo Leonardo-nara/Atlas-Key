@@ -1,11 +1,14 @@
-import { Body, Controller, Post, Req } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
 
 import { AuthRequestContext, AuthService } from "./auth.service";
+import { CurrentUser } from "../common/decorators/current-user.decorator";
+import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { LoginDto } from "./dto/login.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
 import { RegisterCourierDto } from "./dto/register-courier.dto";
 import { RegisterDto } from "./dto/register.dto";
+import type { AuthenticatedUser } from "../common/authenticated-user.interface";
 
 interface RequestLike {
   ip?: string;
@@ -44,6 +47,47 @@ export class AuthController {
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   logout(@Body() dto: RefreshTokenDto, @Req() request: RequestLike) {
     return this.authService.logout(dto, this.getRequestContext(request));
+  }
+
+  @Get("sessions")
+  @UseGuards(JwtAuthGuard)
+  listSessions(@CurrentUser() user: AuthenticatedUser) {
+    return this.authService.listActiveSessions(user);
+  }
+
+  @Post("sessions/current/logout")
+  @UseGuards(JwtAuthGuard)
+  logoutCurrentSession(
+    @CurrentUser() user: AuthenticatedUser,
+    @Req() request: RequestLike
+  ) {
+    return this.authService.logoutCurrentSession(
+      user,
+      this.getRequestContext(request)
+    );
+  }
+
+  @Post("sessions/logout-all")
+  @UseGuards(JwtAuthGuard)
+  logoutAllSessions(
+    @CurrentUser() user: AuthenticatedUser,
+    @Req() request: RequestLike
+  ) {
+    return this.authService.logoutAllSessions(user, this.getRequestContext(request));
+  }
+
+  @Post("sessions/:sessionId/revoke")
+  @UseGuards(JwtAuthGuard)
+  revokeOwnSession(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("sessionId") sessionId: string,
+    @Req() request: RequestLike
+  ) {
+    return this.authService.revokeOwnSession(
+      user,
+      sessionId,
+      this.getRequestContext(request)
+    );
   }
 
   private getRequestContext(request: RequestLike): AuthRequestContext {

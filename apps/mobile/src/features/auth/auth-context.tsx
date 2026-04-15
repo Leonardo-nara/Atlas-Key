@@ -38,6 +38,7 @@ interface AuthContextValue {
     input: Parameters<typeof courierService.updateMe>[1]
   ) => Promise<void>;
   logout: () => Promise<void>;
+  logoutAll: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
 
@@ -202,6 +203,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function logoutAll() {
+    if (!token) {
+      await clearSession();
+      return;
+    }
+
+    try {
+      await authService.logoutAll(token);
+    } finally {
+      await clearSession();
+    }
+  }
+
   async function clearSession() {
     await clearStoredTokens();
     setToken(null);
@@ -257,6 +271,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       registerCourier,
       updateCourierProfile,
       logout,
+      logoutAll,
       refreshProfile
     }),
     [token, user, isBootstrapping, isLoggingIn, isRegistering, loginError]

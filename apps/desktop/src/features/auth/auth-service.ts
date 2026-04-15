@@ -1,5 +1,5 @@
 import { http } from "../../lib/http";
-import type { AuthResponse, AuthUser, Store } from "../../types/api";
+import type { AuthResponse, AuthSession, AuthUser, Store } from "../../types/api";
 
 interface LoginInput {
   email: string;
@@ -23,6 +23,26 @@ export const authService = {
     return http<{ message: string }>("/auth/logout", {
       method: "POST",
       body: JSON.stringify({ refreshToken })
+    });
+  },
+  sessions(token: string) {
+    return http<AuthSession[]>("/auth/sessions", {
+      token
+    });
+  },
+  logoutAll(token: string) {
+    return http<{ message: string; revokedSessions: number }>(
+      "/auth/sessions/logout-all",
+      {
+        method: "POST",
+        token
+      }
+    );
+  },
+  revokeSession(token: string, sessionId: string) {
+    return http<{ message: string }>(`/auth/sessions/${sessionId}/revoke`, {
+      method: "POST",
+      token
     });
   },
   me(token: string) {

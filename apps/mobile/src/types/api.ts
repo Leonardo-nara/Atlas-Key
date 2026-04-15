@@ -72,6 +72,17 @@ export interface AuthResponse {
   user: AuthUser;
 }
 
+export interface AuthSession {
+  id: string;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  expiresAt: string;
+  lastUsedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  current: boolean;
+}
+
 export interface OrderItem {
   id: string;
   orderId: string;

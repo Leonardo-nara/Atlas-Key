@@ -31,6 +31,7 @@ interface AuthContextValue {
   loginError: string | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  logoutAll: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
 
@@ -151,6 +152,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function logoutAll() {
+    if (!token) {
+      clearSession();
+      return;
+    }
+
+    try {
+      await authService.logoutAll(token);
+    } finally {
+      clearSession();
+    }
+  }
+
   function clearSession() {
     clearStoredTokens();
     setToken(null);
@@ -201,6 +215,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loginError,
       login,
       logout,
+      logoutAll,
       refreshProfile
     }),
     [token, user, store, isBootstrapping, isLoggingIn, loginError]

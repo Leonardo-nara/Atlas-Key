@@ -11,6 +11,7 @@ interface JwtPayload {
   sub: string;
   email: string;
   role: UserRole;
+  sid?: string;
 }
 
 @Injectable()
@@ -51,10 +52,27 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException("Sessao invalida");
     }
 
+    if (payload.sid) {
+      const session = await this.prisma.authSession.findFirst({
+        where: {
+          id: payload.sid,
+          userId: user.id,
+          revokedAt: null,
+          expiresAt: { gt: new Date() }
+        },
+        select: { id: true }
+      });
+
+      if (!session) {
+        throw new UnauthorizedException("Sessao revogada");
+      }
+    }
+
     return {
       sub: user.id,
       email: user.email,
-      role: user.role as UserRole
+      role: user.role as UserRole,
+      sessionId: payload.sid
     };
   }
 }

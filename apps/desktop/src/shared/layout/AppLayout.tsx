@@ -10,7 +10,7 @@ const navigationItems = [
 ];
 
 export function AppLayout() {
-  const { user, store, logout } = useAuth();
+  const { user, store, logout, logoutAll } = useAuth();
 
   return (
     <div className="desktop-shell">
@@ -43,6 +43,9 @@ export function AppLayout() {
           </div>
           <button className="ghost-button" onClick={logout} type="button">
             Sair
+          </button>
+          <button className="ghost-button" onClick={logoutAll} type="button">
+            Sair de todos
           </button>
         </div>
       </aside>

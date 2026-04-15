@@ -10,6 +10,7 @@ import * as bcrypt from "bcryptjs";
 import { randomBytes } from "node:crypto";
 
 import { UserRole } from "../common/enums/user-role.enum";
+import type { AuthenticatedUser } from "../common/authenticated-user.interface";
 import { CouriersService } from "../couriers/couriers.service";
 import { RegisterCourierDto } from "./dto/register-courier.dto";
 import { PrismaService } from "../prisma/prisma.service";
@@ -182,7 +183,7 @@ export class AuthService {
     }
 
     const refreshToken = await this.rotateRefreshToken(session.id);
-    const accessToken = await this.signAccessToken(session.user);
+    const accessToken = await this.signAccessToken(session.user, session.id);
 
     await this.auditAuthEvent(AuthAuditEventType.REFRESH_SUCCESS, {
       userId: session.userId,
@@ -227,17 +228,100 @@ export class AuthService {
     return { message: "Sessao encerrada" };
   }
 
+  async listActiveSessions(user: AuthenticatedUser) {
+    const sessions = await this.prisma.authSession.findMany({
+      where: {
+        userId: user.sub,
+        revokedAt: null,
+        expiresAt: { gt: new Date() }
+      },
+      orderBy: { lastUsedAt: "desc" },
+      select: {
+        id: true,
+        ipAddress: true,
+        userAgent: true,
+        expiresAt: true,
+        lastUsedAt: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
+
+    return sessions.map((session) => ({
+      ...session,
+      current: session.id === user.sessionId
+    }));
+  }
+
+  async logoutCurrentSession(user: AuthenticatedUser, context?: AuthRequestContext) {
+    if (!user.sessionId) {
+      throw new BadRequestException("Sessao atual nao identificada");
+    }
+
+    await this.revokeOwnedSession(
+      user,
+      user.sessionId,
+      context,
+      AuthAuditEventType.LOGOUT,
+      "logout_current_session"
+    );
+
+    return { message: "Sessao atual encerrada" };
+  }
+
+  async logoutAllSessions(user: AuthenticatedUser, context?: AuthRequestContext) {
+    const revoked = await this.revokeUserSessions(user.sub, {
+      context,
+      auditType: AuthAuditEventType.LOGOUT_ALL,
+      reason: "logout_all_sessions",
+      actorUserId: user.sub,
+      actorEmail: user.email
+    });
+
+    return {
+      message: "Todas as sessoes foram encerradas",
+      revokedSessions: revoked
+    };
+  }
+
+  async revokeOwnSession(
+    user: AuthenticatedUser,
+    sessionId: string,
+    context?: AuthRequestContext
+  ) {
+    await this.revokeOwnedSession(
+      user,
+      sessionId,
+      context,
+      AuthAuditEventType.SESSION_REVOKED_BY_USER,
+      "user_revoked_session"
+    );
+
+    return { message: "Sessao encerrada" };
+  }
+
+  async revokeUserSessionsForAdmin(
+    userId: string,
+    actor: AuthenticatedUser,
+    reason: string,
+    context?: AuthRequestContext
+  ) {
+    return this.revokeUserSessions(userId, {
+      context,
+      auditType: AuthAuditEventType.SESSION_REVOKED_ADMIN,
+      reason,
+      actorUserId: actor.sub,
+      actorEmail: actor.email
+    });
+  }
+
   private async buildAuthResponse(
     user: User,
     context?: AuthRequestContext,
     flow = "login"
   ) {
     const session = await this.createSession(user.id, context);
-    const accessToken = await this.jwtService.signAsync({
-      sub: user.id,
-      email: user.email,
-      role: user.role
-    });
+    const accessToken = await this.signAccessToken(user, session.id);
 
     await this.auditAuthEvent(AuthAuditEventType.LOGIN_SUCCESS, {
       userId: user.id,
@@ -316,11 +400,97 @@ export class AuthService {
     });
   }
 
-  private async signAccessToken(user: User) {
+  private async revokeOwnedSession(
+    user: AuthenticatedUser,
+    sessionId: string,
+    context: AuthRequestContext | undefined,
+    auditType: AuthAuditEventType,
+    reason: string
+  ) {
+    const session = await this.prisma.authSession.findFirst({
+      where: {
+        id: sessionId,
+        userId: user.sub
+      }
+    });
+
+    if (!session || session.revokedAt || session.expiresAt <= new Date()) {
+      throw new BadRequestException("Sessao nao encontrada ou ja encerrada");
+    }
+
+    await this.prisma.authSession.update({
+      where: { id: session.id },
+      data: { revokedAt: new Date() }
+    });
+
+    await this.auditAuthEvent(auditType, {
+      userId: user.sub,
+      email: user.email,
+      sessionId: session.id,
+      context,
+      metadata: { reason }
+    });
+  }
+
+  private async revokeUserSessions(
+    userId: string,
+    options: {
+      context?: AuthRequestContext;
+      auditType: AuthAuditEventType;
+      reason: string;
+      actorUserId?: string;
+      actorEmail?: string;
+    }
+  ) {
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true }
+    });
+    const sessions = await this.prisma.authSession.findMany({
+      where: {
+        userId,
+        revokedAt: null,
+        expiresAt: { gt: new Date() }
+      },
+      select: { id: true }
+    });
+
+    if (sessions.length === 0) {
+      return 0;
+    }
+
+    await this.prisma.authSession.updateMany({
+      where: {
+        id: { in: sessions.map((session) => session.id) }
+      },
+      data: { revokedAt: new Date() }
+    });
+
+    await Promise.all(
+      sessions.map((session) =>
+        this.auditAuthEvent(options.auditType, {
+          userId,
+          email: targetUser?.email,
+          sessionId: session.id,
+          context: options.context,
+          metadata: {
+            reason: options.reason,
+            actorUserId: options.actorUserId ?? "",
+            actorEmail: options.actorEmail ?? ""
+          }
+        })
+      )
+    );
+
+    return sessions.length;
+  }
+
+  private async signAccessToken(user: User, sessionId?: string) {
     return this.jwtService.signAsync({
       sub: user.id,
       email: user.email,
-      role: user.role
+      role: user.role,
+      sid: sessionId
     });
   }
 

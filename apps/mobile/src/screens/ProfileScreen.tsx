@@ -13,7 +13,7 @@ type AppStackParamList = {
 };
 
 export function ProfileScreen() {
-  const { logout, refreshProfile, user } = useAuth();
+  const { logout, logoutAll, refreshProfile, user } = useAuth();
   const navigation =
     useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const roleLabel = user?.role === "COURIER" ? "Motoboy" : user?.role;
@@ -92,6 +92,10 @@ export function ProfileScreen() {
 
       <Pressable onPress={() => void logout()} style={styles.primaryButton}>
         <Text style={styles.primaryText}>Sair</Text>
+      </Pressable>
+
+      <Pressable onPress={() => void logoutAll()} style={styles.secondaryButton}>
+        <Text style={styles.secondaryText}>Sair de todos os dispositivos</Text>
       </Pressable>
     </ScreenContainer>
   );

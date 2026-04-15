@@ -7,7 +7,11 @@ import {
   type ReactNode
 } from "react";
 
-import { AUTH_EXPIRED_EVENT, ApiError } from "../../lib/http";
+import {
+  AUTH_EXPIRED_EVENT,
+  AUTH_REFRESHED_EVENT,
+  ApiError
+} from "../../lib/http";
 import {
   clearStoredTokens,
   getStoredAccessToken,
@@ -47,31 +51,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     function handleAuthExpired() {
-      void refreshSession().then((refreshed) => {
-        if (!refreshed) {
-          setLoginError("Sua sessao expirou. Entre novamente para continuar.");
-        }
-      });
+      clearSession();
+      setLoginError("Sua sessao expirou. Entre novamente para continuar.");
+    }
+
+    function handleAuthRefreshed(event: Event) {
+      const tokens = (event as CustomEvent<{ accessToken: string; refreshToken: string }>)
+        .detail;
+
+      setToken(tokens.accessToken);
+      setRefreshToken(tokens.refreshToken);
     }
 
     window.addEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
+    window.addEventListener(AUTH_REFRESHED_EVENT, handleAuthRefreshed);
 
     return () => {
       window.removeEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
+      window.removeEventListener(AUTH_REFRESHED_EVENT, handleAuthRefreshed);
     };
-  }, [refreshToken]);
-
-  useEffect(() => {
-    if (!refreshToken) {
-      return undefined;
-    }
-
-    const interval = window.setInterval(() => {
-      void refreshSession(refreshToken);
-    }, 10 * 60 * 1000);
-
-    return () => window.clearInterval(interval);
-  }, [refreshToken]);
+  }, []);
 
   async function bootstrapSession() {
     const storedAccessToken = getStoredAccessToken();

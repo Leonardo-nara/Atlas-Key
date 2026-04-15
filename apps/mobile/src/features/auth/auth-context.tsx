@@ -8,7 +8,7 @@ import {
 } from "react";
 
 import { courierService } from "../courier/courier-service";
-import { ApiError } from "../../lib/http";
+import { ApiError, setAuthSessionListeners } from "../../lib/http";
 import {
   clearStoredTokens,
   getStoredAccessToken,
@@ -57,16 +57,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!refreshToken) {
-      return undefined;
-    }
+    setAuthSessionListeners({
+      onExpired: async () => {
+        await clearSession();
+        setLoginError("Sua sessao expirou. Entre novamente para continuar.");
+      },
+      onRefresh: (tokens) => {
+        setToken(tokens.accessToken);
+        setRefreshToken(tokens.refreshToken);
+      }
+    });
 
-    const interval = setInterval(() => {
-      void refreshSession(refreshToken);
-    }, 10 * 60 * 1000);
-
-    return () => clearInterval(interval);
-  }, [refreshToken]);
+    return () => setAuthSessionListeners({});
+  }, []);
 
   async function bootstrapSession() {
     const storedAccessToken = await getStoredAccessToken();

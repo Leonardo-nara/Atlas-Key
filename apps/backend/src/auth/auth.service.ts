@@ -11,6 +11,7 @@ import { randomBytes } from "node:crypto";
 
 import { UserRole } from "../common/enums/user-role.enum";
 import type { AuthenticatedUser } from "../common/authenticated-user.interface";
+import { securityMetrics } from "../common/observability/security-metrics";
 import { CouriersService } from "../couriers/couriers.service";
 import { RegisterCourierDto } from "./dto/register-courier.dto";
 import { PrismaService } from "../prisma/prisma.service";
@@ -526,6 +527,8 @@ export class AuthService {
       metadata?: Record<string, string>;
     }
   ) {
+    this.recordAuthMetric(type, input);
+
     await this.prisma.authAuditEvent.create({
       data: {
         type,
@@ -540,6 +543,77 @@ export class AuthService {
         }
       }
     });
+  }
+
+  private recordAuthMetric(
+    type: AuthAuditEventType,
+    input: {
+      email?: string;
+      sessionId?: string;
+      context?: AuthRequestContext;
+      metadata?: Record<string, string>;
+    }
+  ) {
+    const key =
+      input.email?.toLowerCase() ??
+      input.sessionId ??
+      input.context?.ipAddress ??
+      "unknown";
+
+    if (type === AuthAuditEventType.LOGIN_SUCCESS) {
+      securityMetrics.recordSecurityEvent("login_success", {
+        key,
+        requestId: input.context?.requestId
+      });
+      return;
+    }
+
+    if (type === AuthAuditEventType.LOGIN_FAILED) {
+      securityMetrics.recordSecurityEvent("login_failed", {
+        key,
+        requestId: input.context?.requestId,
+        reason: input.metadata?.reason
+      });
+      return;
+    }
+
+    if (type === AuthAuditEventType.REFRESH_SUCCESS) {
+      securityMetrics.recordSecurityEvent("refresh_success", {
+        key,
+        requestId: input.context?.requestId
+      });
+      return;
+    }
+
+    if (type === AuthAuditEventType.REFRESH_FAILED) {
+      securityMetrics.recordSecurityEvent("refresh_failed", {
+        key,
+        requestId: input.context?.requestId,
+        reason: input.metadata?.reason
+      });
+      return;
+    }
+
+    if (type === AuthAuditEventType.LOGOUT || type === AuthAuditEventType.LOGOUT_ALL) {
+      securityMetrics.recordSecurityEvent("logout", {
+        key,
+        requestId: input.context?.requestId,
+        reason: input.metadata?.reason
+      });
+      return;
+    }
+
+    if (
+      type === AuthAuditEventType.SESSION_REVOKED ||
+      type === AuthAuditEventType.SESSION_REVOKED_BY_USER ||
+      type === AuthAuditEventType.SESSION_REVOKED_ADMIN
+    ) {
+      securityMetrics.recordSecurityEvent("session_revoked", {
+        key,
+        requestId: input.context?.requestId,
+        reason: input.metadata?.reason
+      });
+    }
   }
 
   private toAuthUser(user: User) {

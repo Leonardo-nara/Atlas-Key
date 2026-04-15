@@ -1,6 +1,7 @@
 import { Logger } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 
+import { securityMetrics } from "./security-metrics";
 import { structuredLog } from "./structured-log";
 
 interface RequestLike {
@@ -34,6 +35,15 @@ export function requestLoggingMiddleware(
 
   response.on("finish", () => {
     const path = sanitizePath(request.originalUrl ?? request.url ?? "");
+    const durationMs = Date.now() - startedAt;
+
+    securityMetrics.recordRequest({
+      requestId,
+      method: request.method,
+      path,
+      statusCode: response.statusCode,
+      durationMs
+    });
 
     structuredLog(logger, "log", {
       event: "http_request",
@@ -41,7 +51,7 @@ export function requestLoggingMiddleware(
       method: request.method,
       path,
       statusCode: response.statusCode,
-      durationMs: Date.now() - startedAt,
+      durationMs,
       ipAddress: request.ip,
       userAgent: getHeader(request, "user-agent")
     });

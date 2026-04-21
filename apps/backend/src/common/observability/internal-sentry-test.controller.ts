@@ -27,11 +27,16 @@ export class InternalSentryTestController {
     }
 
     const expectedToken = this.configService.get<string>("OPERATIONAL_METRICS_TOKEN");
+    const sentryDsn = this.configService.get<string>("SENTRY_DSN");
 
     if (!expectedToken) {
       throw new PreconditionFailedException(
         "OPERATIONAL_METRICS_TOKEN nao configurado"
       );
+    }
+
+    if (!sentryDsn) {
+      throw new PreconditionFailedException("SENTRY_DSN nao configurado");
     }
 
     const bearerToken = authorization?.startsWith("Bearer ")

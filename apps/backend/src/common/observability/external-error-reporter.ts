@@ -14,16 +14,28 @@ export function reportUnhandledError(input: ErrorReportInput) {
   }
 
   Sentry.withScope((scope) => {
-    if (input.requestId) {
-      scope.setTag("request_id", input.requestId);
-      scope.setContext("request", {
-        requestId: input.requestId,
-        method: input.method,
-        path: input.path,
-        statusCode: input.statusCode
-      });
+    if (input.method) {
+      scope.setTag("http_method", input.method);
     }
 
+    if (input.path) {
+      scope.setTag("http_path", input.path);
+    }
+
+    if (input.statusCode) {
+      scope.setTag("http_status_code", String(input.statusCode));
+    }
+
+    if (input.requestId) {
+      scope.setTag("request_id", input.requestId);
+    }
+
+    scope.setContext("request", {
+      requestId: input.requestId,
+      method: input.method,
+      path: input.path,
+      statusCode: input.statusCode
+    });
     scope.setLevel("error");
     Sentry.captureException(input.exception);
   });

@@ -36,6 +36,7 @@ yarn-error.log*
 # Sistema
 .DS_Store
 Thumbs.db
+_tmp_*
 
 # Excecoes que devem continuar no Git
 !.env.example

@@ -190,7 +190,28 @@ export class AuthService {
     dto: GoogleMobileAuthDto,
     context?: AuthRequestContext
   ) {
-    const googlePayload = await this.verifyGoogleIdToken(dto.idToken);
+    let googlePayload: Awaited<ReturnType<AuthService["verifyGoogleIdToken"]>>;
+
+    try {
+      googlePayload = await this.verifyGoogleIdToken(dto.idToken);
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        await this.auditAuthEvent(AuthAuditEventType.LOGIN_FAILED, {
+          email: undefined,
+          context,
+          metadata: { reason: "invalid_google_id_token" }
+        });
+        throw error;
+      }
+
+      await this.auditAuthEvent(AuthAuditEventType.LOGIN_FAILED, {
+        email: undefined,
+        context,
+        metadata: { reason: "google_token_verification_error" }
+      });
+      throw new UnauthorizedException("Nao foi possivel validar a conta Google.");
+    }
+
     const normalizedEmail = googlePayload.email.toLowerCase();
 
     let user = await this.prisma.user.findFirst({
@@ -754,10 +775,17 @@ export class AuthService {
 
   private async verifyGoogleIdToken(idToken: string) {
     const audiences = this.getGoogleAudiences();
-    const ticket = await this.googleClient.verifyIdToken({
-      idToken,
-      audience: audiences
-    });
+    let ticket;
+
+    try {
+      ticket = await this.googleClient.verifyIdToken({
+        idToken,
+        audience: audiences
+      });
+    } catch {
+      throw new UnauthorizedException("Conta Google invalida para autenticacao.");
+    }
+
     const payload = ticket.getPayload();
 
     if (!payload?.sub || !payload.email || !payload.email_verified) {

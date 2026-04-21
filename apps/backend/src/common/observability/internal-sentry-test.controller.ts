@@ -18,8 +18,9 @@ export class InternalSentryTestController {
     @Headers("authorization") authorization?: string,
     @Headers("x-internal-metrics-token") internalToken?: string
   ) {
-    const sentryTestEnabled =
-      this.configService.get<string>("ENABLE_SENTRY_TEST_ENDPOINT") === "true";
+    const sentryTestEnabled = normalizeBooleanEnv(
+      this.configService.get<string>("ENABLE_SENTRY_TEST_ENDPOINT")
+    );
 
     if (!sentryTestEnabled) {
       throw new NotFoundException("Recurso nao encontrado");
@@ -45,4 +46,8 @@ export class InternalSentryTestController {
       "Teste operacional controlado do Sentry"
     );
   }
+}
+
+function normalizeBooleanEnv(value: string | undefined) {
+  return value?.trim().toLowerCase() === "true";
 }

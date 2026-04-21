@@ -16,6 +16,7 @@ import { useAuth } from "../features/auth/auth-context";
 import { ordersService } from "../features/orders/orders-service";
 import { useRealtime } from "../features/realtime/realtime-context";
 import { ApiError } from "../lib/http";
+import { mobileTheme } from "../theme";
 import type { Order } from "../types/api";
 
 export function AvailableOrdersScreen() {
@@ -121,14 +122,14 @@ export function AvailableOrdersScreen() {
         title="Pedidos disponiveis"
         description={
           isConnected
-            ? "Veja apenas pedidos das empresas onde seu vinculo ja foi aprovado, com atualizacao em tempo real."
-            : "Veja apenas pedidos das empresas onde seu vinculo ja foi aprovado."
+            ? "Veja somente pedidos das empresas com vinculo aprovado, com atualizacao em tempo real."
+            : "Veja somente pedidos das empresas com vinculo aprovado."
         }
       />
 
       {loading ? (
         <View style={styles.centered}>
-          <ActivityIndicator color="#b65b1c" size="large" />
+          <ActivityIndicator color={mobileTheme.colors.primaryStrong} size="large" />
         </View>
       ) : (
         <ScrollView
@@ -142,7 +143,19 @@ export function AvailableOrdersScreen() {
             />
           }
           contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
         >
+          <View style={styles.connectionCard}>
+            <Text style={styles.connectionTitle}>
+              {isConnected ? "Tempo real ativo" : "Atualizacao manual"}
+            </Text>
+            <Text style={styles.connectionText}>
+              {isConnected
+                ? "Novos pedidos e mudancas entram automaticamente na lista."
+                : "Puxe para atualizar enquanto a conexao em tempo real estiver indisponivel."}
+            </Text>
+          </View>
+
           {successMessage ? <Text style={styles.successText}>{successMessage}</Text> : null}
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
@@ -207,27 +220,46 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     gap: 16
   },
+  connectionCard: {
+    padding: 16,
+    borderRadius: mobileTheme.radii.md,
+    backgroundColor: mobileTheme.colors.surfaceStrong,
+    borderWidth: 1,
+    borderColor: mobileTheme.colors.borderStrong
+  },
+  connectionTitle: {
+    color: mobileTheme.colors.text,
+    fontWeight: "800",
+    marginBottom: 4
+  },
+  connectionText: {
+    color: mobileTheme.colors.textMuted,
+    lineHeight: 21
+  },
   errorText: {
-    color: "#a82929",
-    backgroundColor: "#fff1f1",
+    color: mobileTheme.colors.danger,
+    backgroundColor: mobileTheme.colors.dangerSoft,
     padding: 12,
-    borderRadius: 12
+    borderRadius: mobileTheme.radii.sm
   },
   successText: {
-    color: "#227044",
-    backgroundColor: "#eef9f0",
+    color: mobileTheme.colors.success,
+    backgroundColor: mobileTheme.colors.successSoft,
     padding: 12,
-    borderRadius: 12
+    borderRadius: mobileTheme.radii.sm
   },
   emptyBox: {
     marginTop: 16,
     padding: 18,
-    borderRadius: 18,
-    backgroundColor: "#fffaf0"
+    borderRadius: mobileTheme.radii.md,
+    backgroundColor: mobileTheme.colors.surface,
+    borderWidth: 1,
+    borderColor: mobileTheme.colors.border
   },
   emptyText: {
     textAlign: "center",
-    color: "#52606d"
+    color: mobileTheme.colors.textMuted,
+    lineHeight: 21
   },
   pagination: {
     marginTop: 8,
@@ -238,14 +270,14 @@ const styles = StyleSheet.create({
   pageButton: {
     paddingVertical: 10,
     paddingHorizontal: 14,
-    borderRadius: 12,
-    backgroundColor: "#efe1ca"
+    borderRadius: mobileTheme.radii.sm,
+    backgroundColor: mobileTheme.colors.primarySoft
   },
   pageButtonText: {
-    color: "#8a5a00",
-    fontWeight: "700"
+    color: mobileTheme.colors.primaryStrong,
+    fontWeight: "800"
   },
   pageText: {
-    color: "#52606d"
+    color: mobileTheme.colors.textMuted
   }
 });

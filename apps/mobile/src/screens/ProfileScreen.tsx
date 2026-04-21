@@ -1,11 +1,12 @@
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+﻿import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import { ScreenContainer } from "../components/ScreenContainer";
 import { SectionHeader } from "../components/SectionHeader";
-import { useAuth } from "../features/auth/auth-context";
 import { mobileEnv } from "../env";
+import { useAuth } from "../features/auth/auth-context";
+import { mobileShadow, mobileTheme } from "../theme";
 
 type AppStackParamList = {
   CourierTabs: undefined;
@@ -22,10 +23,16 @@ export function ProfileScreen() {
     <ScreenContainer scrollable>
       <SectionHeader
         title="Perfil"
-        description="Dados da conta autenticada e utilitários básicos do app. Em piloto, confirme aqui se a API aponta para um endereço acessível pelo celular."
+        description="Dados da conta autenticada e utilitarios do app. Aqui voce acompanha o perfil operacional e controla a sessao."
       />
 
       <View style={styles.card}>
+        <View style={styles.statusPill}>
+          <Text style={styles.statusPillText}>
+            {user?.profileCompleted ? "Perfil pronto para operar" : "Perfil ainda incompleto"}
+          </Text>
+        </View>
+
         <Text style={styles.label}>Nome</Text>
         <Text style={styles.value}>{user?.name}</Text>
 
@@ -103,49 +110,65 @@ export function ProfileScreen() {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#fffaf0",
-    borderRadius: 24,
+    backgroundColor: mobileTheme.colors.surface,
+    borderRadius: mobileTheme.radii.lg,
     padding: 20,
     gap: 10,
     borderWidth: 1,
-    borderColor: "#ead8b2"
+    borderColor: mobileTheme.colors.border,
+    ...mobileShadow
+  },
+  statusPill: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: mobileTheme.radii.pill,
+    backgroundColor: mobileTheme.colors.primarySoft,
+    marginBottom: 4
+  },
+  statusPillText: {
+    color: mobileTheme.colors.primaryStrong,
+    fontWeight: "800",
+    fontSize: 12
   },
   label: {
     fontSize: 12,
     letterSpacing: 1.4,
     textTransform: "uppercase",
-    color: "#8a5a00"
+    color: mobileTheme.colors.primaryStrong
   },
   value: {
     fontSize: 16,
-    color: "#1f2933",
+    color: mobileTheme.colors.text,
     marginBottom: 8
   },
   imagePreview: {
     width: "100%",
     height: 180,
-    borderRadius: 16,
-    backgroundColor: "#efe1ca",
+    borderRadius: mobileTheme.radii.sm,
+    backgroundColor: mobileTheme.colors.surfaceStrong,
     marginBottom: 12
   },
   primaryButton: {
-    backgroundColor: "#b65b1c",
+    backgroundColor: mobileTheme.colors.primaryStrong,
     paddingVertical: 14,
-    borderRadius: 16,
+    borderRadius: mobileTheme.radii.sm,
     alignItems: "center"
   },
   primaryText: {
-    color: "#fffaf0",
-    fontWeight: "700"
+    color: "#ffffff",
+    fontWeight: "800"
   },
   secondaryButton: {
-    backgroundColor: "#efe1ca",
+    backgroundColor: mobileTheme.colors.primarySoft,
     paddingVertical: 14,
-    borderRadius: 16,
-    alignItems: "center"
+    borderRadius: mobileTheme.radii.sm,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: mobileTheme.colors.borderStrong
   },
   secondaryText: {
-    color: "#8a5a00",
-    fontWeight: "700"
+    color: mobileTheme.colors.primaryStrong,
+    fontWeight: "800"
   }
 });

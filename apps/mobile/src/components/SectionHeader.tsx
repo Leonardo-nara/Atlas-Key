@@ -1,5 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
 
+import { mobileTheme } from "../theme";
+
 export function SectionHeader({
   title,
   description
@@ -18,22 +20,23 @@ export function SectionHeader({
 
 const styles = StyleSheet.create({
   container: {
-    gap: 6
+    gap: mobileTheme.spacing.xs
   },
   kicker: {
     fontSize: 12,
     letterSpacing: 1.8,
     textTransform: "uppercase",
-    color: "#8a5a00"
+    color: mobileTheme.colors.primaryStrong,
+    fontWeight: "700"
   },
   title: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: "#1f2933"
+    fontSize: 30,
+    fontWeight: "800",
+    color: mobileTheme.colors.text
   },
   description: {
     fontSize: 15,
-    lineHeight: 22,
-    color: "#52606d"
+    lineHeight: 23,
+    color: mobileTheme.colors.textMuted
   }
 });

@@ -1,4 +1,4 @@
-import { useAuth } from "../features/auth/auth-context";
+﻿import { useAuth } from "../features/auth/auth-context";
 import { PageHeader } from "../shared/ui/PageHeader";
 
 export function DashboardPage() {
@@ -9,8 +9,8 @@ export function DashboardPage() {
   return (
     <section className="page-section">
       <PageHeader
-        title="Visão geral"
-        description="Resumo inicial da operação da loja autenticada, com foco rápido no acompanhamento do dia a dia."
+        title="Visao geral"
+        description="Resumo inicial da operacao da loja autenticada, com foco rapido no acompanhamento do dia a dia."
       />
 
       <div className="info-grid">
@@ -21,7 +21,7 @@ export function DashboardPage() {
           <p>{store?.active ? "Loja pronta para operar" : "Loja inativa"}</p>
         </article>
         <article className="info-card">
-          <span className="info-label">Usuário</span>
+          <span className="info-label">Usuario</span>
           <strong>{user?.name}</strong>
           <p>{user?.email}</p>
         </article>
@@ -31,9 +31,12 @@ export function DashboardPage() {
           <p>{user?.active ? "Conta ativa" : "Conta inativa"}</p>
         </article>
         <article className="info-card">
-          <span className="info-label">Operação</span>
-          <strong>Piloto</strong>
-          <p>Use o desktop para criar e cancelar pedidos e o mobile para aceitar e concluir entregas.</p>
+          <span className="info-label">Operacao</span>
+          <strong>Painel preparado</strong>
+          <p>
+            Use o desktop para criar e acompanhar pedidos e o mobile para a
+            execucao das entregas.
+          </p>
         </article>
       </div>
     </section>

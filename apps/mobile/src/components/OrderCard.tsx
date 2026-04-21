@@ -1,5 +1,6 @@
 ﻿import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { mobileShadow, mobileTheme } from "../theme";
 import type { Order } from "../types/api";
 
 function formatOrderStatus(order: Order) {
@@ -21,6 +22,34 @@ function formatOrderStatus(order: Order) {
   }
 }
 
+function getStatusVariant(label: string) {
+  if (label === "Entregue") {
+    return {
+      container: styles.badgeSuccess,
+      text: styles.badgeTextSuccess
+    };
+  }
+
+  if (label === "Cancelado") {
+    return {
+      container: styles.badgeDanger,
+      text: styles.badgeTextDanger
+    };
+  }
+
+  if (label === "Em entrega") {
+    return {
+      container: styles.badgePrimary,
+      text: styles.badgeTextPrimary
+    };
+  }
+
+  return {
+    container: styles.badgeWarning,
+    text: styles.badgeTextWarning
+  };
+}
+
 export function OrderCard({
   order,
   actionLabel,
@@ -32,15 +61,18 @@ export function OrderCard({
   onAction?: () => void;
   disabled?: boolean;
 }) {
+  const statusLabel = formatOrderStatus(order);
+  const statusVariant = getStatusVariant(statusLabel);
+
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <View>
+        <View style={styles.headerText}>
           <Text style={styles.customer}>{order.customerName}</Text>
           <Text style={styles.meta}>{order.customerPhone}</Text>
         </View>
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{formatOrderStatus(order)}</Text>
+        <View style={[styles.badge, statusVariant.container]}>
+          <Text style={[styles.badgeText, statusVariant.text]}>{statusLabel}</Text>
         </View>
       </View>
 
@@ -91,32 +123,40 @@ export function OrderCard({
 const styles = StyleSheet.create({
   card: {
     padding: 18,
-    borderRadius: 20,
-    backgroundColor: "#fffaf0",
+    borderRadius: mobileTheme.radii.md,
+    backgroundColor: mobileTheme.colors.surface,
     borderWidth: 1,
-    borderColor: "#ead8b2",
-    gap: 12
+    borderColor: mobileTheme.colors.border,
+    gap: 14,
+    ...mobileShadow
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     gap: 12
   },
+  headerText: {
+    flex: 1,
+    gap: 4
+  },
   customer: {
     fontSize: 18,
-    fontWeight: "700",
-    color: "#1f2933"
+    fontWeight: "800",
+    color: mobileTheme.colors.text
   },
   meta: {
-    color: "#52606d",
+    color: mobileTheme.colors.textMuted,
     fontSize: 14
   },
   storeBlock: {
-    gap: 4
+    gap: 6,
+    padding: 12,
+    borderRadius: mobileTheme.radii.sm,
+    backgroundColor: mobileTheme.colors.surfaceMuted
   },
   store: {
-    color: "#8a5a00",
-    fontWeight: "600"
+    color: mobileTheme.colors.primaryStrong,
+    fontWeight: "700"
   },
   list: {
     gap: 8
@@ -127,36 +167,59 @@ const styles = StyleSheet.create({
     gap: 12
   },
   total: {
-    color: "#1f2933",
-    fontWeight: "700"
+    color: mobileTheme.colors.text,
+    fontWeight: "800"
   },
   badge: {
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: "#f3e0bf"
+    borderRadius: mobileTheme.radii.pill
+  },
+  badgeWarning: {
+    backgroundColor: mobileTheme.colors.warningSoft
+  },
+  badgePrimary: {
+    backgroundColor: mobileTheme.colors.primarySoft
+  },
+  badgeSuccess: {
+    backgroundColor: mobileTheme.colors.successSoft
+  },
+  badgeDanger: {
+    backgroundColor: mobileTheme.colors.dangerSoft
   },
   badgeText: {
-    color: "#8a5a00",
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "800",
     textTransform: "uppercase"
+  },
+  badgeTextWarning: {
+    color: mobileTheme.colors.warning
+  },
+  badgeTextPrimary: {
+    color: mobileTheme.colors.primaryStrong
+  },
+  badgeTextSuccess: {
+    color: mobileTheme.colors.success
+  },
+  badgeTextDanger: {
+    color: mobileTheme.colors.danger
   },
   action: {
     marginTop: 4,
     paddingVertical: 12,
-    borderRadius: 14,
+    borderRadius: mobileTheme.radii.sm,
     alignItems: "center",
-    backgroundColor: "#b65b1c"
+    backgroundColor: mobileTheme.colors.primaryStrong
   },
   actionPressed: {
-    opacity: 0.85
+    opacity: 0.9,
+    transform: [{ scale: 0.985 }]
   },
   actionDisabled: {
     opacity: 0.55
   },
   actionText: {
-    color: "#fffaf0",
-    fontWeight: "700"
+    color: "#ffffff",
+    fontWeight: "800"
   }
 });

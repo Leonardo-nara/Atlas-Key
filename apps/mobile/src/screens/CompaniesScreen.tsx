@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -14,6 +14,7 @@ import { SectionHeader } from "../components/SectionHeader";
 import { useAuth } from "../features/auth/auth-context";
 import { companyLinksService } from "../features/company-links/company-links-service";
 import { ApiError } from "../lib/http";
+import { mobileShadow, mobileTheme } from "../theme";
 import type { StoreCourierLink, StoreDiscoveryItem } from "../types/api";
 
 function formatStatus(status: StoreCourierLink["status"]) {
@@ -133,12 +134,12 @@ export function CompaniesScreen() {
     <ScreenContainer>
       <SectionHeader
         title="Empresas"
-        description="Solicite participacao em empresas e acompanhe o andamento dos seus vinculos."
+        description="Solicite participacao, acompanhe analises e veja onde voce ja pode operar."
       />
 
       {loading ? (
         <View style={styles.centered}>
-          <ActivityIndicator color="#b65b1c" size="large" />
+          <ActivityIndicator color={mobileTheme.colors.primaryStrong} size="large" />
         </View>
       ) : (
         <ScrollView
@@ -152,6 +153,7 @@ export function CompaniesScreen() {
             />
           }
           contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
         >
           {successMessage ? <Text style={styles.successText}>{successMessage}</Text> : null}
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -269,34 +271,35 @@ const styles = StyleSheet.create({
     gap: 16
   },
   card: {
-    backgroundColor: "#fffaf0",
-    borderRadius: 24,
+    backgroundColor: mobileTheme.colors.surface,
+    borderRadius: mobileTheme.radii.lg,
     padding: 20,
     gap: 14,
     borderWidth: 1,
-    borderColor: "#ead8b2"
+    borderColor: mobileTheme.colors.border,
+    ...mobileShadow
   },
   cardTitle: {
     fontSize: 20,
-    fontWeight: "700",
-    color: "#1f2933"
+    fontWeight: "800",
+    color: mobileTheme.colors.text
   },
   cardDescription: {
     fontSize: 14,
     lineHeight: 20,
-    color: "#52606d"
+    color: mobileTheme.colors.textMuted
   },
   storeCard: {
     gap: 12,
     padding: 16,
-    borderRadius: 18,
-    backgroundColor: "#f5efe2"
+    borderRadius: mobileTheme.radii.md,
+    backgroundColor: mobileTheme.colors.surfaceMuted
   },
   linkCard: {
     gap: 8,
     padding: 16,
-    borderRadius: 18,
-    backgroundColor: "#f5efe2"
+    borderRadius: mobileTheme.radii.md,
+    backgroundColor: mobileTheme.colors.surfaceMuted
   },
   storeHeader: {
     flexDirection: "row",
@@ -310,65 +313,65 @@ const styles = StyleSheet.create({
   },
   storeName: {
     fontSize: 17,
-    fontWeight: "700",
-    color: "#1f2933"
+    fontWeight: "800",
+    color: mobileTheme.colors.text
   },
   storeAddress: {
     fontSize: 14,
     lineHeight: 20,
-    color: "#52606d"
+    color: mobileTheme.colors.textMuted
   },
   statusBadge: {
-    backgroundColor: "#efe1ca",
+    backgroundColor: mobileTheme.colors.primarySoft,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 999
+    borderRadius: mobileTheme.radii.pill
   },
   statusText: {
-    color: "#8a5a00",
+    color: mobileTheme.colors.primaryStrong,
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "800",
     textTransform: "uppercase"
   },
   primaryButton: {
-    backgroundColor: "#b65b1c",
+    backgroundColor: mobileTheme.colors.primaryStrong,
     paddingVertical: 14,
-    borderRadius: 16,
+    borderRadius: mobileTheme.radii.sm,
     alignItems: "center"
   },
   disabledButton: {
     opacity: 0.55
   },
   primaryButtonText: {
-    color: "#fffaf0",
-    fontWeight: "700"
+    color: "#ffffff",
+    fontWeight: "800"
   },
   linkMeta: {
     fontSize: 13,
-    color: "#52606d"
+    color: mobileTheme.colors.textMuted
   },
   successText: {
-    backgroundColor: "#e7f8ee",
-    color: "#166534",
+    backgroundColor: mobileTheme.colors.successSoft,
+    color: mobileTheme.colors.success,
     padding: 12,
-    borderRadius: 14
+    borderRadius: mobileTheme.radii.sm
   },
   errorText: {
-    backgroundColor: "#fde8e8",
-    color: "#b42318",
+    backgroundColor: mobileTheme.colors.dangerSoft,
+    color: mobileTheme.colors.danger,
     padding: 12,
-    borderRadius: 14
+    borderRadius: mobileTheme.radii.sm
   },
   emptyBox: {
     borderWidth: 1,
-    borderColor: "#ead8b2",
+    borderColor: mobileTheme.colors.border,
     borderStyle: "dashed",
-    borderRadius: 18,
+    borderRadius: mobileTheme.radii.md,
     padding: 16,
-    backgroundColor: "#fffdf8"
+    backgroundColor: mobileTheme.colors.surfaceMuted
   },
   emptyText: {
-    color: "#52606d",
+    color: mobileTheme.colors.textMuted,
     lineHeight: 21
   }
 });

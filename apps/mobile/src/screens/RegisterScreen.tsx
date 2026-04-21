@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -6,6 +6,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { ScreenContainer } from "../components/ScreenContainer";
 import { SectionHeader } from "../components/SectionHeader";
 import { useAuth } from "../features/auth/auth-context";
+import { mobileShadow, mobileTheme } from "../theme";
 
 type AuthStackParamList = {
   Login: undefined;
@@ -53,8 +54,16 @@ export function RegisterScreen() {
       <View style={styles.container}>
         <SectionHeader
           title="Cadastro do motoboy"
-          description="Crie sua conta para entrar no app e completar seu perfil operacional."
+          description="Crie sua conta para entrar no app e completar o perfil operacional em seguida."
         />
+
+        <View style={styles.tipBox}>
+          <Text style={styles.tipTitle}>Cadastro em poucos passos</Text>
+          <Text style={styles.tipText}>
+            Depois desta etapa, voce ainda completa cidade, veiculo e dados de
+            apoio para ficar pronto para operar.
+          </Text>
+        </View>
 
         <View style={styles.card}>
           <Field label="Nome completo" value={name} onChangeText={setName} />
@@ -104,7 +113,10 @@ export function RegisterScreen() {
             </Text>
           </Pressable>
 
-          <Pressable onPress={() => navigation.goBack()} style={styles.secondaryButton}>
+          <Pressable
+            onPress={() => navigation.goBack()}
+            style={styles.secondaryButton}
+          >
             <Text style={styles.secondaryText}>Ja tenho conta</Text>
           </Pressable>
         </View>
@@ -135,6 +147,7 @@ function Field({
         autoCapitalize={autoCapitalize}
         keyboardType={keyboardType}
         onChangeText={onChangeText}
+        placeholderTextColor={mobileTheme.colors.textSoft}
         secureTextEntry={secureTextEntry}
         style={styles.input}
         value={value}
@@ -147,62 +160,83 @@ const styles = StyleSheet.create({
   container: {
     gap: 24
   },
+  tipBox: {
+    gap: 8,
+    padding: 18,
+    borderRadius: mobileTheme.radii.md,
+    backgroundColor: mobileTheme.colors.surfaceStrong,
+    borderWidth: 1,
+    borderColor: mobileTheme.colors.borderStrong
+  },
+  tipTitle: {
+    color: mobileTheme.colors.text,
+    fontWeight: "800"
+  },
+  tipText: {
+    color: mobileTheme.colors.textMuted,
+    lineHeight: 21
+  },
   card: {
-    backgroundColor: "#fffaf0",
-    borderRadius: 24,
+    backgroundColor: mobileTheme.colors.surface,
+    borderRadius: mobileTheme.radii.lg,
     padding: 20,
     gap: 16,
     borderWidth: 1,
-    borderColor: "#ead8b2"
+    borderColor: mobileTheme.colors.border,
+    ...mobileShadow
   },
   field: {
     gap: 8
   },
   label: {
-    fontWeight: "600",
-    color: "#1f2933"
+    fontWeight: "700",
+    color: mobileTheme.colors.text
   },
   input: {
     borderWidth: 1,
-    borderColor: "#d8c7aa",
-    borderRadius: 14,
+    borderColor: mobileTheme.colors.borderStrong,
+    borderRadius: mobileTheme.radii.sm,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    backgroundColor: "#ffffff"
+    backgroundColor: mobileTheme.colors.surfaceMuted,
+    color: mobileTheme.colors.text
   },
   errorBox: {
     padding: 12,
-    borderRadius: 14,
-    backgroundColor: "#fff1f1"
+    borderRadius: mobileTheme.radii.sm,
+    backgroundColor: mobileTheme.colors.dangerSoft
   },
   errorText: {
-    color: "#a82929"
+    color: mobileTheme.colors.danger
   },
   primaryButton: {
-    backgroundColor: "#b65b1c",
+    backgroundColor: mobileTheme.colors.primaryStrong,
     paddingVertical: 14,
-    borderRadius: 16,
+    borderRadius: mobileTheme.radii.sm,
     alignItems: "center"
   },
   secondaryButton: {
-    backgroundColor: "#efe1ca",
+    backgroundColor: mobileTheme.colors.primarySoft,
     paddingVertical: 14,
-    borderRadius: 16,
-    alignItems: "center"
+    borderRadius: mobileTheme.radii.sm,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: mobileTheme.colors.borderStrong
   },
   buttonPressed: {
-    opacity: 0.9
+    opacity: 0.92,
+    transform: [{ scale: 0.985 }]
   },
   buttonDisabled: {
     opacity: 0.6
   },
   primaryText: {
-    color: "#fffaf0",
-    fontWeight: "700",
+    color: "#ffffff",
+    fontWeight: "800",
     fontSize: 16
   },
   secondaryText: {
-    color: "#8a5a00",
-    fontWeight: "700"
+    color: mobileTheme.colors.primaryStrong,
+    fontWeight: "800"
   }
 });

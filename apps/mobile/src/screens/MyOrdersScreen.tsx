@@ -16,6 +16,7 @@ import { useAuth } from "../features/auth/auth-context";
 import { ordersService } from "../features/orders/orders-service";
 import { useRealtime } from "../features/realtime/realtime-context";
 import { ApiError } from "../lib/http";
+import { mobileTheme } from "../theme";
 import type { Order } from "../types/api";
 
 function nextAction(order: Order) {
@@ -126,7 +127,7 @@ export function MyOrdersScreen() {
         title="Meus pedidos"
         description={
           isConnected
-            ? "Acompanhe entregas de empresas aprovadas no seu perfil, com sincronizacao em tempo real."
+            ? "Acompanhe entregas das empresas aprovadas no seu perfil com sincronizacao em tempo real."
             : "Acompanhe entregas das empresas em que voce ja esta aprovado."
         }
       />
@@ -174,7 +175,7 @@ export function MyOrdersScreen() {
 
       {loading ? (
         <View style={styles.centered}>
-          <ActivityIndicator color="#b65b1c" size="large" />
+          <ActivityIndicator color={mobileTheme.colors.primaryStrong} size="large" />
         </View>
       ) : (
         <ScrollView
@@ -188,6 +189,7 @@ export function MyOrdersScreen() {
             />
           }
           contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
         >
           {successMessage ? <Text style={styles.successText}>{successMessage}</Text> : null}
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -262,10 +264,12 @@ const styles = StyleSheet.create({
   },
   segmented: {
     flexDirection: "row",
-    backgroundColor: "#eadbc2",
-    borderRadius: 16,
+    backgroundColor: mobileTheme.colors.surfaceStrong,
+    borderRadius: mobileTheme.radii.sm,
     padding: 4,
-    gap: 4
+    gap: 4,
+    borderWidth: 1,
+    borderColor: mobileTheme.colors.border
   },
   segment: {
     flex: 1,
@@ -274,40 +278,42 @@ const styles = StyleSheet.create({
     alignItems: "center"
   },
   segmentActive: {
-    backgroundColor: "#b65b1c"
+    backgroundColor: mobileTheme.colors.primaryStrong
   },
   segmentText: {
-    color: "#8a5a00",
-    fontWeight: "700"
+    color: mobileTheme.colors.textMuted,
+    fontWeight: "800"
   },
   segmentTextActive: {
-    color: "#fffaf0"
+    color: "#ffffff"
   },
   content: {
     paddingTop: 16,
     gap: 16
   },
   errorText: {
-    color: "#a82929",
-    backgroundColor: "#fff1f1",
+    color: mobileTheme.colors.danger,
+    backgroundColor: mobileTheme.colors.dangerSoft,
     padding: 12,
-    borderRadius: 12
+    borderRadius: mobileTheme.radii.sm
   },
   successText: {
-    color: "#227044",
-    backgroundColor: "#eef9f0",
+    color: mobileTheme.colors.success,
+    backgroundColor: mobileTheme.colors.successSoft,
     padding: 12,
-    borderRadius: 12
+    borderRadius: mobileTheme.radii.sm
   },
   emptyBox: {
     marginTop: 16,
     padding: 18,
-    borderRadius: 18,
-    backgroundColor: "#fffaf0"
+    borderRadius: mobileTheme.radii.md,
+    backgroundColor: mobileTheme.colors.surface,
+    borderWidth: 1,
+    borderColor: mobileTheme.colors.border
   },
   emptyText: {
     textAlign: "center",
-    color: "#52606d"
+    color: mobileTheme.colors.textMuted
   },
   pagination: {
     marginTop: 8,
@@ -318,14 +324,14 @@ const styles = StyleSheet.create({
   pageButton: {
     paddingVertical: 10,
     paddingHorizontal: 14,
-    borderRadius: 12,
-    backgroundColor: "#efe1ca"
+    borderRadius: mobileTheme.radii.sm,
+    backgroundColor: mobileTheme.colors.primarySoft
   },
   pageButtonText: {
-    color: "#8a5a00",
-    fontWeight: "700"
+    color: mobileTheme.colors.primaryStrong,
+    fontWeight: "800"
   },
   pageText: {
-    color: "#52606d"
+    color: mobileTheme.colors.textMuted
   }
 });

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import {
   Image,
   Pressable,
@@ -20,6 +20,7 @@ import {
   type CourierProfileFormValues,
   validateCourierProfileForm
 } from "../features/courier/courier-profile";
+import { mobileShadow, mobileTheme } from "../theme";
 
 type AppStackParamList = {
   CourierTabs: undefined;
@@ -141,7 +142,7 @@ export function CompleteProfileScreen() {
 
         <Field
           autoCapitalize="none"
-          label="URL da foto da moto/veiculo (opcional)"
+          label="URL da foto do veiculo (opcional)"
           value={form.vehiclePhotoUrl}
           onChangeText={(value) => setField("vehiclePhotoUrl", value)}
         />
@@ -196,6 +197,7 @@ function Field({
       <TextInput
         autoCapitalize={autoCapitalize}
         onChangeText={onChangeText}
+        placeholderTextColor={mobileTheme.colors.textSoft}
         style={styles.input}
         value={value}
       />
@@ -205,27 +207,29 @@ function Field({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#fffaf0",
-    borderRadius: 24,
+    backgroundColor: mobileTheme.colors.surface,
+    borderRadius: mobileTheme.radii.lg,
     padding: 20,
     gap: 16,
     borderWidth: 1,
-    borderColor: "#ead8b2"
+    borderColor: mobileTheme.colors.border,
+    ...mobileShadow
   },
   field: {
     gap: 8
   },
   label: {
-    fontWeight: "600",
-    color: "#1f2933"
+    fontWeight: "700",
+    color: mobileTheme.colors.text
   },
   input: {
     borderWidth: 1,
-    borderColor: "#d8c7aa",
-    borderRadius: 14,
+    borderColor: mobileTheme.colors.borderStrong,
+    borderRadius: mobileTheme.radii.sm,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    backgroundColor: "#ffffff"
+    backgroundColor: mobileTheme.colors.surfaceMuted,
+    color: mobileTheme.colors.text
   },
   optionsRow: {
     flexDirection: "row",
@@ -234,62 +238,65 @@ const styles = StyleSheet.create({
   },
   optionButton: {
     borderWidth: 1,
-    borderColor: "#d8c7aa",
-    borderRadius: 999,
+    borderColor: mobileTheme.colors.borderStrong,
+    borderRadius: mobileTheme.radii.pill,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    backgroundColor: "#ffffff"
+    backgroundColor: mobileTheme.colors.surfaceMuted
   },
   optionSelected: {
-    backgroundColor: "#b65b1c",
-    borderColor: "#b65b1c"
+    backgroundColor: mobileTheme.colors.primaryStrong,
+    borderColor: mobileTheme.colors.primaryStrong
   },
   optionText: {
-    color: "#6b4a1f",
-    fontWeight: "600"
+    color: mobileTheme.colors.textMuted,
+    fontWeight: "700"
   },
   optionTextSelected: {
-    color: "#fffaf0"
+    color: "#ffffff"
   },
   previewImage: {
     width: "100%",
     height: 180,
-    borderRadius: 16,
-    backgroundColor: "#efe1ca"
+    borderRadius: mobileTheme.radii.sm,
+    backgroundColor: mobileTheme.colors.surfaceStrong
   },
   errorBox: {
     padding: 12,
-    borderRadius: 14,
-    backgroundColor: "#fff1f1"
+    borderRadius: mobileTheme.radii.sm,
+    backgroundColor: mobileTheme.colors.dangerSoft
   },
   errorText: {
-    color: "#a82929"
+    color: mobileTheme.colors.danger
   },
   primaryButton: {
-    backgroundColor: "#b65b1c",
+    backgroundColor: mobileTheme.colors.primaryStrong,
     paddingVertical: 14,
-    borderRadius: 16,
+    borderRadius: mobileTheme.radii.sm,
     alignItems: "center"
   },
   secondaryButton: {
-    backgroundColor: "#efe1ca",
+    backgroundColor: mobileTheme.colors.primarySoft,
     paddingVertical: 14,
-    borderRadius: 16,
-    alignItems: "center"
+    borderRadius: mobileTheme.radii.sm,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: mobileTheme.colors.borderStrong
   },
   buttonPressed: {
-    opacity: 0.9
+    opacity: 0.92,
+    transform: [{ scale: 0.985 }]
   },
   buttonDisabled: {
     opacity: 0.6
   },
   primaryText: {
-    color: "#fffaf0",
-    fontWeight: "700",
+    color: "#ffffff",
+    fontWeight: "800",
     fontSize: 16
   },
   secondaryText: {
-    color: "#8a5a00",
-    fontWeight: "700"
+    color: mobileTheme.colors.primaryStrong,
+    fontWeight: "800"
   }
 });

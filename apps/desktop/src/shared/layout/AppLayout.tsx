@@ -1,9 +1,9 @@
-import { NavLink, Outlet } from "react-router-dom";
+﻿import { NavLink, Outlet } from "react-router-dom";
 
 import { useAuth } from "../../features/auth/auth-context";
 
 const navigationItems = [
-  { to: "/", label: "Visão geral", end: true },
+  { to: "/", label: "Visao geral", end: true },
   { to: "/products", label: "Produtos" },
   { to: "/orders", label: "Pedidos" },
   { to: "/couriers", label: "Motoboys" }
@@ -16,9 +16,17 @@ export function AppLayout() {
     <div className="desktop-shell">
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <p className="section-kicker">Painel do lojista</p>
+          <p className="section-kicker">Painel empresarial</p>
           <h1>{store?.name ?? "Loja"}</h1>
-          <p>{store?.address ?? "Endereço indisponível"}</p>
+          <p>{store?.address ?? "Endereco indisponivel"}</p>
+        </div>
+
+        <div className="sidebar-section">
+          <span className="user-chip">Operacao da loja</span>
+          <p>
+            Acompanhe pedidos, catalogo e vinculos com um painel mais claro para
+            a rotina da empresa.
+          </p>
         </div>
 
         <nav className="sidebar-nav">
@@ -38,15 +46,21 @@ export function AppLayout() {
 
         <div className="sidebar-footer">
           <div>
-            <strong>{user?.name}</strong>
+            <span className="user-chip">Sessao ativa</span>
+            <p>
+              <strong>{user?.name}</strong>
+            </p>
             <p>{user?.email}</p>
           </div>
-          <button className="ghost-button" onClick={logout} type="button">
-            Sair
-          </button>
-          <button className="ghost-button" onClick={logoutAll} type="button">
-            Sair de todos
-          </button>
+
+          <div className="sidebar-actions">
+            <button className="ghost-button" onClick={logout} type="button">
+              Sair
+            </button>
+            <button className="ghost-button" onClick={logoutAll} type="button">
+              Sair de todos
+            </button>
+          </div>
         </div>
       </aside>
 

@@ -10,6 +10,7 @@ import { LoginScreen } from "../screens/LoginScreen";
 import { MyOrdersScreen } from "../screens/MyOrdersScreen";
 import { ProfileScreen } from "../screens/ProfileScreen";
 import { RegisterScreen } from "../screens/RegisterScreen";
+import { mobileTheme } from "../theme";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -19,7 +20,31 @@ function CourierTabs() {
     <Tab.Navigator
       screenOptions={{
         headerTitleAlign: "center",
-        tabBarActiveTintColor: "#b65b1c"
+        headerShadowVisible: false,
+        headerStyle: {
+          backgroundColor: mobileTheme.colors.background
+        },
+        headerTitleStyle: {
+          color: mobileTheme.colors.text,
+          fontWeight: "800"
+        },
+        tabBarActiveTintColor: mobileTheme.colors.primaryStrong,
+        tabBarInactiveTintColor: mobileTheme.colors.textSoft,
+        tabBarStyle: {
+          height: 72,
+          paddingTop: 8,
+          paddingBottom: 10,
+          backgroundColor: "rgba(255,255,255,0.96)",
+          borderTopWidth: 1,
+          borderTopColor: mobileTheme.colors.border
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: "700"
+        },
+        sceneStyle: {
+          backgroundColor: mobileTheme.colors.background
+        }
       }}
     >
       <Tab.Screen
@@ -56,10 +81,10 @@ export function RootNavigator() {
           flex: 1,
           justifyContent: "center",
           alignItems: "center",
-          backgroundColor: "#f5efe2"
+          backgroundColor: mobileTheme.colors.background
         }}
       >
-        <ActivityIndicator color="#b65b1c" size="large" />
+        <ActivityIndicator color={mobileTheme.colors.primaryStrong} size="large" />
       </View>
     );
   }

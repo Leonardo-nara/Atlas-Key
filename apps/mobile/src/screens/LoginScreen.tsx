@@ -1,11 +1,12 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
-import { useAuth } from "../features/auth/auth-context";
 import { ScreenContainer } from "../components/ScreenContainer";
 import { SectionHeader } from "../components/SectionHeader";
+import { useAuth } from "../features/auth/auth-context";
+import { mobileShadow, mobileTheme } from "../theme";
 
 type AuthStackParamList = {
   Login: undefined;
@@ -32,7 +33,7 @@ export function LoginScreen() {
       await login(email.trim(), password);
     } catch {
       setLocalError(
-        "Não foi possível entrar agora. Verifique a conta do motoboy e a conexão com o backend."
+        "Nao foi possivel entrar agora. Verifique a conta do motoboy e a conexao com o backend."
       );
     }
   }
@@ -42,8 +43,18 @@ export function LoginScreen() {
       <View style={styles.container}>
         <SectionHeader
           title="App do motoboy"
-          description="Entre com sua conta de motoboy para ver pedidos disponíveis e atualizar o andamento das entregas. Para demonstração local, a conta padrão é courier@example.com."
+          description="Entre com sua conta para ver pedidos disponiveis, acompanhar status e operar em empresas aprovadas."
         />
+
+        <View style={styles.heroStrip}>
+          <View style={styles.heroChip}>
+            <Text style={styles.heroChipText}>Operacao em movimento</Text>
+          </View>
+          <Text style={styles.heroText}>
+            Sessao segura, pedidos em tempo real e uma interface mais clara para o
+            uso diario na rua.
+          </Text>
+        </View>
 
         <View style={styles.card}>
           <View style={styles.field}>
@@ -53,6 +64,7 @@ export function LoginScreen() {
               keyboardType="email-address"
               onChangeText={setEmail}
               placeholder="courier@example.com"
+              placeholderTextColor={mobileTheme.colors.textSoft}
               style={styles.input}
               value={email}
             />
@@ -63,6 +75,7 @@ export function LoginScreen() {
             <TextInput
               onChangeText={setPassword}
               placeholder="Sua senha"
+              placeholderTextColor={mobileTheme.colors.textSoft}
               secureTextEntry
               style={styles.input}
               value={password}
@@ -89,7 +102,10 @@ export function LoginScreen() {
             </Text>
           </Pressable>
 
-          <Pressable onPress={() => navigation.navigate("Register")} style={styles.secondaryButton}>
+          <Pressable
+            onPress={() => navigation.navigate("Register")}
+            style={styles.secondaryButton}
+          >
             <Text style={styles.secondaryText}>Criar conta de motoboy</Text>
           </Pressable>
         </View>
@@ -104,62 +120,92 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 24
   },
+  heroStrip: {
+    gap: 10,
+    padding: 18,
+    borderRadius: mobileTheme.radii.md,
+    backgroundColor: mobileTheme.colors.primarySoft,
+    borderWidth: 1,
+    borderColor: mobileTheme.colors.borderStrong
+  },
+  heroChip: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: mobileTheme.radii.pill,
+    backgroundColor: "#ffffff"
+  },
+  heroChipText: {
+    color: mobileTheme.colors.primaryStrong,
+    fontWeight: "800",
+    fontSize: 12,
+    textTransform: "uppercase"
+  },
+  heroText: {
+    color: mobileTheme.colors.text,
+    lineHeight: 21
+  },
   card: {
-    backgroundColor: "#fffaf0",
-    borderRadius: 24,
+    backgroundColor: mobileTheme.colors.surface,
+    borderRadius: mobileTheme.radii.lg,
     padding: 20,
     gap: 16,
     borderWidth: 1,
-    borderColor: "#ead8b2"
+    borderColor: mobileTheme.colors.border,
+    ...mobileShadow
   },
   field: {
     gap: 8
   },
   label: {
-    fontWeight: "600",
-    color: "#1f2933"
+    fontWeight: "700",
+    color: mobileTheme.colors.text
   },
   input: {
     borderWidth: 1,
-    borderColor: "#d8c7aa",
-    borderRadius: 14,
+    borderColor: mobileTheme.colors.borderStrong,
+    borderRadius: mobileTheme.radii.sm,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    backgroundColor: "#ffffff"
+    backgroundColor: mobileTheme.colors.surfaceMuted,
+    color: mobileTheme.colors.text
   },
   errorBox: {
     padding: 12,
-    borderRadius: 14,
-    backgroundColor: "#fff1f1"
+    borderRadius: mobileTheme.radii.sm,
+    backgroundColor: mobileTheme.colors.dangerSoft
   },
   errorText: {
-    color: "#a82929"
+    color: mobileTheme.colors.danger
   },
   button: {
-    backgroundColor: "#b65b1c",
+    backgroundColor: mobileTheme.colors.primaryStrong,
     paddingVertical: 14,
-    borderRadius: 16,
+    borderRadius: mobileTheme.radii.sm,
     alignItems: "center"
   },
   buttonPressed: {
-    opacity: 0.9
+    opacity: 0.92,
+    transform: [{ scale: 0.985 }]
   },
   buttonDisabled: {
     opacity: 0.6
   },
   secondaryButton: {
-    backgroundColor: "#efe1ca",
+    backgroundColor: mobileTheme.colors.primarySoft,
     paddingVertical: 14,
-    borderRadius: 16,
-    alignItems: "center"
+    borderRadius: mobileTheme.radii.sm,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: mobileTheme.colors.borderStrong
   },
   secondaryText: {
-    color: "#8a5a00",
-    fontWeight: "700"
+    color: mobileTheme.colors.primaryStrong,
+    fontWeight: "800"
   },
   buttonText: {
-    color: "#fffaf0",
-    fontWeight: "700",
+    color: "#ffffff",
+    fontWeight: "800",
     fontSize: 16
   }
 });

@@ -1,11 +1,13 @@
-﻿import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import * as AuthSession from "expo-auth-session";
 
 import { ScreenContainer } from "../components/ScreenContainer";
 import { SectionHeader } from "../components/SectionHeader";
 import { useAuth } from "../features/auth/auth-context";
+import { mobileEnv } from "../env";
 import { mobileShadow, mobileTheme } from "../theme";
 
 type AuthStackParamList = {
@@ -16,10 +18,55 @@ type AuthStackParamList = {
 export function LoginScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
-  const { isLoggingIn, login, loginError } = useAuth();
+  const { isLoggingIn, isGoogleLoggingIn, login, loginWithGoogle, loginError } = useAuth();
   const [email, setEmail] = useState("courier@example.com");
   const [password, setPassword] = useState("StrongPass123");
   const [localError, setLocalError] = useState<string | null>(null);
+  const redirectUri = useMemo(
+    () =>
+      AuthSession.makeRedirectUri({
+        scheme: "deliveryplatformcourier",
+        path: "oauthredirect"
+      }),
+    []
+  );
+  const discovery = AuthSession.useAutoDiscovery("https://accounts.google.com");
+  const [request, response, promptAsync] = AuthSession.useAuthRequest(
+    {
+      clientId: mobileEnv.googleAndroidClientId,
+      scopes: ["openid", "profile", "email"],
+      responseType: AuthSession.ResponseType.IdToken,
+      redirectUri,
+      usePKCE: false,
+      extraParams: {
+        prompt: "select_account"
+      }
+    },
+    discovery
+  );
+
+  useEffect(() => {
+    async function handleGoogleResponse() {
+      if (!response || response.type !== "success") {
+        return;
+      }
+
+      const idToken = response.params.id_token;
+
+      if (!idToken) {
+        setLocalError("O Google nao retornou uma credencial valida para continuar.");
+        return;
+      }
+
+      try {
+        await loginWithGoogle(idToken);
+      } catch {
+        setLocalError("Nao foi possivel concluir o acesso com Google.");
+      }
+    }
+
+    void handleGoogleResponse();
+  }, [loginWithGoogle, response]);
 
   async function handleLogin() {
     setLocalError(null);
@@ -35,6 +82,21 @@ export function LoginScreen() {
       setLocalError(
         "Nao foi possivel entrar agora. Verifique a conta do motoboy e a conexao com o backend."
       );
+    }
+  }
+
+  async function handleGoogleLogin() {
+    setLocalError(null);
+
+    if (!mobileEnv.googleAndroidClientId) {
+      setLocalError("Google login ainda nao foi configurado para este app.");
+      return;
+    }
+
+    try {
+      await promptAsync();
+    } catch {
+      setLocalError("Nao foi possivel abrir o acesso com Google agora.");
     }
   }
 
@@ -99,6 +161,20 @@ export function LoginScreen() {
           >
             <Text style={styles.buttonText}>
               {isLoggingIn ? "Entrando..." : "Entrar"}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            disabled={!request || isGoogleLoggingIn}
+            onPress={() => void handleGoogleLogin()}
+            style={({ pressed }) => [
+              styles.googleButton,
+              pressed ? styles.buttonPressed : undefined,
+              !request || isGoogleLoggingIn ? styles.buttonDisabled : undefined
+            ]}
+          >
+            <Text style={styles.googleButtonText}>
+              {isGoogleLoggingIn ? "Conectando ao Google..." : "Entrar com Google"}
             </Text>
           </Pressable>
 
@@ -184,6 +260,14 @@ const styles = StyleSheet.create({
     borderRadius: mobileTheme.radii.sm,
     alignItems: "center"
   },
+  googleButton: {
+    backgroundColor: "#ffffff",
+    paddingVertical: 14,
+    borderRadius: mobileTheme.radii.sm,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: mobileTheme.colors.borderStrong
+  },
   buttonPressed: {
     opacity: 0.92,
     transform: [{ scale: 0.985 }]
@@ -202,6 +286,11 @@ const styles = StyleSheet.create({
   secondaryText: {
     color: mobileTheme.colors.primaryStrong,
     fontWeight: "800"
+  },
+  googleButtonText: {
+    color: mobileTheme.colors.text,
+    fontWeight: "800",
+    fontSize: 15
   },
   buttonText: {
     color: "#ffffff",

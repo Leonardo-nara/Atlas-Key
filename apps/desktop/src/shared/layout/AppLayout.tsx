@@ -18,7 +18,7 @@ export function AppLayout() {
         <div className="sidebar-brand">
           <p className="section-kicker">Painel empresarial</p>
           <h1>{store?.name ?? "Loja"}</h1>
-          <p>{store?.address ?? "Endereco indisponivel"}</p>
+          <p>{store?.address || "Complete o endereco da loja quando quiser."}</p>
         </div>
 
         <div className="sidebar-section">

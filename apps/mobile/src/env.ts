@@ -14,5 +14,7 @@ export const mobileEnv = {
   apiUrl,
   socketUrl: normalizeUrl(
     process.env.EXPO_PUBLIC_SOCKET_URL ?? deriveSocketUrl(apiUrl)
-  )
+  ),
+  googleAndroidClientId:
+    process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID?.trim() ?? ""
 };

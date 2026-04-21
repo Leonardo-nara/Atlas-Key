@@ -1,3 +1,4 @@
+import * as WebBrowser from "expo-web-browser";
 import { NavigationContainer } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
 
@@ -5,6 +6,8 @@ import { AuthProvider } from "./features/auth/auth-context";
 import { RealtimeProvider } from "./features/realtime/realtime-context";
 import { RootNavigator } from "./navigation/RootNavigator";
 import { mobileTheme } from "./theme";
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function App() {
   return (

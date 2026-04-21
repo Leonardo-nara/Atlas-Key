@@ -25,9 +25,11 @@ interface AuthContextValue {
   needsProfileCompletion: boolean;
   isBootstrapping: boolean;
   isLoggingIn: boolean;
+  isGoogleLoggingIn: boolean;
   isRegistering: boolean;
   loginError: string | null;
   login: (email: string, password: string) => Promise<void>;
+  loginWithGoogle: (idToken: string) => Promise<void>;
   registerCourier: (
     name: string,
     email: string,
@@ -50,6 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isGoogleLoggingIn, setIsGoogleLoggingIn] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
 
@@ -142,6 +145,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw error;
     } finally {
       setIsLoggingIn(false);
+    }
+  }
+
+  async function loginWithGoogle(idToken: string) {
+    setIsGoogleLoggingIn(true);
+    setLoginError(null);
+
+    try {
+      const response = await authService.loginWithGoogle(idToken);
+      const nextUser = await courierService.me(response.accessToken);
+
+      if (nextUser.role !== "COURIER") {
+        throw new ApiError("Use uma conta de motoboy para entrar no app.", 403);
+      }
+
+      await setStoredTokens(response.accessToken, response.refreshToken);
+      setToken(response.accessToken);
+      setRefreshToken(response.refreshToken);
+      setUser(nextUser);
+    } catch (error) {
+      await clearSession();
+      if (error instanceof ApiError) {
+        setLoginError(error.message);
+      } else {
+        setLoginError("Nao foi possivel entrar com Google.");
+      }
+      throw error;
+    } finally {
+      setIsGoogleLoggingIn(false);
     }
   }
 
@@ -265,16 +297,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       needsProfileCompletion: Boolean(token && user && !user.profileCompleted),
       isBootstrapping,
       isLoggingIn,
+      isGoogleLoggingIn,
       isRegistering,
       loginError,
       login,
+      loginWithGoogle,
       registerCourier,
       updateCourierProfile,
       logout,
       logoutAll,
       refreshProfile
     }),
-    [token, user, isBootstrapping, isLoggingIn, isRegistering, loginError]
+    [token, user, isBootstrapping, isLoggingIn, isGoogleLoggingIn, isRegistering, loginError]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

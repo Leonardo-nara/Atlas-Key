@@ -6,9 +6,22 @@ interface LoginInput {
   password: string;
 }
 
+interface RegisterStoreQuickInput {
+  storeName: string;
+  ownerName: string;
+  email: string;
+  password: string;
+}
+
 export const authService = {
   login(input: LoginInput) {
     return http<AuthResponse>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify(input)
+    });
+  },
+  registerStoreQuick(input: RegisterStoreQuickInput) {
+    return http<AuthResponse>("/auth/register/store", {
       method: "POST",
       body: JSON.stringify(input)
     });

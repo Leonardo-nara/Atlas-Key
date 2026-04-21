@@ -8,6 +8,7 @@ import { JwtService } from "@nestjs/jwt";
 import { AuthAuditEventType, User } from "@prisma/client";
 import * as bcrypt from "bcryptjs";
 import { randomBytes } from "node:crypto";
+import { OAuth2Client } from "google-auth-library";
 
 import { UserRole } from "../common/enums/user-role.enum";
 import type { AuthenticatedUser } from "../common/authenticated-user.interface";
@@ -17,7 +18,9 @@ import { RegisterCourierDto } from "./dto/register-courier.dto";
 import { PrismaService } from "../prisma/prisma.service";
 import { LoginDto } from "./dto/login.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
+import { GoogleMobileAuthDto } from "./dto/google-mobile-auth.dto";
 import { RegisterDto } from "./dto/register.dto";
+import { RegisterStoreQuickDto } from "./dto/register-store-quick.dto";
 
 export interface AuthRequestContext {
   requestId?: string;
@@ -27,6 +30,8 @@ export interface AuthRequestContext {
 
 @Injectable()
 export class AuthService {
+  private readonly googleClient = new OAuth2Client();
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
@@ -92,6 +97,48 @@ export class AuthService {
     return this.buildAuthResponse(user, context, "register");
   }
 
+  async registerStoreQuick(
+    dto: RegisterStoreQuickDto,
+    context?: AuthRequestContext
+  ) {
+    const normalizedEmail = dto.email.toLowerCase();
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail }
+    });
+
+    if (existingUser) {
+      throw new BadRequestException("Email ja cadastrado");
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+
+    const user = await this.prisma.$transaction(async (tx) => {
+      const createdUser = await tx.user.create({
+        data: {
+          name: dto.ownerName,
+          email: normalizedEmail,
+          passwordHash,
+          phone: "",
+          role: UserRole.STORE_ADMIN,
+          active: true
+        }
+      });
+
+      await tx.store.create({
+        data: {
+          name: dto.storeName,
+          address: "",
+          ownerUserId: createdUser.id,
+          active: true
+        }
+      });
+
+      return createdUser;
+    });
+
+    return this.buildAuthResponse(user, context, "register_store_quick");
+  }
+
   async registerCourier(dto: RegisterCourierDto, context?: AuthRequestContext) {
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const courier = await this.couriersService.createPublicCourier(dto, passwordHash);
@@ -137,6 +184,82 @@ export class AuthService {
     }
 
     return this.buildAuthResponse(user, context, "login");
+  }
+
+  async loginWithGoogleMobile(
+    dto: GoogleMobileAuthDto,
+    context?: AuthRequestContext
+  ) {
+    const googlePayload = await this.verifyGoogleIdToken(dto.idToken);
+    const normalizedEmail = googlePayload.email.toLowerCase();
+
+    let user = await this.prisma.user.findFirst({
+      where: {
+        OR: [{ googleSub: googlePayload.sub }, { email: normalizedEmail }]
+      }
+    });
+
+    if (user && user.role !== UserRole.COURIER) {
+      await this.auditAuthEvent(AuthAuditEventType.LOGIN_FAILED, {
+        userId: user.id,
+        email: user.email,
+        context,
+        metadata: { reason: "google_login_not_allowed_for_role" }
+      });
+      throw new UnauthorizedException("Use o painel da empresa para acessar esta conta.");
+    }
+
+    if (user && !user.active) {
+      await this.auditAuthEvent(AuthAuditEventType.LOGIN_FAILED, {
+        userId: user.id,
+        email: user.email,
+        context,
+        metadata: { reason: "inactive_google_user" }
+      });
+      throw new UnauthorizedException("Sua conta esta inativa no momento.");
+    }
+
+    if (!user) {
+      const passwordHash = await bcrypt.hash(randomBytes(32).toString("base64url"), 10);
+
+      user = await this.prisma.$transaction(async (tx) => {
+        const createdUser = await tx.user.create({
+          data: {
+            name: googlePayload.name,
+            email: normalizedEmail,
+            passwordHash,
+            phone: "",
+            role: UserRole.COURIER,
+            active: true,
+            googleSub: googlePayload.sub,
+            googleEmailVerified: true
+          }
+        });
+
+        await tx.courierProfile.create({
+          data: {
+            userId: createdUser.id
+          }
+        });
+
+        return createdUser;
+      });
+    } else if (
+      user.googleSub !== googlePayload.sub ||
+      !user.googleEmailVerified ||
+      user.name !== googlePayload.name
+    ) {
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          googleSub: googlePayload.sub,
+          googleEmailVerified: true,
+          ...(user.name !== googlePayload.name ? { name: googlePayload.name } : {})
+        }
+      });
+    }
+
+    return this.buildAuthResponse(user, context, "login_google_mobile");
   }
 
   async refresh(dto: RefreshTokenDto, context?: AuthRequestContext) {
@@ -627,5 +750,38 @@ export class AuthService {
       createdAt: user.createdAt,
       updatedAt: user.updatedAt
     };
+  }
+
+  private async verifyGoogleIdToken(idToken: string) {
+    const audiences = this.getGoogleAudiences();
+    const ticket = await this.googleClient.verifyIdToken({
+      idToken,
+      audience: audiences
+    });
+    const payload = ticket.getPayload();
+
+    if (!payload?.sub || !payload.email || !payload.email_verified) {
+      throw new UnauthorizedException("Conta Google invalida para autenticacao.");
+    }
+
+    return {
+      sub: payload.sub,
+      email: payload.email,
+      name: payload.name?.trim() || payload.email.split("@")[0] || "Motoboy Google"
+    };
+  }
+
+  private getGoogleAudiences() {
+    const configured = this.configService.get<string>("GOOGLE_AUTH_AUDIENCES") ?? "";
+    const audiences = configured
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean);
+
+    if (audiences.length === 0) {
+      throw new UnauthorizedException("Google auth nao configurado no backend.");
+    }
+
+    return audiences;
   }
 }

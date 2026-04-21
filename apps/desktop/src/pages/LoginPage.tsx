@@ -1,12 +1,22 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { Navigate } from "react-router-dom";
 
 import { useAuth } from "../features/auth/auth-context";
 
 export function LoginPage() {
-  const { isAuthenticated, isLoggingIn, login, loginError } = useAuth();
+  const {
+    isAuthenticated,
+    isLoggingIn,
+    isRegistering,
+    login,
+    registerStoreQuick,
+    loginError
+  } = useAuth();
+  const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("store-admin@example.com");
   const [password, setPassword] = useState("StrongPass123");
+  const [storeName, setStoreName] = useState("");
+  const [ownerName, setOwnerName] = useState("");
   const [localError, setLocalError] = useState<string | null>(null);
 
   if (isAuthenticated) {
@@ -17,16 +27,40 @@ export function LoginPage() {
     event.preventDefault();
     setLocalError(null);
 
-    if (!email.trim() || !password.trim()) {
+    if (mode === "login" && (!email.trim() || !password.trim())) {
       setLocalError("Preencha email e senha para continuar.");
       return;
     }
 
+    if (
+      mode === "register" &&
+      (!storeName.trim() || !ownerName.trim() || !email.trim() || !password.trim())
+    ) {
+      setLocalError("Preencha empresa, responsavel, email e senha para criar a conta.");
+      return;
+    }
+
+    if (password.trim().length < 6) {
+      setLocalError("A senha precisa ter pelo menos 6 caracteres.");
+      return;
+    }
+
     try {
-      await login(email.trim(), password);
+      if (mode === "login") {
+        await login(email.trim(), password);
+      } else {
+        await registerStoreQuick(
+          storeName.trim(),
+          ownerName.trim(),
+          email.trim(),
+          password
+        );
+      }
     } catch {
       setLocalError(
-        "Nao foi possivel entrar agora. Revise a conta da loja ou a conexao com o backend."
+        mode === "login"
+          ? "Nao foi possivel entrar agora. Revise a conta da loja ou a conexao com o backend."
+          : "Nao foi possivel criar a conta agora. Revise os dados e tente novamente."
       );
     }
   }
@@ -37,10 +71,12 @@ export function LoginPage() {
         <div className="login-card-copy">
           <div className="login-copy-block">
             <p className="section-kicker">Painel da empresa</p>
-            <h1 className="login-title">Controle de pedidos, catalogo e operacao em um unico lugar.</h1>
+            <h1 className="login-title">
+              Controle de pedidos, catalogo e operacao em um unico lugar.
+            </h1>
             <p className="muted-text">
-              Entre com sua conta de administrador para acompanhar produtos,
-              pedidos e motoboys vinculados com uma interface pronta para uso real.
+              Entre com sua conta de administrador ou crie a empresa direto no
+              desktop para iniciar a operacao sem atrito.
             </p>
           </div>
 
@@ -51,22 +87,76 @@ export function LoginPage() {
               <p>Pedidos, cancelamentos e atualizacoes com contexto claro.</p>
             </article>
             <article className="info-card">
-              <span className="info-label">Equipe</span>
-              <strong>Gestao de motoboys</strong>
-              <p>Aprove solicitacoes e acompanhe quem ja pode operar.</p>
+              <span className="info-label">Implantacao</span>
+              <strong>Comeco rapido</strong>
+              <p>Crie a conta da empresa em poucos minutos e complete o restante depois.</p>
             </article>
           </div>
         </div>
 
         <div className="login-card-form">
           <p className="section-kicker">Acesso seguro</p>
-          <h1>Entrar</h1>
+          <div className="login-mode-toggle" role="tablist" aria-label="Modo de acesso">
+            <button
+              aria-selected={mode === "login"}
+              className={mode === "login" ? "mode-chip mode-chip-active" : "mode-chip"}
+              onClick={() => {
+                setMode("login");
+                setLocalError(null);
+              }}
+              role="tab"
+              type="button"
+            >
+              Entrar
+            </button>
+            <button
+              aria-selected={mode === "register"}
+              className={mode === "register" ? "mode-chip mode-chip-active" : "mode-chip"}
+              onClick={() => {
+                setMode("register");
+                setLocalError(null);
+              }}
+              role="tab"
+              type="button"
+            >
+              Criar conta
+            </button>
+          </div>
+          <h1>{mode === "login" ? "Entrar" : "Criar conta da empresa"}</h1>
           <p className="muted-text">
-            Para demonstracao local, a conta seed padrao e
-            <strong> store-admin@example.com</strong>.
+            {mode === "login" ? (
+              <>
+                Para demonstracao local, a conta seed padrao e
+                <strong> store-admin@example.com</strong>.
+              </>
+            ) : (
+              "A conta entra autenticada logo apos o cadastro. Endereco e ajustes operacionais podem ser completados depois."
+            )}
           </p>
 
           <form className="form-grid" onSubmit={handleSubmit}>
+            {mode === "register" ? (
+              <>
+                <label className="field">
+                  <span>Nome da empresa</span>
+                  <input
+                    value={storeName}
+                    onChange={(event) => setStoreName(event.target.value)}
+                    placeholder="Ex.: RotaPronta Centro"
+                  />
+                </label>
+
+                <label className="field">
+                  <span>Responsavel</span>
+                  <input
+                    value={ownerName}
+                    onChange={(event) => setOwnerName(event.target.value)}
+                    placeholder="Nome de quem administra a operacao"
+                  />
+                </label>
+              </>
+            ) : null}
+
             <label className="field">
               <span>Email</span>
               <input
@@ -88,13 +178,21 @@ export function LoginPage() {
             </label>
 
             {loginError || localError ? (
-              <div className="feedback feedback-error">
-                {loginError ?? localError}
-              </div>
+              <div className="feedback feedback-error">{loginError ?? localError}</div>
             ) : null}
 
-            <button className="primary-button" disabled={isLoggingIn} type="submit">
-              {isLoggingIn ? "Entrando..." : "Entrar"}
+            <button
+              className="primary-button"
+              disabled={isLoggingIn || isRegistering}
+              type="submit"
+            >
+              {mode === "login"
+                ? isLoggingIn
+                  ? "Entrando..."
+                  : "Entrar"
+                : isRegistering
+                  ? "Criando conta..."
+                  : "Criar conta e entrar"}
             </button>
           </form>
         </div>

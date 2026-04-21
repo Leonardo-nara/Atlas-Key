@@ -66,6 +66,8 @@ model User {
   email        String   @unique
   passwordHash String
   phone        String
+  googleSub    String?  @unique
+  googleEmailVerified Boolean @default(false)
   role         UserRole
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())

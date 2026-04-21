@@ -8,6 +8,12 @@ export const authService = {
       body: JSON.stringify({ email, password })
     });
   },
+  loginWithGoogle(idToken: string) {
+    return http<AuthResponse>("/auth/login/google/mobile", {
+      method: "POST",
+      body: JSON.stringify({ idToken })
+    });
+  },
   refresh(refreshToken: string) {
     return http<AuthResponse>("/auth/refresh", {
       method: "POST",

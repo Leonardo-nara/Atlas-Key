@@ -6,8 +6,10 @@ import { CurrentUser } from "../common/decorators/current-user.decorator";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { LoginDto } from "./dto/login.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
+import { GoogleMobileAuthDto } from "./dto/google-mobile-auth.dto";
 import { RegisterCourierDto } from "./dto/register-courier.dto";
 import { RegisterDto } from "./dto/register.dto";
+import { RegisterStoreQuickDto } from "./dto/register-store-quick.dto";
 import type { AuthenticatedUser } from "../common/authenticated-user.interface";
 
 interface RequestLike {
@@ -26,6 +28,12 @@ export class AuthController {
     return this.authService.register(dto, this.getRequestContext(request));
   }
 
+  @Post("register/store")
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  registerStoreQuick(@Body() dto: RegisterStoreQuickDto, @Req() request: RequestLike) {
+    return this.authService.registerStoreQuick(dto, this.getRequestContext(request));
+  }
+
   @Post("register/courier")
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   registerCourier(@Body() dto: RegisterCourierDto, @Req() request: RequestLike) {
@@ -36,6 +44,18 @@ export class AuthController {
   @Throttle({ default: { limit: 8, ttl: 60_000 } })
   login(@Body() dto: LoginDto, @Req() request: RequestLike) {
     return this.authService.login(dto, this.getRequestContext(request));
+  }
+
+  @Post("login/google/mobile")
+  @Throttle({ default: { limit: 8, ttl: 60_000 } })
+  loginWithGoogleMobile(
+    @Body() dto: GoogleMobileAuthDto,
+    @Req() request: RequestLike
+  ) {
+    return this.authService.loginWithGoogleMobile(
+      dto,
+      this.getRequestContext(request)
+    );
   }
 
   @Post("refresh")

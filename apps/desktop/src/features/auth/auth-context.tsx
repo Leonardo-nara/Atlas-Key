@@ -28,8 +28,15 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   isBootstrapping: boolean;
   isLoggingIn: boolean;
+  isRegistering: boolean;
   loginError: string | null;
   login: (email: string, password: string) => Promise<void>;
+  registerStoreQuick: (
+    storeName: string,
+    ownerName: string,
+    email: string,
+    password: string
+  ) => Promise<void>;
   logout: () => Promise<void>;
   logoutAll: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -44,6 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [store, setStore] = useState<Store | null>(null);
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -140,6 +148,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function registerStoreQuick(
+    storeName: string,
+    ownerName: string,
+    email: string,
+    password: string
+  ) {
+    setIsRegistering(true);
+    setLoginError(null);
+
+    try {
+      const response = await authService.registerStoreQuick({
+        storeName,
+        ownerName,
+        email,
+        password
+      });
+      setStoredTokens(response.accessToken, response.refreshToken);
+      setToken(response.accessToken);
+      setRefreshToken(response.refreshToken);
+      setUser(response.user);
+      const nextStore = await authService.myStore(response.accessToken);
+      setStore(nextStore);
+    } catch (error) {
+      if (error instanceof ApiError) {
+        setLoginError(error.message);
+      } else {
+        setLoginError("Nao foi possivel criar a conta agora.");
+      }
+      throw error;
+    } finally {
+      setIsRegistering(false);
+    }
+  }
+
   async function logout() {
     const tokenToRevoke = refreshToken ?? getStoredRefreshToken();
 
@@ -212,13 +254,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: Boolean(token && user),
       isBootstrapping,
       isLoggingIn,
+      isRegistering,
       loginError,
       login,
+      registerStoreQuick,
       logout,
       logoutAll,
       refreshProfile
     }),
-    [token, user, store, isBootstrapping, isLoggingIn, loginError]
+    [token, user, store, isBootstrapping, isLoggingIn, isRegistering, loginError]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

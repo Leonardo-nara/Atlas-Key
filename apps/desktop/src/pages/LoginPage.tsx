@@ -4,6 +4,7 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "../features/auth/auth-context";
 
 export function LoginPage() {
+  const isDevelopment = import.meta.env.DEV;
   const {
     isAuthenticated,
     isLoggingIn,
@@ -12,9 +13,15 @@ export function LoginPage() {
     registerStoreQuick,
     loginError
   } = useAuth();
-  const [mode, setMode] = useState<"login" | "register">("login");
-  const [email, setEmail] = useState("store-admin@example.com");
-  const [password, setPassword] = useState("StrongPass123");
+  const [mode, setMode] = useState<"login" | "register">(
+    isDevelopment ? "login" : "register"
+  );
+  const [email, setEmail] = useState(
+    isDevelopment ? "store-admin@example.com" : ""
+  );
+  const [password, setPassword] = useState(
+    isDevelopment ? "StrongPass123" : ""
+  );
   const [storeName, setStoreName] = useState("");
   const [ownerName, setOwnerName] = useState("");
   const [localError, setLocalError] = useState<string | null>(null);
@@ -122,17 +129,39 @@ export function LoginPage() {
               Criar conta
             </button>
           </div>
+          <p className="muted-text">
+            {mode === "login"
+              ? "Ja tem conta? Entre com o email corporativo e a senha da empresa."
+              : "Primeiro acesso? Crie a conta da empresa aqui e entre no painel imediatamente."}
+          </p>
           <h1>{mode === "login" ? "Entrar" : "Criar conta da empresa"}</h1>
           <p className="muted-text">
             {mode === "login" ? (
-              <>
-                Para demonstracao local, a conta seed padrao e
-                <strong> store-admin@example.com</strong>.
-              </>
+              isDevelopment ? (
+                <>
+                  Para demonstracao local, a conta seed padrao e
+                  <strong> store-admin@example.com</strong>.
+                </>
+              ) : (
+                "Use o email e a senha da conta da empresa para acessar o painel."
+              )
             ) : (
               "A conta entra autenticada logo apos o cadastro. Endereco e ajustes operacionais podem ser completados depois."
             )}
           </p>
+
+          {mode === "login" && !isDevelopment ? (
+            <button
+              className="secondary-button"
+              onClick={() => {
+                setMode("register");
+                setLocalError(null);
+              }}
+              type="button"
+            >
+              Ainda nao tenho conta
+            </button>
+          ) : null}
 
           <form className="form-grid" onSubmit={handleSubmit}>
             {mode === "register" ? (
@@ -163,7 +192,7 @@ export function LoginPage() {
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 type="email"
-                placeholder="store-admin@example.com"
+                placeholder={isDevelopment ? "store-admin@example.com" : "empresa@dominio.com"}
               />
             </label>
 

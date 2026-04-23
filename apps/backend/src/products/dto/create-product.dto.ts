@@ -3,11 +3,50 @@ import {
   IsNumber,
   IsOptional,
   IsString,
-  IsUrl,
   MaxLength,
   Min,
-  MinLength
+  MinLength,
+  Validate
 } from "class-validator";
+import {
+  ValidatorConstraint,
+  ValidatorConstraintInterface
+} from "class-validator";
+
+const PRODUCT_IMAGE_DATA_URL_PATTERN =
+  /^data:image\/(png|jpeg|jpg|webp|gif);base64,[A-Za-z0-9+/=]+$/i;
+
+@ValidatorConstraint({ name: "productImageReference", async: false })
+class ProductImageReferenceConstraint implements ValidatorConstraintInterface {
+  validate(value: unknown) {
+    if (value === undefined || value === null || value === "") {
+      return true;
+    }
+
+    if (typeof value !== "string") {
+      return false;
+    }
+
+    if (value.length > 2_000_000) {
+      return false;
+    }
+
+    return isHttpUrl(value) || PRODUCT_IMAGE_DATA_URL_PATTERN.test(value);
+  }
+
+  defaultMessage() {
+    return "imageUrl deve ser uma URL http/https valida ou uma imagem enviada do computador";
+  }
+}
+
+function isHttpUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
 
 export class CreateProductDto {
   @IsString()
@@ -30,11 +69,7 @@ export class CreateProductDto {
   category!: string;
 
   @IsOptional()
-  @IsUrl({
-    protocols: ["http", "https"],
-    require_protocol: true
-  })
-  @MaxLength(500)
+  @Validate(ProductImageReferenceConstraint)
   imageUrl?: string;
 
   @IsOptional()

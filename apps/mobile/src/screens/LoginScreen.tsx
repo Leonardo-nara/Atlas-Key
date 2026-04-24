@@ -1,13 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import * as AuthSession from "expo-auth-session";
 
 import { ScreenContainer } from "../components/ScreenContainer";
 import { SectionHeader } from "../components/SectionHeader";
 import { useAuth } from "../features/auth/auth-context";
-import { mobileEnv } from "../env";
 import { mobileShadow, mobileTheme } from "../theme";
 
 type AuthStackParamList = {
@@ -22,56 +20,11 @@ export function LoginScreen() {
   const isDevelopment = __DEV__;
   const navigation =
     useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
-  const { isLoggingIn, isGoogleLoggingIn, login, loginWithGoogle, loginError } = useAuth();
+  const { isLoggingIn, login, loginError } = useAuth();
   const [mode, setMode] = useState<LoginMode>("courier");
   const [email, setEmail] = useState(isDevelopment ? "courier@example.com" : "");
   const [password, setPassword] = useState(isDevelopment ? "StrongPass123" : "");
   const [localError, setLocalError] = useState<string | null>(null);
-  const redirectUri = useMemo(
-    () =>
-      AuthSession.makeRedirectUri({
-        scheme: "deliveryplatformcourier",
-        path: "oauthredirect"
-      }),
-    []
-  );
-  const discovery = AuthSession.useAutoDiscovery("https://accounts.google.com");
-  const [request, response, promptAsync] = AuthSession.useAuthRequest(
-    {
-      clientId: mobileEnv.googleAndroidClientId,
-      scopes: ["openid", "profile", "email"],
-      responseType: AuthSession.ResponseType.IdToken,
-      redirectUri,
-      usePKCE: false,
-      extraParams: {
-        prompt: "select_account"
-      }
-    },
-    discovery
-  );
-
-  useEffect(() => {
-    async function handleGoogleResponse() {
-      if (!response || response.type !== "success") {
-        return;
-      }
-
-      const idToken = response.params.id_token;
-
-      if (!idToken) {
-        setLocalError("O Google nao retornou uma credencial valida para continuar.");
-        return;
-      }
-
-      try {
-        await loginWithGoogle(idToken);
-      } catch {
-        setLocalError("Nao foi possivel concluir o acesso com Google.");
-      }
-    }
-
-    void handleGoogleResponse();
-  }, [loginWithGoogle, response]);
 
   async function handleLogin() {
     setLocalError(null);
@@ -89,31 +42,6 @@ export function LoginScreen() {
           ? "Nao foi possivel entrar agora. Verifique a conta do motoboy e a conexao com o backend."
           : "Nao foi possivel entrar agora. Verifique a conta do cliente e a conexao com o backend."
       );
-    }
-  }
-
-  async function handleGoogleLogin() {
-    setLocalError(null);
-
-    if (mode !== "courier") {
-      setLocalError("O acesso com Google esta disponivel apenas para motoboys.");
-      return;
-    }
-
-    if (!mobileEnv.googleAndroidClientId) {
-      setLocalError("Google login ainda nao foi configurado para este app.");
-      return;
-    }
-
-    if (!request) {
-      setLocalError("O acesso com Google ainda esta sendo preparado. Tente novamente em alguns segundos.");
-      return;
-    }
-
-    try {
-      await promptAsync();
-    } catch {
-      setLocalError("Nao foi possivel abrir o acesso com Google agora.");
     }
   }
 
@@ -174,14 +102,6 @@ export function LoginScreen() {
           </Text>
         </View>
 
-        {mode === "courier" && !mobileEnv.googleAndroidClientId ? (
-          <View style={styles.warningBox}>
-            <Text style={styles.warningText}>
-              Entrar com Google ainda nao foi configurado neste build do app.
-            </Text>
-          </View>
-        ) : null}
-
         <View style={styles.card}>
           <View style={styles.field}>
             <Text style={styles.label}>Email</Text>
@@ -228,26 +148,6 @@ export function LoginScreen() {
             </Text>
           </Pressable>
 
-          {mode === "courier" ? (
-            <Pressable
-              disabled={isGoogleLoggingIn}
-              onPress={() => void handleGoogleLogin()}
-              style={({ pressed }) => [
-                styles.googleButton,
-                pressed ? styles.buttonPressed : undefined,
-                isGoogleLoggingIn ? styles.buttonDisabled : undefined
-              ]}
-            >
-              <Text style={styles.googleButtonText}>
-                {isGoogleLoggingIn
-                  ? "Conectando ao Google..."
-                  : !request && mobileEnv.googleAndroidClientId
-                    ? "Preparando Google..."
-                    : "Entrar com Google"}
-              </Text>
-            </Pressable>
-          ) : null}
-
           <Pressable
             onPress={() =>
               navigation.navigate(mode === "courier" ? "RegisterCourier" : "RegisterClient")
@@ -267,16 +167,6 @@ export function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     gap: 24
-  },
-  warningBox: {
-    padding: 12,
-    borderRadius: mobileTheme.radii.sm,
-    backgroundColor: mobileTheme.colors.warningSoft,
-    borderWidth: 1,
-    borderColor: mobileTheme.colors.borderStrong
-  },
-  warningText: {
-    color: mobileTheme.colors.warning
   },
   modeToggle: {
     flexDirection: "row",
@@ -368,14 +258,6 @@ const styles = StyleSheet.create({
     borderRadius: mobileTheme.radii.sm,
     alignItems: "center"
   },
-  googleButton: {
-    backgroundColor: "#ffffff",
-    paddingVertical: 14,
-    borderRadius: mobileTheme.radii.sm,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: mobileTheme.colors.borderStrong
-  },
   buttonPressed: {
     opacity: 0.92,
     transform: [{ scale: 0.985 }]
@@ -394,11 +276,6 @@ const styles = StyleSheet.create({
   secondaryText: {
     color: mobileTheme.colors.primaryStrong,
     fontWeight: "800"
-  },
-  googleButtonText: {
-    color: mobileTheme.colors.text,
-    fontWeight: "800",
-    fontSize: 15
   },
   buttonText: {
     color: "#ffffff",

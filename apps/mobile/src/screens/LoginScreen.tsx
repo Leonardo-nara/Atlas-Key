@@ -16,11 +16,12 @@ type AuthStackParamList = {
 };
 
 export function LoginScreen() {
+  const isDevelopment = __DEV__;
   const navigation =
     useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
   const { isLoggingIn, isGoogleLoggingIn, login, loginWithGoogle, loginError } = useAuth();
-  const [email, setEmail] = useState("courier@example.com");
-  const [password, setPassword] = useState("StrongPass123");
+  const [email, setEmail] = useState(isDevelopment ? "courier@example.com" : "");
+  const [password, setPassword] = useState(isDevelopment ? "StrongPass123" : "");
   const [localError, setLocalError] = useState<string | null>(null);
   const redirectUri = useMemo(
     () =>
@@ -93,6 +94,11 @@ export function LoginScreen() {
       return;
     }
 
+    if (!request) {
+      setLocalError("O acesso com Google ainda esta sendo preparado. Tente novamente em alguns segundos.");
+      return;
+    }
+
     try {
       await promptAsync();
     } catch {
@@ -101,7 +107,7 @@ export function LoginScreen() {
   }
 
   return (
-    <ScreenContainer>
+    <ScreenContainer scrollable>
       <View style={styles.container}>
         <SectionHeader
           title="App do motoboy"
@@ -117,6 +123,14 @@ export function LoginScreen() {
             uso diario na rua.
           </Text>
         </View>
+
+        {!mobileEnv.googleAndroidClientId ? (
+          <View style={styles.warningBox}>
+            <Text style={styles.warningText}>
+              Entrar com Google ainda nao foi configurado neste build do app.
+            </Text>
+          </View>
+        ) : null}
 
         <View style={styles.card}>
           <View style={styles.field}>
@@ -165,16 +179,20 @@ export function LoginScreen() {
           </Pressable>
 
           <Pressable
-            disabled={!request || isGoogleLoggingIn}
+            disabled={isGoogleLoggingIn}
             onPress={() => void handleGoogleLogin()}
             style={({ pressed }) => [
               styles.googleButton,
               pressed ? styles.buttonPressed : undefined,
-              !request || isGoogleLoggingIn ? styles.buttonDisabled : undefined
+              isGoogleLoggingIn ? styles.buttonDisabled : undefined
             ]}
           >
             <Text style={styles.googleButtonText}>
-              {isGoogleLoggingIn ? "Conectando ao Google..." : "Entrar com Google"}
+              {isGoogleLoggingIn
+                ? "Conectando ao Google..."
+                : !request && mobileEnv.googleAndroidClientId
+                  ? "Preparando Google..."
+                  : "Entrar com Google"}
             </Text>
           </Pressable>
 
@@ -192,9 +210,17 @@ export function LoginScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    justifyContent: "center",
     gap: 24
+  },
+  warningBox: {
+    padding: 12,
+    borderRadius: mobileTheme.radii.sm,
+    backgroundColor: mobileTheme.colors.warningSoft,
+    borderWidth: 1,
+    borderColor: mobileTheme.colors.borderStrong
+  },
+  warningText: {
+    color: mobileTheme.colors.warning
   },
   heroStrip: {
     gap: 10,

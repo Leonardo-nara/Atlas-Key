@@ -92,6 +92,7 @@ const styles = StyleSheet.create({
     padding: mobileTheme.spacing.lg
   },
   scrollContent: {
+    flexGrow: 1,
     padding: mobileTheme.spacing.lg
   },
   innerCard: {

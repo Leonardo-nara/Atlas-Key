@@ -3,12 +3,13 @@ import {
   IsEnum,
   IsOptional,
   IsString,
-  IsUrl,
   MaxLength,
-  MinLength
+  MinLength,
+  Validate
 } from "class-validator";
 
 import { CourierVehicleType } from "@prisma/client";
+import { ImageReferenceConstraint } from "../../common/validation/image-reference.validator";
 
 function normalizeOptionalString({ value }: { value: unknown }) {
   if (typeof value !== "string") {
@@ -31,20 +32,12 @@ function normalizePlate({ value }: { value: unknown }) {
 export class CourierProfileBaseDto {
   @IsOptional()
   @Transform(normalizeOptionalString)
-  @IsUrl({
-    protocols: ["http", "https"],
-    require_protocol: true
-  })
-  @MaxLength(500)
+  @Validate(ImageReferenceConstraint)
   profilePhotoUrl?: string;
 
   @IsOptional()
   @Transform(normalizeOptionalString)
-  @IsUrl({
-    protocols: ["http", "https"],
-    require_protocol: true
-  })
-  @MaxLength(500)
+  @Validate(ImageReferenceConstraint)
   vehiclePhotoUrl?: string;
 
   @IsOptional()

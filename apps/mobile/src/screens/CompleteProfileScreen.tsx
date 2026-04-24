@@ -20,6 +20,7 @@ import {
   type CourierProfileFormValues,
   validateCourierProfileForm
 } from "../features/courier/courier-profile";
+import { pickImageFromLibrary } from "../lib/image-picker";
 import { mobileShadow, mobileTheme } from "../theme";
 
 type AppStackParamList = {
@@ -82,6 +83,28 @@ export function CompleteProfileScreen() {
     }
   }
 
+  async function handlePickImage(
+    field: "profilePhotoUrl" | "vehiclePhotoUrl",
+    label: string
+  ) {
+    try {
+      const imageDataUrl = await pickImageFromLibrary();
+
+      if (!imageDataUrl) {
+        return;
+      }
+
+      setField(field, imageDataUrl);
+      setError(null);
+    } catch (pickError) {
+      if (pickError instanceof Error) {
+        setError(pickError.message);
+      } else {
+        setError(`Nao foi possivel carregar a imagem de ${label}.`);
+      }
+    }
+  }
+
   return (
     <ScreenContainer scrollable>
       <SectionHeader
@@ -136,6 +159,11 @@ export function CompleteProfileScreen() {
           value={form.profilePhotoUrl}
           onChangeText={(value) => setField("profilePhotoUrl", value)}
         />
+        <ImageUploadActions
+          hasImage={Boolean(form.profilePhotoUrl)}
+          onPick={() => void handlePickImage("profilePhotoUrl", "perfil")}
+          onRemove={() => setField("profilePhotoUrl", "")}
+        />
         {form.profilePhotoUrl ? (
           <Image source={{ uri: form.profilePhotoUrl }} style={styles.previewImage} />
         ) : null}
@@ -145,6 +173,11 @@ export function CompleteProfileScreen() {
           label="URL da foto do veiculo (opcional)"
           value={form.vehiclePhotoUrl}
           onChangeText={(value) => setField("vehiclePhotoUrl", value)}
+        />
+        <ImageUploadActions
+          hasImage={Boolean(form.vehiclePhotoUrl)}
+          onPick={() => void handlePickImage("vehiclePhotoUrl", "veiculo")}
+          onRemove={() => setField("vehiclePhotoUrl", "")}
         />
         {form.vehiclePhotoUrl ? (
           <Image source={{ uri: form.vehiclePhotoUrl }} style={styles.previewImage} />
@@ -177,6 +210,29 @@ export function CompleteProfileScreen() {
         ) : null}
       </View>
     </ScreenContainer>
+  );
+}
+
+function ImageUploadActions({
+  hasImage,
+  onPick,
+  onRemove
+}: {
+  hasImage: boolean;
+  onPick: () => void;
+  onRemove: () => void;
+}) {
+  return (
+    <View style={styles.imageActions}>
+      <Pressable onPress={onPick} style={styles.secondaryButton}>
+        <Text style={styles.secondaryText}>Escolher da galeria</Text>
+      </Pressable>
+      {hasImage ? (
+        <Pressable onPress={onRemove} style={styles.ghostButton}>
+          <Text style={styles.ghostText}>Remover imagem</Text>
+        </Pressable>
+      ) : null}
+    </View>
   );
 }
 
@@ -261,6 +317,9 @@ const styles = StyleSheet.create({
     borderRadius: mobileTheme.radii.sm,
     backgroundColor: mobileTheme.colors.surfaceStrong
   },
+  imageActions: {
+    gap: 10
+  },
   errorBox: {
     padding: 12,
     borderRadius: mobileTheme.radii.sm,
@@ -298,5 +357,17 @@ const styles = StyleSheet.create({
   secondaryText: {
     color: mobileTheme.colors.primaryStrong,
     fontWeight: "800"
+  },
+  ghostButton: {
+    paddingVertical: 12,
+    borderRadius: mobileTheme.radii.sm,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: mobileTheme.colors.borderStrong,
+    backgroundColor: mobileTheme.colors.surfaceMuted
+  },
+  ghostText: {
+    color: mobileTheme.colors.textMuted,
+    fontWeight: "700"
   }
 });

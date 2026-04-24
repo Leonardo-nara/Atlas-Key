@@ -10,6 +10,7 @@ datasource db {
 enum UserRole {
   STORE_ADMIN
   COURIER
+  CLIENT
 }
 
 enum CourierVehicleType {

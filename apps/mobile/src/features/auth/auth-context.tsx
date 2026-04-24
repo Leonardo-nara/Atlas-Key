@@ -23,6 +23,8 @@ interface AuthContextValue {
   user: AuthUser | null;
   isAuthenticated: boolean;
   needsProfileCompletion: boolean;
+  isCourier: boolean;
+  isClient: boolean;
   isBootstrapping: boolean;
   isLoggingIn: boolean;
   isGoogleLoggingIn: boolean;
@@ -30,6 +32,12 @@ interface AuthContextValue {
   loginError: string | null;
   login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: (idToken: string) => Promise<void>;
+  registerClient: (
+    name: string,
+    email: string,
+    phone: string,
+    password: string
+  ) => Promise<void>;
   registerCourier: (
     name: string,
     email: string,
@@ -93,10 +101,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function loadProfile(authToken: string, fallbackRefreshToken?: string | null) {
     try {
-      const nextUser = await courierService.me(authToken);
+      const nextUser = await authService.me(authToken);
 
-      if (nextUser.role !== "COURIER") {
-        throw new ApiError("Este app e exclusivo para motoboys.", 403);
+      if (nextUser.role === "STORE_ADMIN") {
+        throw new ApiError("Use o painel desktop para acessar a conta da empresa.", 403);
       }
 
       setUser(nextUser);
@@ -125,10 +133,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const response = await authService.login(email, password);
-      const nextUser = await courierService.me(response.accessToken);
+      const nextUser = await authService.me(response.accessToken);
 
-      if (nextUser.role !== "COURIER") {
-        throw new ApiError("Use uma conta de motoboy para entrar no app.", 403);
+      if (nextUser.role === "STORE_ADMIN") {
+        throw new ApiError("Use o painel desktop para acessar a conta da empresa.", 403);
       }
 
       await setStoredTokens(response.accessToken, response.refreshToken);
@@ -154,10 +162,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const response = await authService.loginWithGoogle(idToken);
-      const nextUser = await courierService.me(response.accessToken);
+      const nextUser = await authService.me(response.accessToken);
 
       if (nextUser.role !== "COURIER") {
-        throw new ApiError("Use uma conta de motoboy para entrar no app.", 403);
+        throw new ApiError("O acesso com Google esta disponivel apenas para motoboys.", 403);
       }
 
       await setStoredTokens(response.accessToken, response.refreshToken);
@@ -193,7 +201,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         phone,
         password
       });
-      const nextUser = await courierService.me(response.accessToken);
+      const nextUser = await authService.me(response.accessToken);
+
+      await setStoredTokens(response.accessToken, response.refreshToken);
+      setToken(response.accessToken);
+      setRefreshToken(response.refreshToken);
+      setUser(nextUser);
+    } catch (error) {
+      await clearSession();
+      if (error instanceof ApiError) {
+        setLoginError(error.message);
+      } else {
+        setLoginError("Nao foi possivel concluir seu cadastro.");
+      }
+      throw error;
+    } finally {
+      setIsRegistering(false);
+    }
+  }
+
+  async function registerClient(
+    name: string,
+    email: string,
+    phone: string,
+    password: string
+  ) {
+    setIsRegistering(true);
+    setLoginError(null);
+
+    try {
+      const response = await authService.registerClient({
+        name,
+        email,
+        phone,
+        password
+      });
+      const nextUser = await authService.me(response.accessToken);
 
       await setStoredTokens(response.accessToken, response.refreshToken);
       setToken(response.accessToken);
@@ -217,6 +260,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   ) {
     if (!token) {
       throw new ApiError("Sessao do motoboy nao encontrada.", 401);
+    }
+
+    if (user?.role !== "COURIER") {
+      throw new ApiError("Este perfil nao pertence a um motoboy.", 403);
     }
 
     const nextUser = await courierService.updateMe(token, input);
@@ -263,10 +310,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const response = await authService.refresh(nextRefreshToken);
-      const nextUser = await courierService.me(response.accessToken);
+      const nextUser = await authService.me(response.accessToken);
 
-      if (nextUser.role !== "COURIER") {
-        throw new ApiError("Este app e exclusivo para motoboys.", 403);
+      if (nextUser.role === "STORE_ADMIN") {
+        throw new ApiError("Use o painel desktop para acessar a conta da empresa.", 403);
       }
 
       await setStoredTokens(response.accessToken, response.refreshToken);
@@ -294,7 +341,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       token,
       user,
       isAuthenticated: Boolean(token && user),
-      needsProfileCompletion: Boolean(token && user && !user.profileCompleted),
+      needsProfileCompletion: Boolean(
+        token &&
+          user &&
+          user.role === "COURIER" &&
+          !user.profileCompleted
+      ),
+      isCourier: user?.role === "COURIER",
+      isClient: user?.role === "CLIENT",
       isBootstrapping,
       isLoggingIn,
       isGoogleLoggingIn,
@@ -302,13 +356,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loginError,
       login,
       loginWithGoogle,
+      registerClient,
       registerCourier,
       updateCourierProfile,
       logout,
       logoutAll,
       refreshProfile
     }),
-    [token, user, isBootstrapping, isLoggingIn, isGoogleLoggingIn, isRegistering, loginError]
+    [
+      token,
+      user,
+      isBootstrapping,
+      isLoggingIn,
+      isGoogleLoggingIn,
+      isRegistering,
+      loginError
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

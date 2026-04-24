@@ -5,6 +5,7 @@ import { SentryModule } from "@sentry/nestjs/setup";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 
 import { AuthModule } from "./auth/auth.module";
+import { CatalogModule } from "./catalog/catalog.module";
 import { CouriersModule } from "./couriers/couriers.module";
 import { HealthController } from "./health.controller";
 import { InternalMetricsController } from "./common/observability/internal-metrics.controller";
@@ -35,6 +36,7 @@ import { UsersModule } from "./users/users.module";
       ]
     }),
     PrismaModule,
+    CatalogModule,
     CouriersModule,
     AuthModule,
     UsersModule,

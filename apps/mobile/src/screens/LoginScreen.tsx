@@ -12,14 +12,18 @@ import { mobileShadow, mobileTheme } from "../theme";
 
 type AuthStackParamList = {
   Login: undefined;
-  Register: undefined;
+  RegisterCourier: undefined;
+  RegisterClient: undefined;
 };
+
+type LoginMode = "courier" | "client";
 
 export function LoginScreen() {
   const isDevelopment = __DEV__;
   const navigation =
     useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
   const { isLoggingIn, isGoogleLoggingIn, login, loginWithGoogle, loginError } = useAuth();
+  const [mode, setMode] = useState<LoginMode>("courier");
   const [email, setEmail] = useState(isDevelopment ? "courier@example.com" : "");
   const [password, setPassword] = useState(isDevelopment ? "StrongPass123" : "");
   const [localError, setLocalError] = useState<string | null>(null);
@@ -81,13 +85,20 @@ export function LoginScreen() {
       await login(email.trim(), password);
     } catch {
       setLocalError(
-        "Nao foi possivel entrar agora. Verifique a conta do motoboy e a conexao com o backend."
+        mode === "courier"
+          ? "Nao foi possivel entrar agora. Verifique a conta do motoboy e a conexao com o backend."
+          : "Nao foi possivel entrar agora. Verifique a conta do cliente e a conexao com o backend."
       );
     }
   }
 
   async function handleGoogleLogin() {
     setLocalError(null);
+
+    if (mode !== "courier") {
+      setLocalError("O acesso com Google esta disponivel apenas para motoboys.");
+      return;
+    }
 
     if (!mobileEnv.googleAndroidClientId) {
       setLocalError("Google login ainda nao foi configurado para este app.");
@@ -110,9 +121,48 @@ export function LoginScreen() {
     <ScreenContainer scrollable>
       <View style={styles.container}>
         <SectionHeader
-          title="App do motoboy"
-          description="Entre com sua conta para ver pedidos disponiveis, acompanhar status e operar em empresas aprovadas."
+          title={mode === "courier" ? "App do motoboy" : "Area do cliente"}
+          description={
+            mode === "courier"
+              ? "Entre com sua conta para ver pedidos disponiveis, acompanhar status e operar em empresas aprovadas."
+              : "Entre como cliente para ver empresas cadastradas e consultar os produtos disponiveis."
+          }
         />
+
+        <View style={styles.modeToggle}>
+          <Pressable
+            onPress={() => {
+              setMode("courier");
+              setLocalError(null);
+            }}
+            style={[styles.modeChip, mode === "courier" ? styles.modeChipActive : undefined]}
+          >
+            <Text
+              style={[
+                styles.modeChipText,
+                mode === "courier" ? styles.modeChipTextActive : undefined
+              ]}
+            >
+              Quero ser motoboy
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => {
+              setMode("client");
+              setLocalError(null);
+            }}
+            style={[styles.modeChip, mode === "client" ? styles.modeChipActive : undefined]}
+          >
+            <Text
+              style={[
+                styles.modeChipText,
+                mode === "client" ? styles.modeChipTextActive : undefined
+              ]}
+            >
+              Sou cliente
+            </Text>
+          </Pressable>
+        </View>
 
         <View style={styles.heroStrip}>
           <View style={styles.heroChip}>
@@ -124,7 +174,7 @@ export function LoginScreen() {
           </Text>
         </View>
 
-        {!mobileEnv.googleAndroidClientId ? (
+        {mode === "courier" && !mobileEnv.googleAndroidClientId ? (
           <View style={styles.warningBox}>
             <Text style={styles.warningText}>
               Entrar com Google ainda nao foi configurado neste build do app.
@@ -178,29 +228,35 @@ export function LoginScreen() {
             </Text>
           </Pressable>
 
-          <Pressable
-            disabled={isGoogleLoggingIn}
-            onPress={() => void handleGoogleLogin()}
-            style={({ pressed }) => [
-              styles.googleButton,
-              pressed ? styles.buttonPressed : undefined,
-              isGoogleLoggingIn ? styles.buttonDisabled : undefined
-            ]}
-          >
-            <Text style={styles.googleButtonText}>
-              {isGoogleLoggingIn
-                ? "Conectando ao Google..."
-                : !request && mobileEnv.googleAndroidClientId
-                  ? "Preparando Google..."
-                  : "Entrar com Google"}
-            </Text>
-          </Pressable>
+          {mode === "courier" ? (
+            <Pressable
+              disabled={isGoogleLoggingIn}
+              onPress={() => void handleGoogleLogin()}
+              style={({ pressed }) => [
+                styles.googleButton,
+                pressed ? styles.buttonPressed : undefined,
+                isGoogleLoggingIn ? styles.buttonDisabled : undefined
+              ]}
+            >
+              <Text style={styles.googleButtonText}>
+                {isGoogleLoggingIn
+                  ? "Conectando ao Google..."
+                  : !request && mobileEnv.googleAndroidClientId
+                    ? "Preparando Google..."
+                    : "Entrar com Google"}
+              </Text>
+            </Pressable>
+          ) : null}
 
           <Pressable
-            onPress={() => navigation.navigate("Register")}
+            onPress={() =>
+              navigation.navigate(mode === "courier" ? "RegisterCourier" : "RegisterClient")
+            }
             style={styles.secondaryButton}
           >
-            <Text style={styles.secondaryText}>Criar conta de motoboy</Text>
+            <Text style={styles.secondaryText}>
+              {mode === "courier" ? "Criar conta de motoboy" : "Criar conta de cliente"}
+            </Text>
           </Pressable>
         </View>
       </View>
@@ -221,6 +277,32 @@ const styles = StyleSheet.create({
   },
   warningText: {
     color: mobileTheme.colors.warning
+  },
+  modeToggle: {
+    flexDirection: "row",
+    gap: 10
+  },
+  modeChip: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: mobileTheme.radii.pill,
+    backgroundColor: mobileTheme.colors.surfaceMuted,
+    borderWidth: 1,
+    borderColor: mobileTheme.colors.borderStrong,
+    alignItems: "center"
+  },
+  modeChipActive: {
+    backgroundColor: mobileTheme.colors.primaryStrong,
+    borderColor: mobileTheme.colors.primaryStrong
+  },
+  modeChipText: {
+    color: mobileTheme.colors.textMuted,
+    fontWeight: "800",
+    fontSize: 13
+  },
+  modeChipTextActive: {
+    color: "#ffffff"
   },
   heroStrip: {
     gap: 10,

@@ -33,13 +33,13 @@ interface RealtimeContextValue {
 const RealtimeContext = createContext<RealtimeContextValue | null>(null);
 
 export function RealtimeProvider({ children }: { children: ReactNode }) {
-  const { token } = useAuth();
+  const { token, isCourier } = useAuth();
   const socketRef = useRef<Socket | null>(null);
   const listenersRef = useRef(new Set<OrderEventListener>());
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    if (!token) {
+    if (!token || !isCourier) {
       socketRef.current?.disconnect();
       socketRef.current = null;
       setIsConnected(false);
@@ -89,7 +89,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
 
       setIsConnected(false);
     };
-  }, [token]);
+  }, [token, isCourier]);
 
   const value = useMemo<RealtimeContextValue>(
     () => ({

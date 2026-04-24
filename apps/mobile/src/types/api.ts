@@ -3,7 +3,7 @@ export interface AuthUser {
   name: string;
   email: string;
   phone: string;
-  role: "STORE_ADMIN" | "COURIER";
+  role: "STORE_ADMIN" | "COURIER" | "CLIENT";
   active: boolean;
   profileCompleted?: boolean;
   courierProfile?: CourierProfile | null;
@@ -32,6 +32,26 @@ export interface Store {
   active: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export type ClientCatalogStore = Store;
+
+export interface Product {
+  id: string;
+  storeId: string;
+  name: string;
+  description?: string | null;
+  price: number;
+  category: string;
+  imageUrl?: string | null;
+  available: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StoreCatalogResponse {
+  store: Store;
+  products: Product[];
 }
 
 export type StoreCourierLinkStatus =

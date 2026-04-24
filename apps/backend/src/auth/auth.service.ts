@@ -19,6 +19,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { LoginDto } from "./dto/login.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
 import { GoogleMobileAuthDto } from "./dto/google-mobile-auth.dto";
+import { RegisterClientDto } from "./dto/register-client.dto";
 import { RegisterDto } from "./dto/register.dto";
 import { RegisterStoreQuickDto } from "./dto/register-store-quick.dto";
 
@@ -154,6 +155,31 @@ export class AuthService {
       updatedAt: courier.updatedAt,
       passwordHash
     } as User, context, "register_courier");
+  }
+
+  async registerClient(dto: RegisterClientDto, context?: AuthRequestContext) {
+    const normalizedEmail = dto.email.toLowerCase();
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail }
+    });
+
+    if (existingUser) {
+      throw new BadRequestException("Email ja cadastrado");
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+    const user = await this.prisma.user.create({
+      data: {
+        name: dto.name,
+        email: normalizedEmail,
+        passwordHash,
+        phone: dto.phone,
+        role: UserRole.CLIENT,
+        active: true
+      }
+    });
+
+    return this.buildAuthResponse(user, context, "register_client");
   }
 
   async login(dto: LoginDto, context?: AuthRequestContext) {

@@ -7,6 +7,7 @@ import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { LoginDto } from "./dto/login.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
 import { GoogleMobileAuthDto } from "./dto/google-mobile-auth.dto";
+import { RegisterClientDto } from "./dto/register-client.dto";
 import { RegisterCourierDto } from "./dto/register-courier.dto";
 import { RegisterDto } from "./dto/register.dto";
 import { RegisterStoreQuickDto } from "./dto/register-store-quick.dto";
@@ -38,6 +39,12 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   registerCourier(@Body() dto: RegisterCourierDto, @Req() request: RequestLike) {
     return this.authService.registerCourier(dto, this.getRequestContext(request));
+  }
+
+  @Post("register/client")
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  registerClient(@Body() dto: RegisterClientDto, @Req() request: RequestLike) {
+    return this.authService.registerClient(dto, this.getRequestContext(request));
   }
 
   @Post("login")

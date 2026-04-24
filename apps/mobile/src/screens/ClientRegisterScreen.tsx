@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -14,10 +14,10 @@ type AuthStackParamList = {
   RegisterClient: undefined;
 };
 
-export function RegisterScreen() {
+export function ClientRegisterScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
-  const { isRegistering, loginError, registerCourier } = useAuth();
+  const { isRegistering, loginError, registerClient } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -44,7 +44,7 @@ export function RegisterScreen() {
     }
 
     try {
-      await registerCourier(name.trim(), email.trim(), phone.trim(), password);
+      await registerClient(name.trim(), email.trim(), phone.trim(), password);
     } catch {
       setLocalError("Nao foi possivel concluir o cadastro agora.");
     }
@@ -54,17 +54,9 @@ export function RegisterScreen() {
     <ScreenContainer scrollable>
       <View style={styles.container}>
         <SectionHeader
-          title="Cadastro do motoboy"
-          description="Crie sua conta para entrar no app e completar o perfil operacional em seguida."
+          title="Cadastro do cliente"
+          description="Crie sua conta para navegar pelas empresas e consultar os produtos no app."
         />
-
-        <View style={styles.tipBox}>
-          <Text style={styles.tipTitle}>Cadastro em poucos passos</Text>
-          <Text style={styles.tipText}>
-            Depois desta etapa, voce ainda completa cidade, veiculo e dados de
-            apoio para ficar pronto para operar.
-          </Text>
-        </View>
 
         <View style={styles.card}>
           <Field label="Nome completo" value={name} onChangeText={setName} />
@@ -114,10 +106,7 @@ export function RegisterScreen() {
             </Text>
           </Pressable>
 
-          <Pressable
-            onPress={() => navigation.goBack()}
-            style={styles.secondaryButton}
-          >
+          <Pressable onPress={() => navigation.goBack()} style={styles.secondaryButton}>
             <Text style={styles.secondaryText}>Ja tenho conta</Text>
           </Pressable>
         </View>
@@ -160,22 +149,6 @@ function Field({
 const styles = StyleSheet.create({
   container: {
     gap: 24
-  },
-  tipBox: {
-    gap: 8,
-    padding: 18,
-    borderRadius: mobileTheme.radii.md,
-    backgroundColor: mobileTheme.colors.surfaceStrong,
-    borderWidth: 1,
-    borderColor: mobileTheme.colors.borderStrong
-  },
-  tipTitle: {
-    color: mobileTheme.colors.text,
-    fontWeight: "800"
-  },
-  tipText: {
-    color: mobileTheme.colors.textMuted,
-    lineHeight: 21
   },
   card: {
     backgroundColor: mobileTheme.colors.surface,

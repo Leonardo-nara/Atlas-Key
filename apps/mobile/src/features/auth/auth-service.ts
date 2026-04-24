@@ -14,6 +14,17 @@ export const authService = {
       body: JSON.stringify({ idToken })
     });
   },
+  registerClient(input: {
+    name: string;
+    email: string;
+    phone: string;
+    password: string;
+  }) {
+    return http<AuthResponse>("/auth/register/client", {
+      method: "POST",
+      body: JSON.stringify(input)
+    });
+  },
   refresh(refreshToken: string) {
     return http<AuthResponse>("/auth/refresh", {
       method: "POST",

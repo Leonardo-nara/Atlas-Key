@@ -187,6 +187,12 @@ function canConfirmOrder(order: Order) {
   );
 }
 
+function parseMoneyDraft(value: string) {
+  const parsed = Number(value.replace(",", ".") || "0");
+
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 export function OrdersPage() {
   const { token } = useAuth();
   const { isConnected, subscribeToOrderEvents } = useRealtime();
@@ -400,7 +406,7 @@ export function OrdersPage() {
       return;
     }
 
-    const deliveryFee = Number(deliveryFeeDraft.replace(",", ".") || "0");
+    const deliveryFee = parseMoneyDraft(deliveryFeeDraft);
 
     if (!Number.isFinite(deliveryFee) || deliveryFee < 0) {
       setConfirmError("Informe uma taxa de entrega válida.");
@@ -760,29 +766,45 @@ export function OrdersPage() {
             <div className="order-totals">
               <span>Subtotal: R$ {confirmModalOrder.subtotal.toFixed(2)}</span>
               <span>
-                Entrega: R$ {Number(deliveryFeeDraft.replace(",", ".") || "0").toFixed(2)}
+                Entrega: R$ {parseMoneyDraft(deliveryFeeDraft).toFixed(2)}
               </span>
               <strong>
                 Total: R${" "}
-                {(
-                  confirmModalOrder.subtotal +
-                  Number(deliveryFeeDraft.replace(",", ".") || "0")
-                ).toFixed(2)}
+                {(confirmModalOrder.subtotal + parseMoneyDraft(deliveryFeeDraft)).toFixed(2)}
               </strong>
             </div>
 
             {confirmModalOrder.fulfillmentType === "DELIVERY" ? (
-              <label className="field">
-                <span>Taxa de entrega</span>
-                <input
-                  disabled={Boolean(actingOrderId)}
-                  min="0"
-                  onChange={(event) => setDeliveryFeeDraft(event.target.value)}
-                  step="0.01"
-                  type="number"
-                  value={deliveryFeeDraft}
-                />
-              </label>
+              <div className="delivery-fee-panel">
+                <label className="field">
+                  <span>Taxa de entrega</span>
+                  <input
+                    disabled={Boolean(actingOrderId)}
+                    min="0"
+                    onChange={(event) => setDeliveryFeeDraft(event.target.value)}
+                    placeholder="Ex.: 8,00"
+                    step="0.01"
+                    type="number"
+                    value={deliveryFeeDraft}
+                  />
+                </label>
+                <div className="fee-suggestions">
+                  {[5, 8, 10, 12].map((value) => (
+                    <button
+                      className="ghost-button"
+                      disabled={Boolean(actingOrderId)}
+                      key={value}
+                      onClick={() => setDeliveryFeeDraft(value.toFixed(2))}
+                      type="button"
+                    >
+                      R$ {value.toFixed(2)}
+                    </button>
+                  ))}
+                </div>
+                <div className="feedback feedback-warning">
+                  Informe a taxa combinada para este pedido. O cliente vera o total atualizado assim que confirmar.
+                </div>
+              </div>
             ) : (
               <div className="feedback feedback-success">
                 Pedido marcado para retirada na loja. Nenhuma taxa de entrega será cobrada.

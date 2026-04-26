@@ -734,6 +734,17 @@ p {
   justify-content: flex-end;
 }
 
+.delivery-fee-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.fee-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .couriers-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }

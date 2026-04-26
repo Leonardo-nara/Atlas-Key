@@ -7,6 +7,19 @@ export interface AuthUser {
   active: boolean;
   profileCompleted?: boolean;
   courierProfile?: CourierProfile | null;
+  clientAddress?: ClientAddress | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ClientAddress {
+  id: string;
+  street: string;
+  number: string;
+  district: string;
+  complement?: string | null;
+  city: string;
+  reference?: string | null;
   createdAt: string;
   updatedAt: string;
 }

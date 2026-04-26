@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Pressable,
   ScrollView,
@@ -11,10 +11,12 @@ import {
 import { ScreenContainer } from "../components/ScreenContainer";
 import { SectionHeader } from "../components/SectionHeader";
 import { useAuth } from "../features/auth/auth-context";
+import { authService } from "../features/auth/auth-service";
 import { useCart } from "../features/cart/cart-context";
 import { ordersService } from "../features/orders/orders-service";
 import { ApiError } from "../lib/http";
 import { mobileShadow, mobileTheme } from "../theme";
+import type { ClientAddress } from "../types/api";
 
 export function ClientCartScreen() {
   const { token, user } = useAuth();
@@ -28,6 +30,9 @@ export function ClientCartScreen() {
     clearCart
   } = useCart();
   const [fulfillmentType, setFulfillmentType] = useState<"DELIVERY" | "PICKUP">("DELIVERY");
+  const [savedAddress, setSavedAddress] = useState<ClientAddress | null>(null);
+  const [addressMode, setAddressMode] = useState<"saved" | "other">("other");
+  const [saveAddress, setSaveAddress] = useState(false);
   const [street, setStreet] = useState("");
   const [number, setNumber] = useState("");
   const [district, setDistrict] = useState("");
@@ -38,6 +43,60 @@ export function ClientCartScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!token || user?.role !== "CLIENT") {
+      return;
+    }
+
+    let active = true;
+    const authToken = token;
+
+    async function loadSavedAddress() {
+      try {
+        const address = await authService.clientAddress(authToken);
+
+        if (!active) {
+          return;
+        }
+
+        setSavedAddress(address);
+
+        if (address) {
+          applyAddress(address);
+          setAddressMode("saved");
+        }
+      } catch {
+        if (active) {
+          setSavedAddress(null);
+        }
+      }
+    }
+
+    void loadSavedAddress();
+
+    return () => {
+      active = false;
+    };
+  }, [token, user?.role]);
+
+  function applyAddress(address: ClientAddress) {
+    setStreet(address.street);
+    setNumber(address.number);
+    setDistrict(address.district);
+    setCity(address.city);
+    setComplement(address.complement ?? "");
+    setReference(address.reference ?? "");
+  }
+
+  function clearAddressDraft() {
+    setStreet("");
+    setNumber("");
+    setDistrict("");
+    setCity("");
+    setComplement("");
+    setReference("");
+  }
 
   async function handleCheckout() {
     setError(null);
@@ -64,6 +123,20 @@ export function ClientCartScreen() {
     setSubmitting(true);
 
     try {
+      if (fulfillmentType === "DELIVERY" && saveAddress) {
+        const nextAddress = await authService.updateClientAddress(token, {
+          street: street.trim(),
+          number: number.trim(),
+          district: district.trim(),
+          complement: complement.trim() || undefined,
+          city: city.trim(),
+          reference: reference.trim() || undefined
+        });
+
+        setSavedAddress(nextAddress);
+        setAddressMode("saved");
+      }
+
       for (const group of groups) {
         await ordersService.createClient(token, {
           storeId: group.store.id,
@@ -89,12 +162,9 @@ export function ClientCartScreen() {
       }
 
       clearCart();
-      setStreet("");
-      setNumber("");
-      setDistrict("");
-      setCity("");
-      setComplement("");
-      setReference("");
+      if (!saveAddress) {
+        clearAddressDraft();
+      }
       setNotes("");
       setSuccess(
         groups.length > 1
@@ -215,6 +285,48 @@ export function ClientCartScreen() {
 
           {fulfillmentType === "DELIVERY" ? (
             <View style={styles.addressGrid}>
+              <View style={styles.addressChoiceCard}>
+                <Text style={styles.addressChoiceTitle}>Endereco de entrega</Text>
+                {savedAddress ? (
+                  <Pressable
+                    onPress={() => {
+                      applyAddress(savedAddress);
+                      setAddressMode("saved");
+                    }}
+                    style={[
+                      styles.addressChoice,
+                      addressMode === "saved" ? styles.addressChoiceActive : undefined
+                    ]}
+                  >
+                    <Text style={styles.addressChoiceText}>
+                      Usar endereco salvo
+                    </Text>
+                    <Text style={styles.addressChoiceMeta}>
+                      {savedAddress.street}, {savedAddress.number} - {savedAddress.district}
+                    </Text>
+                  </Pressable>
+                ) : (
+                  <Text style={styles.feeText}>
+                    Voce ainda nao tem endereco salvo. Preencha abaixo e salve para proximas compras.
+                  </Text>
+                )}
+                <Pressable
+                  onPress={() => {
+                    setAddressMode("other");
+                    clearAddressDraft();
+                  }}
+                  style={[
+                    styles.addressChoice,
+                    addressMode === "other" ? styles.addressChoiceActive : undefined
+                  ]}
+                >
+                  <Text style={styles.addressChoiceText}>Entregar em outro endereco</Text>
+                  <Text style={styles.addressChoiceMeta}>
+                    Preencha ou edite os campos antes de finalizar.
+                  </Text>
+                </Pressable>
+              </View>
+
               <TextInput
                 onChangeText={setStreet}
                 placeholder="Rua"
@@ -258,6 +370,17 @@ export function ClientCartScreen() {
                 style={styles.input}
                 value={reference}
               />
+              <Pressable
+                onPress={() => setSaveAddress((current) => !current)}
+                style={styles.checkboxRow}
+              >
+                <View style={[styles.checkbox, saveAddress ? styles.checkboxActive : undefined]}>
+                  {saveAddress ? <Text style={styles.checkboxMark}>OK</Text> : null}
+                </View>
+                <Text style={styles.checkboxText}>
+                  Salvar este endereco para proximas compras
+                </Text>
+              </Pressable>
             </View>
           ) : (
             <View style={styles.pickupBox}>
@@ -281,9 +404,15 @@ export function ClientCartScreen() {
             <Text style={styles.totalLabel}>Total dos produtos</Text>
             <Text style={styles.totalValue}>R$ {total.toFixed(2)}</Text>
           </View>
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>Taxa de entrega</Text>
+            <Text style={styles.pendingFee}>
+              {fulfillmentType === "DELIVERY" ? "Aguardando loja" : "R$ 0,00"}
+            </Text>
+          </View>
           <Text style={styles.feeText}>
             {fulfillmentType === "DELIVERY"
-              ? "A taxa de entrega sera informada pela empresa ao confirmar o pedido."
+              ? "A loja confirma o pedido e informa a taxa antes de seguir para entrega."
               : "Retirada na loja nao cobra taxa de entrega."}
           </Text>
 
@@ -440,6 +569,38 @@ const styles = StyleSheet.create({
   addressGrid: {
     gap: 10
   },
+  addressChoiceCard: {
+    gap: 10,
+    padding: 14,
+    borderRadius: mobileTheme.radii.md,
+    backgroundColor: mobileTheme.colors.surfaceStrong,
+    borderWidth: 1,
+    borderColor: mobileTheme.colors.border
+  },
+  addressChoiceTitle: {
+    color: mobileTheme.colors.text,
+    fontWeight: "800"
+  },
+  addressChoice: {
+    gap: 4,
+    padding: 12,
+    borderRadius: mobileTheme.radii.sm,
+    backgroundColor: mobileTheme.colors.surface,
+    borderWidth: 1,
+    borderColor: mobileTheme.colors.border
+  },
+  addressChoiceActive: {
+    borderColor: mobileTheme.colors.primaryStrong,
+    backgroundColor: mobileTheme.colors.primarySoft
+  },
+  addressChoiceText: {
+    color: mobileTheme.colors.text,
+    fontWeight: "800"
+  },
+  addressChoiceMeta: {
+    color: mobileTheme.colors.textMuted,
+    lineHeight: 19
+  },
   segmented: {
     flexDirection: "row",
     backgroundColor: mobileTheme.colors.surfaceStrong,
@@ -488,9 +649,43 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     fontSize: 18
   },
+  pendingFee: {
+    color: mobileTheme.colors.warning,
+    fontWeight: "900"
+  },
   feeText: {
     color: mobileTheme.colors.textMuted,
     lineHeight: 20
+  },
+  checkboxRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 4
+  },
+  checkbox: {
+    width: 28,
+    height: 28,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: mobileTheme.colors.borderStrong,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: mobileTheme.colors.surfaceMuted
+  },
+  checkboxActive: {
+    borderColor: mobileTheme.colors.primaryStrong,
+    backgroundColor: mobileTheme.colors.primaryStrong
+  },
+  checkboxMark: {
+    color: "#ffffff",
+    fontWeight: "900",
+    fontSize: 10
+  },
+  checkboxText: {
+    flex: 1,
+    color: mobileTheme.colors.text,
+    fontWeight: "700"
   },
   errorText: {
     color: mobileTheme.colors.danger,

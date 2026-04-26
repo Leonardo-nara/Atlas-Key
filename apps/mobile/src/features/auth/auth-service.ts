@@ -1,5 +1,10 @@
 import { http } from "../../lib/http";
-import type { AuthResponse, AuthSession, AuthUser } from "../../types/api";
+import type {
+  AuthResponse,
+  AuthSession,
+  AuthUser,
+  ClientAddress
+} from "../../types/api";
 
 export const authService = {
   login(email: string, password: string) {
@@ -48,6 +53,24 @@ export const authService = {
   me(token: string) {
     return http<AuthUser>("/users/me", {
       token
+    });
+  },
+  clientAddress(token: string) {
+    return http<ClientAddress | null>("/users/me/address", {
+      token
+    });
+  },
+  updateClientAddress(
+    token: string,
+    input: Pick<
+      ClientAddress,
+      "street" | "number" | "district" | "complement" | "city" | "reference"
+    >
+  ) {
+    return http<ClientAddress>("/users/me/address", {
+      method: "PATCH",
+      token,
+      body: JSON.stringify(input)
     });
   }
 };

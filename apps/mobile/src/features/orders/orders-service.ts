@@ -24,7 +24,14 @@ export const ordersService = {
     token: string,
     input: {
       storeId: string;
-      customerAddress: string;
+      fulfillmentType: "DELIVERY" | "PICKUP";
+      customerAddress?: string;
+      addressStreet?: string;
+      addressNumber?: string;
+      addressDistrict?: string;
+      addressComplement?: string;
+      addressCity?: string;
+      addressReference?: string;
       notes?: string;
       items: Array<{ productId: string; quantity: number }>;
     }

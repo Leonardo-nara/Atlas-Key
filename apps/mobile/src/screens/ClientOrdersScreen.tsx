@@ -18,6 +18,32 @@ import { ApiError } from "../lib/http";
 import { mobileTheme } from "../theme";
 import type { Order } from "../types/api";
 
+function clientStatusText(order: Order) {
+  const status = order.statusLabel ?? order.status.toLowerCase();
+
+  if (status === "awaiting_store_confirmation") {
+    return "Aguardando confirmação da loja";
+  }
+
+  if (status === "confirmed" || status === "pending") {
+    return "Confirmado pela loja";
+  }
+
+  if (status === "accepted") {
+    return "Motoboy aceitou";
+  }
+
+  if (status === "picked_up") {
+    return "Saiu para entrega";
+  }
+
+  if (status === "delivered") {
+    return "Entregue";
+  }
+
+  return "Cancelado";
+}
+
 export function ClientOrdersScreen() {
   const { token } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -89,7 +115,19 @@ export function ClientOrdersScreen() {
           ) : null}
 
           {orders.map((order) => (
-            <OrderCard key={order.id} order={order} />
+            <View key={order.id} style={styles.clientOrderCard}>
+              <OrderCard order={order} />
+              <View style={styles.statusBox}>
+                <Text style={styles.statusTitle}>{clientStatusText(order)}</Text>
+                <Text style={styles.statusText}>
+                  {order.fulfillmentType === "PICKUP"
+                    ? "Retirada na loja"
+                    : "Entrega"}
+                  {" - "}
+                  Total atual R$ {order.total.toFixed(2)}
+                </Text>
+              </View>
+            </View>
           ))}
 
           {orders.length > 0 ? (
@@ -150,6 +188,24 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: mobileTheme.colors.textMuted,
     lineHeight: 21
+  },
+  clientOrderCard: {
+    gap: 10
+  },
+  statusBox: {
+    padding: 14,
+    borderRadius: mobileTheme.radii.sm,
+    backgroundColor: mobileTheme.colors.primarySoft,
+    borderWidth: 1,
+    borderColor: mobileTheme.colors.borderStrong
+  },
+  statusTitle: {
+    color: mobileTheme.colors.primaryStrong,
+    fontWeight: "800",
+    marginBottom: 4
+  },
+  statusText: {
+    color: mobileTheme.colors.textMuted
   },
   pagination: {
     marginTop: 8,

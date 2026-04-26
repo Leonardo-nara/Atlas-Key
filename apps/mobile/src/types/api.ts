@@ -124,9 +124,16 @@ export interface Order {
   storeId: string;
   courierId?: string | null;
   clientId?: string | null;
+  fulfillmentType?: "DELIVERY" | "PICKUP";
   customerName: string;
   customerPhone: string;
   customerAddress: string;
+  addressStreet?: string | null;
+  addressNumber?: string | null;
+  addressDistrict?: string | null;
+  addressComplement?: string | null;
+  addressCity?: string | null;
+  addressReference?: string | null;
   subtotal: number;
   deliveryFee: number;
   total: number;
@@ -134,6 +141,7 @@ export interface Order {
   statusLabel?: string;
   notes?: string | null;
   cancelReason?: string | null;
+  storeConfirmedAt?: string | null;
   createdAt: string;
   updatedAt: string;
   items: OrderItem[];

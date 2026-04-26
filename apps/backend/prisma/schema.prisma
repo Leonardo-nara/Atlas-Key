@@ -41,6 +41,11 @@ enum OrderStatus {
   CANCELLED
 }
 
+enum OrderFulfillmentType {
+  DELIVERY
+  PICKUP
+}
+
 enum OrderEventType {
   CREATED
   ACCEPTED
@@ -204,15 +209,23 @@ model Order {
   storeId         String
   courierId       String?
   clientId        String?
+  fulfillmentType OrderFulfillmentType @default(DELIVERY)
   customerName    String
   customerPhone   String
   customerAddress String
+  addressStreet   String?
+  addressNumber   String?
+  addressDistrict String?
+  addressComplement String?
+  addressCity     String?
+  addressReference String?
   subtotal        Decimal     @db.Decimal(10, 2)
   deliveryFee     Decimal     @db.Decimal(10, 2)
   total           Decimal     @db.Decimal(10, 2)
   status          OrderStatus @default(PENDING)
   notes           String?
   cancelReason    String?
+  storeConfirmedAt DateTime?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 

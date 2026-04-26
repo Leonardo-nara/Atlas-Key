@@ -7,6 +7,10 @@ function formatOrderStatus(order: Order) {
   const status = order.statusLabel ?? order.status.toLowerCase();
 
   switch (status) {
+    case "awaiting_store_confirmation":
+      return "Aguardando loja";
+    case "confirmed":
+      return "Confirmado";
     case "pending":
       return "Pendente";
     case "accepted":

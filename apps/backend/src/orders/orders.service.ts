@@ -8,6 +8,7 @@ import {
   Order,
   OrderEvent,
   OrderEventType,
+  OrderFulfillmentType,
   OrderItem,
   OrderStatus as PrismaOrderStatus,
   Prisma,
@@ -21,7 +22,9 @@ import { OrdersRealtimeService } from "../realtime/orders-realtime.service";
 import { StoreCourierLinkStatus } from "../store-courier-links/enums/store-courier-link-status.enum";
 import { StoresService } from "../stores/stores.service";
 import { CancelOrderDto } from "./dto/cancel-order.dto";
+import { ConfirmOrderDto } from "./dto/confirm-order.dto";
 import { CreateClientOrderDto } from "./dto/create-client-order.dto";
+import { ClientOrderFulfillmentInput } from "./dto/create-client-order.dto";
 import { CreateOrderDto } from "./dto/create-order.dto";
 import { ListOrdersQueryDto } from "./dto/list-orders-query.dto";
 import { OrderAuditEvent } from "./order-audit-event.interface";
@@ -211,15 +214,28 @@ export class OrdersService {
     );
     const deliveryFee = 0;
     const total = subtotal + deliveryFee;
+    const fulfillmentType = dto.fulfillmentType as OrderFulfillmentType;
+    const customerAddress = this.buildCustomerAddress(dto);
+
+    if (fulfillmentType === OrderFulfillmentType.DELIVERY && !customerAddress) {
+      throw new BadRequestException("Endereco de entrega obrigatorio");
+    }
 
     const order = await this.prisma.$transaction(async (transaction) => {
       const createdOrder = await transaction.order.create({
         data: {
           storeId: store.id,
           clientId: client.id,
+          fulfillmentType,
           customerName: client.name,
           customerPhone: client.phone,
-          customerAddress: dto.customerAddress,
+          customerAddress,
+          addressStreet: dto.addressStreet?.trim() || null,
+          addressNumber: dto.addressNumber?.trim() || null,
+          addressDistrict: dto.addressDistrict?.trim() || null,
+          addressComplement: dto.addressComplement?.trim() || null,
+          addressCity: dto.addressCity?.trim() || null,
+          addressReference: dto.addressReference?.trim() || null,
           subtotal: new Prisma.Decimal(subtotal),
           deliveryFee: new Prisma.Decimal(deliveryFee),
           total: new Prisma.Decimal(total),
@@ -356,7 +372,11 @@ export class OrdersService {
           in: approvedStoreIds
         },
         courierId: null,
-        status: OrderStatus.PENDING
+        status: OrderStatus.PENDING,
+        OR: [
+          { clientId: null },
+          { storeConfirmedAt: { not: null } }
+        ]
       },
       query
     );
@@ -528,6 +548,77 @@ export class OrdersService {
     return serializedOrder;
   }
 
+  async confirmOrder(
+    orderId: string,
+    ownerUserId: string,
+    role: UserRole,
+    dto: ConfirmOrderDto
+  ) {
+    const store = await this.storesService.getStoreByOwner(ownerUserId, role);
+
+    const updatedOrder = await this.prisma.$transaction(async (transaction) => {
+      const order = await transaction.order.findUnique({
+        where: { id: orderId },
+        include: {
+          items: true,
+          store: true
+        }
+      });
+
+      if (!order || order.storeId !== store.id) {
+        throw new NotFoundException("Pedido nao encontrado para a loja autenticada");
+      }
+
+      if (order.status !== PrismaOrderStatus.PENDING) {
+        throw new BadRequestException(
+          "Somente pedidos pendentes podem ser confirmados"
+        );
+      }
+
+      if (order.storeConfirmedAt) {
+        throw new BadRequestException("Pedido ja foi confirmado pela loja");
+      }
+
+      const deliveryFee =
+        order.fulfillmentType === OrderFulfillmentType.PICKUP
+          ? 0
+          : dto.deliveryFee ?? Number(order.deliveryFee);
+      const total = Number(order.subtotal) + deliveryFee;
+
+      const updated = await transaction.order.update({
+        where: { id: orderId },
+        data: {
+          deliveryFee: new Prisma.Decimal(deliveryFee),
+          total: new Prisma.Decimal(total),
+          storeConfirmedAt: new Date()
+        },
+        include: {
+          items: true,
+          store: true
+        }
+      });
+
+      await transaction.orderEvent.create({
+        data: {
+          orderId,
+          type: OrderEventType.ACCEPTED,
+          actorUserId: ownerUserId,
+          actorRole: PrismaUserRole.STORE_ADMIN,
+          metadata: {
+            deliveryFee
+          }
+        }
+      });
+
+      return updated;
+    });
+
+    const serializedOrder = this.serializeOrder(updatedOrder);
+    this.ordersRealtimeService.emitOrderStatusUpdated(serializedOrder);
+
+    return serializedOrder;
+  }
+
   async cancelOrder(
     orderId: string,
     ownerUserId: string,
@@ -611,6 +702,23 @@ export class OrdersService {
     if (role !== UserRole.CLIENT) {
       throw new ForbiddenException("Apenas CLIENT pode acessar este fluxo");
     }
+  }
+
+  private buildCustomerAddress(dto: CreateClientOrderDto) {
+    if (dto.fulfillmentType === ClientOrderFulfillmentInput.PICKUP) {
+      return dto.customerAddress?.trim() || "Retirada na loja";
+    }
+
+    const parts = [
+      dto.addressStreet?.trim(),
+      dto.addressNumber?.trim(),
+      dto.addressDistrict?.trim(),
+      dto.addressCity?.trim()
+    ].filter(Boolean);
+
+    return parts.length > 0
+      ? parts.join(", ")
+      : dto.customerAddress?.trim() ?? "";
   }
 
   private async getApprovedStoreIdsForCourier(courierUserId: string) {
@@ -735,7 +843,7 @@ export class OrdersService {
       subtotal: Number(order.subtotal),
       deliveryFee: Number(order.deliveryFee),
       total: Number(order.total),
-      statusLabel: this.serializeCourierStatus(order.status as OrderStatus),
+      statusLabel: this.serializeOrderStatus(order),
       items: order.items.map((item) => ({
         ...item,
         unitPrice: Number(item.unitPrice),
@@ -789,5 +897,25 @@ export class OrdersService {
     }
 
     return status.toLowerCase();
+  }
+
+  private serializeOrderStatus(order: Order) {
+    if (
+      order.status === OrderStatus.PENDING &&
+      order.clientId &&
+      !order.storeConfirmedAt
+    ) {
+      return "awaiting_store_confirmation";
+    }
+
+    if (
+      order.status === OrderStatus.PENDING &&
+      order.clientId &&
+      order.storeConfirmedAt
+    ) {
+      return "confirmed";
+    }
+
+    return this.serializeCourierStatus(order.status as OrderStatus);
   }
 }

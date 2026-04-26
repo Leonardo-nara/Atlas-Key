@@ -1,6 +1,7 @@
 import {
   ArrayMinSize,
   IsArray,
+  IsEnum,
   IsOptional,
   IsString,
   MaxLength,
@@ -11,16 +12,54 @@ import { Type } from "class-transformer";
 
 import { CreateClientOrderItemDto } from "./create-client-order-item.dto";
 
+export enum ClientOrderFulfillmentInput {
+  DELIVERY = "DELIVERY",
+  PICKUP = "PICKUP"
+}
+
 export class CreateClientOrderDto {
   @IsString()
   @MinLength(10)
   @MaxLength(40)
   storeId!: string;
 
+  @IsEnum(ClientOrderFulfillmentInput)
+  fulfillmentType!: ClientOrderFulfillmentInput;
+
+  @IsOptional()
   @IsString()
-  @MinLength(5)
   @MaxLength(240)
-  customerAddress!: string;
+  customerAddress?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  addressStreet?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  addressNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  addressDistrict?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  addressComplement?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  addressCity?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  addressReference?: string;
 
   @IsOptional()
   @IsString()

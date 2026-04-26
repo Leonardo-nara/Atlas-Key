@@ -21,6 +21,10 @@ export interface CancelOrderInput {
   reason?: string;
 }
 
+export interface ConfirmOrderInput {
+  deliveryFee?: number;
+}
+
 export const ordersService = {
   list(
     token: string,
@@ -64,6 +68,13 @@ export const ordersService = {
   },
   cancel(token: string, orderId: string, input: CancelOrderInput) {
     return http<Order>(`/orders/${orderId}/cancel`, {
+      method: "PATCH",
+      token,
+      body: JSON.stringify(input)
+    });
+  },
+  confirm(token: string, orderId: string, input: ConfirmOrderInput) {
+    return http<Order>(`/orders/${orderId}/confirm`, {
       method: "PATCH",
       token,
       body: JSON.stringify(input)

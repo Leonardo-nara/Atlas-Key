@@ -16,6 +16,7 @@ import { UserRole } from "../common/enums/user-role.enum";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { CancelOrderDto } from "./dto/cancel-order.dto";
+import { ConfirmOrderDto } from "./dto/confirm-order.dto";
 import { CreateClientOrderDto } from "./dto/create-client-order.dto";
 import { CreateOrderDto } from "./dto/create-order.dto";
 import { ListOrdersQueryDto } from "./dto/list-orders-query.dto";
@@ -64,6 +65,17 @@ export class OrdersController {
     @Query() query: ListOrdersQueryDto
   ) {
     return this.ordersService.list(user.sub, user.role, query);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.STORE_ADMIN)
+  @Patch(":orderId/confirm")
+  confirm(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("orderId") orderId: string,
+    @Body() dto: ConfirmOrderDto
+  ) {
+    return this.ordersService.confirmOrder(orderId, user.sub, user.role, dto);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

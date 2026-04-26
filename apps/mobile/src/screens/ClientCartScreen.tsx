@@ -27,7 +27,13 @@ export function ClientCartScreen() {
     removeItem,
     clearCart
   } = useCart();
-  const [address, setAddress] = useState("");
+  const [fulfillmentType, setFulfillmentType] = useState<"DELIVERY" | "PICKUP">("DELIVERY");
+  const [street, setStreet] = useState("");
+  const [number, setNumber] = useState("");
+  const [district, setDistrict] = useState("");
+  const [city, setCity] = useState("");
+  const [complement, setComplement] = useState("");
+  const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,8 +53,11 @@ export function ClientCartScreen() {
       return;
     }
 
-    if (address.trim().length < 5) {
-      setError("Informe o endereco de entrega ou retirada.");
+    if (
+      fulfillmentType === "DELIVERY" &&
+      (!street.trim() || !number.trim() || !district.trim() || !city.trim())
+    ) {
+      setError("Informe rua, numero, bairro e cidade para entrega.");
       return;
     }
 
@@ -58,7 +67,19 @@ export function ClientCartScreen() {
       for (const group of groups) {
         await ordersService.createClient(token, {
           storeId: group.store.id,
-          customerAddress: address.trim(),
+          fulfillmentType,
+          customerAddress:
+            fulfillmentType === "PICKUP"
+              ? "Retirada na loja"
+              : [street.trim(), number.trim(), district.trim(), city.trim()]
+                  .filter(Boolean)
+                  .join(", "),
+          addressStreet: street.trim() || undefined,
+          addressNumber: number.trim() || undefined,
+          addressDistrict: district.trim() || undefined,
+          addressComplement: complement.trim() || undefined,
+          addressCity: city.trim() || undefined,
+          addressReference: reference.trim() || undefined,
           notes: notes.trim() || undefined,
           items: group.items.map((item) => ({
             productId: item.product.id,
@@ -68,7 +89,12 @@ export function ClientCartScreen() {
       }
 
       clearCart();
-      setAddress("");
+      setStreet("");
+      setNumber("");
+      setDistrict("");
+      setCity("");
+      setComplement("");
+      setReference("");
       setNotes("");
       setSuccess(
         groups.length > 1
@@ -151,15 +177,95 @@ export function ClientCartScreen() {
         )}
 
         <View style={styles.checkoutCard}>
-          <Text style={styles.label}>Endereco ou observacao de retirada</Text>
-          <TextInput
-            multiline
-            onChangeText={setAddress}
-            placeholder="Ex: Rua Central, 100 ou vou retirar na loja"
-            placeholderTextColor={mobileTheme.colors.textSoft}
-            style={styles.textArea}
-            value={address}
-          />
+          <Text style={styles.label}>Forma de recebimento</Text>
+          <View style={styles.segmented}>
+            <Pressable
+              onPress={() => setFulfillmentType("DELIVERY")}
+              style={[
+                styles.segment,
+                fulfillmentType === "DELIVERY" ? styles.segmentActive : undefined
+              ]}
+            >
+              <Text
+                style={[
+                  styles.segmentText,
+                  fulfillmentType === "DELIVERY" ? styles.segmentTextActive : undefined
+                ]}
+              >
+                Entrega
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setFulfillmentType("PICKUP")}
+              style={[
+                styles.segment,
+                fulfillmentType === "PICKUP" ? styles.segmentActive : undefined
+              ]}
+            >
+              <Text
+                style={[
+                  styles.segmentText,
+                  fulfillmentType === "PICKUP" ? styles.segmentTextActive : undefined
+                ]}
+              >
+                Retirada
+              </Text>
+            </Pressable>
+          </View>
+
+          {fulfillmentType === "DELIVERY" ? (
+            <View style={styles.addressGrid}>
+              <TextInput
+                onChangeText={setStreet}
+                placeholder="Rua"
+                placeholderTextColor={mobileTheme.colors.textSoft}
+                style={styles.input}
+                value={street}
+              />
+              <TextInput
+                keyboardType="number-pad"
+                onChangeText={setNumber}
+                placeholder="Numero"
+                placeholderTextColor={mobileTheme.colors.textSoft}
+                style={styles.input}
+                value={number}
+              />
+              <TextInput
+                onChangeText={setDistrict}
+                placeholder="Bairro"
+                placeholderTextColor={mobileTheme.colors.textSoft}
+                style={styles.input}
+                value={district}
+              />
+              <TextInput
+                onChangeText={setCity}
+                placeholder="Cidade"
+                placeholderTextColor={mobileTheme.colors.textSoft}
+                style={styles.input}
+                value={city}
+              />
+              <TextInput
+                onChangeText={setComplement}
+                placeholder="Complemento"
+                placeholderTextColor={mobileTheme.colors.textSoft}
+                style={styles.input}
+                value={complement}
+              />
+              <TextInput
+                onChangeText={setReference}
+                placeholder="Referencia"
+                placeholderTextColor={mobileTheme.colors.textSoft}
+                style={styles.input}
+                value={reference}
+              />
+            </View>
+          ) : (
+            <View style={styles.pickupBox}>
+              <Text style={styles.pickupText}>
+                A empresa prepara o pedido para retirada. Nao ha taxa de entrega.
+              </Text>
+            </View>
+          )}
 
           <Text style={styles.label}>Observacoes</Text>
           <TextInput
@@ -176,8 +282,9 @@ export function ClientCartScreen() {
             <Text style={styles.totalValue}>R$ {total.toFixed(2)}</Text>
           </View>
           <Text style={styles.feeText}>
-            Taxa de entrega e pagamento entram na proxima fase. Agora o pedido
-            fica pendente para a empresa revisar.
+            {fulfillmentType === "DELIVERY"
+              ? "A taxa de entrega sera informada pela empresa ao confirmar o pedido."
+              : "Retirada na loja nao cobra taxa de entrega."}
           </Text>
 
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -320,6 +427,52 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     backgroundColor: mobileTheme.colors.surfaceMuted,
     color: mobileTheme.colors.text
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: mobileTheme.colors.borderStrong,
+    borderRadius: mobileTheme.radii.sm,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: mobileTheme.colors.surfaceMuted,
+    color: mobileTheme.colors.text
+  },
+  addressGrid: {
+    gap: 10
+  },
+  segmented: {
+    flexDirection: "row",
+    backgroundColor: mobileTheme.colors.surfaceStrong,
+    borderRadius: mobileTheme.radii.sm,
+    padding: 4,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: mobileTheme.colors.border
+  },
+  segment: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 12,
+    alignItems: "center"
+  },
+  segmentActive: {
+    backgroundColor: mobileTheme.colors.primaryStrong
+  },
+  segmentText: {
+    color: mobileTheme.colors.textMuted,
+    fontWeight: "800"
+  },
+  segmentTextActive: {
+    color: "#ffffff"
+  },
+  pickupBox: {
+    padding: 14,
+    borderRadius: mobileTheme.radii.sm,
+    backgroundColor: mobileTheme.colors.successSoft
+  },
+  pickupText: {
+    color: mobileTheme.colors.success,
+    lineHeight: 20
   },
   totalRow: {
     flexDirection: "row",

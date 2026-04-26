@@ -16,7 +16,15 @@ function formatOrderStatus(status: Order["status"], statusLabel?: string) {
   const normalizedStatus = statusLabel ?? status.toLowerCase();
 
   if (normalizedStatus === "pending") {
-    return "Pendente";
+    return "Aguardando loja";
+  }
+
+  if (normalizedStatus === "awaiting_store_confirmation") {
+    return "Aguardando confirmação";
+  }
+
+  if (normalizedStatus === "confirmed") {
+    return "Confirmado pela loja";
   }
 
   if (normalizedStatus === "accepted") {
@@ -63,7 +71,24 @@ function formatActorRole(role?: OrderAuditEvent["actorRole"]) {
     return "Motoboy";
   }
 
+  if (role === "CLIENT") {
+    return "Cliente";
+  }
+
   return "Sistema";
+}
+
+function formatFulfillmentType(order: Order) {
+  return order.fulfillmentType === "PICKUP" ? "Retirada na loja" : "Entrega";
+}
+
+function canConfirmOrder(order: Order) {
+  return Boolean(
+    order.clientId &&
+      order.status === "PENDING" &&
+      !order.storeConfirmedAt &&
+      order.statusLabel === "awaiting_store_confirmation"
+  );
 }
 
 export function OrdersPage() {
@@ -85,6 +110,9 @@ export function OrdersPage() {
   const [cancelModalOrder, setCancelModalOrder] = useState<Order | null>(null);
   const [cancelReasonDraft, setCancelReasonDraft] = useState("");
   const [cancelError, setCancelError] = useState<string | null>(null);
+  const [confirmModalOrder, setConfirmModalOrder] = useState<Order | null>(null);
+  const [deliveryFeeDraft, setDeliveryFeeDraft] = useState("");
+  const [confirmError, setConfirmError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -242,6 +270,15 @@ export function OrdersPage() {
     setError(null);
   }
 
+  function openConfirmModal(order: Order) {
+    setConfirmModalOrder(order);
+    setDeliveryFeeDraft(
+      order.fulfillmentType === "PICKUP" ? "0" : order.deliveryFee.toFixed(2)
+    );
+    setConfirmError(null);
+    setError(null);
+  }
+
   function closeCancelModal() {
     if (actingOrderId) {
       return;
@@ -250,6 +287,55 @@ export function OrdersPage() {
     setCancelModalOrder(null);
     setCancelReasonDraft("");
     setCancelError(null);
+  }
+
+  function closeConfirmModal() {
+    if (actingOrderId) {
+      return;
+    }
+
+    setConfirmModalOrder(null);
+    setDeliveryFeeDraft("");
+    setConfirmError(null);
+  }
+
+  async function handleConfirmOrder() {
+    if (!token || !confirmModalOrder) {
+      return;
+    }
+
+    const deliveryFee = Number(deliveryFeeDraft.replace(",", ".") || "0");
+
+    if (!Number.isFinite(deliveryFee) || deliveryFee < 0) {
+      setConfirmError("Informe uma taxa de entrega válida.");
+      return;
+    }
+
+    setActingOrderId(confirmModalOrder.id);
+    setConfirmError(null);
+    setError(null);
+
+    try {
+      const confirmedOrder = await ordersService.confirm(token, confirmModalOrder.id, {
+        deliveryFee
+      });
+      setSuccessMessage("Pedido confirmado com sucesso.");
+      setSelectedOrderId(confirmedOrder.id);
+      setConfirmModalOrder(null);
+      setDeliveryFeeDraft("");
+      await loadData({ silent: true });
+      await loadHistory(confirmedOrder.id, { silent: true });
+    } catch (confirmRequestError) {
+      const message =
+        confirmRequestError instanceof ApiError
+          ? confirmRequestError.message
+          : "Não foi possível confirmar o pedido.";
+
+      setError(message);
+      setConfirmError(message);
+    } finally {
+      setActingOrderId(null);
+    }
   }
 
   async function handleConfirmCancel() {
@@ -388,6 +474,7 @@ export function OrdersPage() {
                     </span>
                   </div>
 
+                  <p className="muted-text">{formatFulfillmentType(order)}</p>
                   <p>{order.customerAddress}</p>
 
                   <ul className="order-items">
@@ -412,6 +499,20 @@ export function OrdersPage() {
                       Motivo do cancelamento: {order.cancelReason}
                     </div>
                   ) : null}
+
+                  {canConfirmOrder(order) ? (
+                    <button
+                      className="primary-button"
+                      disabled={actingOrderId === order.id}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        openConfirmModal(order);
+                      }}
+                      type="button"
+                    >
+                      Confirmar pedido
+                    </button>
+                  ) : null}
                 </article>
               ))}
             </div>
@@ -421,7 +522,18 @@ export function OrdersPage() {
         <div className="panel">
           <div className="panel-heading">
             <h3>Detalhe e histórico</h3>
-            {selectedOrder &&
+            <div className="orders-page-actions">
+              {selectedOrder && canConfirmOrder(selectedOrder) ? (
+                <button
+                  className="primary-button"
+                  disabled={actingOrderId === selectedOrder.id}
+                  onClick={() => openConfirmModal(selectedOrder)}
+                  type="button"
+                >
+                  Confirmar pedido
+                </button>
+              ) : null}
+              {selectedOrder &&
             selectedOrder.status !== "DELIVERED" &&
             selectedOrder.status !== "CANCELLED" ? (
               <button
@@ -432,7 +544,8 @@ export function OrdersPage() {
               >
                 {actingOrderId === selectedOrder.id ? "Cancelando..." : "Cancelar pedido"}
               </button>
-            ) : null}
+              ) : null}
+            </div>
           </div>
 
           {!selectedOrder ? (
@@ -451,10 +564,19 @@ export function OrdersPage() {
                     {formatOrderStatus(selectedOrder.status, selectedOrder.statusLabel)}
                   </span>
                 </div>
+                <p className="muted-text">{formatFulfillmentType(selectedOrder)}</p>
                 <p>{selectedOrder.customerAddress}</p>
+                {selectedOrder.addressReference ? (
+                  <p className="muted-text">Referência: {selectedOrder.addressReference}</p>
+                ) : null}
                 {selectedOrder.notes ? (
                   <p className="muted-text">Observações: {selectedOrder.notes}</p>
                 ) : null}
+                <div className="order-totals">
+                  <span>Subtotal: R$ {selectedOrder.subtotal.toFixed(2)}</span>
+                  <span>Entrega: R$ {selectedOrder.deliveryFee.toFixed(2)}</span>
+                  <strong>Total: R$ {selectedOrder.total.toFixed(2)}</strong>
+                </div>
                 {selectedOrder.cancelReason ? (
                   <div className="feedback feedback-warning">
                     Cancelado com motivo: {selectedOrder.cancelReason}
@@ -491,6 +613,91 @@ export function OrdersPage() {
           )}
         </div>
       </div>
+
+      {confirmModalOrder ? (
+        <div className="modal-backdrop" onClick={closeConfirmModal} role="presentation">
+          <div
+            aria-labelledby="confirm-order-title"
+            aria-modal="true"
+            className="modal-card"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+          >
+            <div className="modal-header">
+              <div>
+                <p className="section-kicker">Revisão da loja</p>
+                <h3 id="confirm-order-title">Confirmar pedido</h3>
+              </div>
+              <button
+                className="ghost-button"
+                disabled={Boolean(actingOrderId)}
+                onClick={closeConfirmModal}
+                type="button"
+              >
+                Fechar
+              </button>
+            </div>
+
+            <p className="muted-text">
+              Revise o pedido de <strong>{confirmModalOrder.customerName}</strong>.
+              Para retirada, a taxa fica zerada. Para entrega, informe a taxa antes de confirmar.
+            </p>
+
+            <div className="order-totals">
+              <span>Subtotal: R$ {confirmModalOrder.subtotal.toFixed(2)}</span>
+              <span>
+                Entrega: R$ {Number(deliveryFeeDraft.replace(",", ".") || "0").toFixed(2)}
+              </span>
+              <strong>
+                Total: R${" "}
+                {(
+                  confirmModalOrder.subtotal +
+                  Number(deliveryFeeDraft.replace(",", ".") || "0")
+                ).toFixed(2)}
+              </strong>
+            </div>
+
+            {confirmModalOrder.fulfillmentType === "DELIVERY" ? (
+              <label className="field">
+                <span>Taxa de entrega</span>
+                <input
+                  disabled={Boolean(actingOrderId)}
+                  min="0"
+                  onChange={(event) => setDeliveryFeeDraft(event.target.value)}
+                  step="0.01"
+                  type="number"
+                  value={deliveryFeeDraft}
+                />
+              </label>
+            ) : (
+              <div className="feedback feedback-success">
+                Pedido marcado para retirada na loja. Nenhuma taxa de entrega será cobrada.
+              </div>
+            )}
+
+            {confirmError ? <div className="feedback feedback-error">{confirmError}</div> : null}
+
+            <div className="modal-actions">
+              <button
+                className="secondary-button"
+                disabled={Boolean(actingOrderId)}
+                onClick={closeConfirmModal}
+                type="button"
+              >
+                Voltar
+              </button>
+              <button
+                className="primary-button"
+                disabled={Boolean(actingOrderId)}
+                onClick={() => void handleConfirmOrder()}
+                type="button"
+              >
+                {actingOrderId === confirmModalOrder.id ? "Confirmando..." : "Confirmar pedido"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {cancelModalOrder ? (
         <div className="modal-backdrop" onClick={closeCancelModal} role="presentation">

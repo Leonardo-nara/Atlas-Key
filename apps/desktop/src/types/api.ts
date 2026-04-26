@@ -109,9 +109,17 @@ export interface Order {
   id: string;
   storeId: string;
   courierId?: string | null;
+  clientId?: string | null;
+  fulfillmentType?: "DELIVERY" | "PICKUP";
   customerName: string;
   customerPhone: string;
   customerAddress: string;
+  addressStreet?: string | null;
+  addressNumber?: string | null;
+  addressDistrict?: string | null;
+  addressComplement?: string | null;
+  addressCity?: string | null;
+  addressReference?: string | null;
   subtotal: number;
   deliveryFee: number;
   total: number;
@@ -124,6 +132,7 @@ export interface Order {
     | "CANCELLED";
   notes?: string | null;
   cancelReason?: string | null;
+  storeConfirmedAt?: string | null;
   createdAt: string;
   updatedAt: string;
   statusLabel?: string;
@@ -135,7 +144,7 @@ export interface OrderAuditEvent {
   orderId: string;
   type: "created" | "accepted" | "picked_up" | "delivered" | "cancelled";
   actorUserId?: string | null;
-  actorRole?: "STORE_ADMIN" | "COURIER" | null;
+  actorRole?: "STORE_ADMIN" | "COURIER" | "CLIENT" | null;
   actorName?: string | null;
   actorEmail?: string | null;
   reason?: string | null;

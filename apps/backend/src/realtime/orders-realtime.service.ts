@@ -10,6 +10,7 @@ import { OrdersRealtimeGateway } from "./orders-realtime.gateway";
 import {
   ORDER_SOCKET_EVENTS,
   availableOrdersStoreRoom,
+  clientRoom,
   courierRoom,
   storeRoom
 } from "./realtime.constants";
@@ -18,6 +19,7 @@ interface BroadcastableOrder {
   id: string;
   storeId: string;
   courierId?: string | null;
+  clientId?: string | null;
   status: string;
   statusLabel?: string;
   customerName: string;
@@ -32,7 +34,8 @@ export class OrdersRealtimeService {
   emitOrderCreated(order: BroadcastableOrder) {
     this.emitToRooms(ORDER_SOCKET_EVENTS.CREATED, order, [
       storeRoom(order.storeId),
-      availableOrdersStoreRoom(order.storeId)
+      availableOrdersStoreRoom(order.storeId),
+      order.clientId ? clientRoom(order.clientId) : null
     ]);
   }
 
@@ -40,6 +43,7 @@ export class OrdersRealtimeService {
     this.emitToRooms(ORDER_SOCKET_EVENTS.ACCEPTED, order, [
       storeRoom(order.storeId),
       availableOrdersStoreRoom(order.storeId),
+      order.clientId ? clientRoom(order.clientId) : null,
       order.courierId ? courierRoom(order.courierId) : null
     ]);
   }
@@ -47,6 +51,8 @@ export class OrdersRealtimeService {
   emitOrderStatusUpdated(order: BroadcastableOrder) {
     this.emitToRooms(ORDER_SOCKET_EVENTS.STATUS_UPDATED, order, [
       storeRoom(order.storeId),
+      availableOrdersStoreRoom(order.storeId),
+      order.clientId ? clientRoom(order.clientId) : null,
       order.courierId ? courierRoom(order.courierId) : null
     ]);
   }
@@ -55,6 +61,7 @@ export class OrdersRealtimeService {
     this.emitToRooms(ORDER_SOCKET_EVENTS.CANCELLED, order, [
       storeRoom(order.storeId),
       availableOrdersStoreRoom(order.storeId),
+      order.clientId ? clientRoom(order.clientId) : null,
       order.courierId ? courierRoom(order.courierId) : null
     ]);
   }

@@ -17,6 +17,7 @@ import { isCorsOriginAllowed } from "../common/security/cors";
 import { structuredLog } from "../common/observability/structured-log";
 import {
   availableOrdersStoreRoom,
+  clientRoom,
   courierRoom,
   storeRoom
 } from "./realtime.constants";
@@ -81,6 +82,10 @@ export class OrdersRealtimeGateway
         for (const link of approvedLinks) {
           await client.join(availableOrdersStoreRoom(link.storeId));
         }
+      }
+
+      if (user.role === UserRole.CLIENT) {
+        await client.join(clientRoom(user.sub));
       }
     } catch (error) {
       const message =

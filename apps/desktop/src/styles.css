@@ -645,6 +645,10 @@ p {
   gap: 12px;
 }
 
+.timeline-operational {
+  margin-top: 14px;
+}
+
 .timeline-item {
   display: grid;
   grid-template-columns: 18px minmax(0, 1fr);
@@ -659,6 +663,42 @@ p {
   border-radius: 999px;
   background: var(--rp-primary-strong);
   box-shadow: 0 0 0 4px rgba(62, 162, 255, 0.18);
+}
+
+.timeline-item-done .timeline-dot {
+  background: var(--rp-success);
+  box-shadow: 0 0 0 4px rgba(30, 157, 103, 0.16);
+}
+
+.timeline-item-active .timeline-dot {
+  background: var(--rp-primary-strong);
+  box-shadow: 0 0 0 5px rgba(62, 162, 255, 0.22);
+}
+
+.timeline-item-upcoming .timeline-dot {
+  background: var(--rp-line-strong);
+  box-shadow: 0 0 0 4px rgba(112, 148, 186, 0.12);
+}
+
+.timeline-item-cancelled .timeline-dot {
+  background: var(--rp-danger);
+  box-shadow: 0 0 0 4px rgba(216, 78, 92, 0.16);
+}
+
+.timeline-item-done .timeline-content strong {
+  color: var(--rp-success);
+}
+
+.timeline-item-active .timeline-content strong {
+  color: var(--rp-primary-strong);
+}
+
+.timeline-item-upcoming .timeline-content strong {
+  color: var(--rp-text-soft);
+}
+
+.timeline-item-cancelled .timeline-content strong {
+  color: var(--rp-danger);
 }
 
 .timeline-content {

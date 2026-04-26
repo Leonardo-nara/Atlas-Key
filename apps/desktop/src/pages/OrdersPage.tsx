@@ -16,7 +16,7 @@ function formatOrderStatus(status: Order["status"], statusLabel?: string) {
   const normalizedStatus = statusLabel ?? status.toLowerCase();
 
   if (normalizedStatus === "pending") {
-    return "Aguardando loja";
+    return "Aguardando confirmação";
   }
 
   if (normalizedStatus === "awaiting_store_confirmation") {
@@ -28,11 +28,11 @@ function formatOrderStatus(status: Order["status"], statusLabel?: string) {
   }
 
   if (normalizedStatus === "accepted") {
-    return "Aceito";
+    return "Motoboy aceitou";
   }
 
   if (normalizedStatus === "picked_up") {
-    return "Em entrega";
+    return "Saiu para entrega";
   }
 
   if (normalizedStatus === "delivered") {
@@ -80,6 +80,102 @@ function formatActorRole(role?: OrderAuditEvent["actorRole"]) {
 
 function formatFulfillmentType(order: Order) {
   return order.fulfillmentType === "PICKUP" ? "Retirada na loja" : "Entrega";
+}
+
+function getOrderStatusRank(order: Order) {
+  const normalizedStatus = order.statusLabel ?? order.status.toLowerCase();
+
+  if (normalizedStatus === "awaiting_store_confirmation") {
+    return 1;
+  }
+
+  if (normalizedStatus === "confirmed" || normalizedStatus === "pending") {
+    return 2;
+  }
+
+  if (normalizedStatus === "accepted") {
+    return 3;
+  }
+
+  if (normalizedStatus === "picked_up") {
+    return 4;
+  }
+
+  if (normalizedStatus === "delivered") {
+    return 5;
+  }
+
+  if (normalizedStatus === "cancelled") {
+    return 6;
+  }
+
+  return 1;
+}
+
+function getOperationalTimeline(order: Order) {
+  const isPickup = order.fulfillmentType === "PICKUP";
+  const isCancelled = (order.statusLabel ?? order.status).toLowerCase() === "cancelled";
+  const rank = getOrderStatusRank(order);
+  const steps = [
+    {
+      key: "received",
+      rank: 1,
+      title: "Pedido recebido",
+      description: "O cliente enviou o pedido para a loja."
+    },
+    {
+      key: "confirmed",
+      rank: 2,
+      title: "Confirmado",
+      description: isPickup
+        ? "Retirada confirmada sem taxa de entrega."
+        : "Pedido confirmado com taxa de entrega."
+    },
+    {
+      key: "courier",
+      rank: 3,
+      title: "Com motoboy",
+      description: "Um motoboy aprovado aceitou a entrega."
+    },
+    {
+      key: "delivery",
+      rank: 4,
+      title: isPickup ? "Retirado" : "Saiu para entrega",
+      description: "Pedido saiu da loja para finalização."
+    },
+    {
+      key: "delivered",
+      rank: 5,
+      title: "Entregue",
+      description: "Pedido concluído."
+    },
+    {
+      key: "cancelled",
+      rank: 6,
+      title: "Cancelado",
+      description: "Pedido cancelado e registrado no histórico."
+    }
+  ];
+
+  return steps.map((step) => {
+    if (isCancelled && step.key === "cancelled") {
+      return { ...step, state: "cancelled" };
+    }
+
+    if (isCancelled) {
+      return { ...step, state: step.rank <= 1 ? "done" : "upcoming" };
+    }
+
+    if (step.rank < rank) {
+      return { ...step, state: "done" };
+    }
+
+    if (step.rank === rank) {
+      return { ...step, state: "active" };
+    }
+
+    return { ...step, state: "upcoming" };
+  });
 }
 
 function canConfirmOrder(order: Order) {
@@ -582,6 +678,24 @@ export function OrdersPage() {
                     Cancelado com motivo: {selectedOrder.cancelReason}
                   </div>
                 ) : null}
+              </div>
+
+              <div className="order-detail-card">
+                <p className="section-kicker">Linha do tempo operacional</p>
+                <div className="timeline timeline-operational">
+                  {getOperationalTimeline(selectedOrder).map((step) => (
+                    <article
+                      className={`timeline-item timeline-item-${step.state}`}
+                      key={step.key}
+                    >
+                      <div className="timeline-dot" />
+                      <div className="timeline-content">
+                        <strong>{step.title}</strong>
+                        <p>{step.description}</p>
+                      </div>
+                    </article>
+                  ))}
+                </div>
               </div>
 
               <div className="timeline">

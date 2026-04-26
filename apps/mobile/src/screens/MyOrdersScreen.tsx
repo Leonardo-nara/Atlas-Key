@@ -10,6 +10,7 @@ import {
 } from "react-native";
 
 import { OrderCard } from "../components/OrderCard";
+import { OrderTimeline } from "../components/OrderTimeline";
 import { ScreenContainer } from "../components/ScreenContainer";
 import { SectionHeader } from "../components/SectionHeader";
 import { useAuth } from "../features/auth/auth-context";
@@ -207,21 +208,24 @@ export function MyOrdersScreen() {
                 const action = nextAction(order);
 
                 return (
-                  <OrderCard
-                    actionLabel={
-                      actingOrderId === order.id
-                        ? "Atualizando..."
-                        : action?.label
-                    }
-                    disabled={!action || actingOrderId === order.id}
-                    key={order.id}
-                    onAction={
-                      action
-                        ? () => void handleStatusUpdate(order.id, action.status)
-                        : undefined
-                    }
-                    order={order}
-                  />
+                  <View key={order.id} style={styles.orderStack}>
+                    <OrderCard
+                      actionLabel={
+                        actingOrderId === order.id
+                          ? "Atualizando..."
+                          : action?.label
+                      }
+                      audience="courier"
+                      disabled={!action || actingOrderId === order.id}
+                      onAction={
+                        action
+                          ? () => void handleStatusUpdate(order.id, action.status)
+                          : undefined
+                      }
+                      order={order}
+                    />
+                    <OrderTimeline audience="courier" order={order} />
+                  </View>
                 );
               })}
 
@@ -314,6 +318,9 @@ const styles = StyleSheet.create({
   emptyText: {
     textAlign: "center",
     color: mobileTheme.colors.textMuted
+  },
+  orderStack: {
+    gap: 10
   },
   pagination: {
     marginTop: 8,

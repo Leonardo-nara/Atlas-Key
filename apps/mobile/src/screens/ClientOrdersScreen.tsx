@@ -10,42 +10,20 @@ import {
 } from "react-native";
 
 import { OrderCard } from "../components/OrderCard";
+import { OrderTimeline } from "../components/OrderTimeline";
 import { ScreenContainer } from "../components/ScreenContainer";
 import { SectionHeader } from "../components/SectionHeader";
 import { useAuth } from "../features/auth/auth-context";
+import { getFulfillmentText, getOrderStatusText } from "../features/orders/order-display";
 import { ordersService } from "../features/orders/orders-service";
+import { useRealtime } from "../features/realtime/realtime-context";
 import { ApiError } from "../lib/http";
 import { mobileTheme } from "../theme";
 import type { Order } from "../types/api";
 
-function clientStatusText(order: Order) {
-  const status = order.statusLabel ?? order.status.toLowerCase();
-
-  if (status === "awaiting_store_confirmation") {
-    return "Aguardando confirmação da loja";
-  }
-
-  if (status === "confirmed" || status === "pending") {
-    return "Confirmado pela loja";
-  }
-
-  if (status === "accepted") {
-    return "Motoboy aceitou";
-  }
-
-  if (status === "picked_up") {
-    return "Saiu para entrega";
-  }
-
-  if (status === "delivered") {
-    return "Entregue";
-  }
-
-  return "Cancelado";
-}
-
 export function ClientOrdersScreen() {
   const { token } = useAuth();
+  const { isConnected, subscribeToOrderEvents } = useRealtime();
   const [orders, setOrders] = useState<Order[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -79,11 +57,25 @@ export function ClientOrdersScreen() {
     void loadOrders();
   }, [loadOrders]);
 
+  useEffect(() => {
+    if (!token) {
+      return;
+    }
+
+    return subscribeToOrderEvents(() => {
+      void loadOrders();
+    });
+  }, [loadOrders, subscribeToOrderEvents, token]);
+
   return (
     <ScreenContainer>
       <SectionHeader
         title="Meus pedidos"
-        description="Acompanhe os pedidos enviados para as empresas."
+        description={
+          isConnected
+            ? "Acompanhe status, taxa e total com atualizacao em tempo real."
+            : "Acompanhe os pedidos enviados para as empresas."
+        }
       />
 
       {loading ? (
@@ -116,17 +108,14 @@ export function ClientOrdersScreen() {
 
           {orders.map((order) => (
             <View key={order.id} style={styles.clientOrderCard}>
-              <OrderCard order={order} />
+              <OrderCard audience="client" order={order} />
               <View style={styles.statusBox}>
-                <Text style={styles.statusTitle}>{clientStatusText(order)}</Text>
+                <Text style={styles.statusTitle}>{getOrderStatusText(order, "client")}</Text>
                 <Text style={styles.statusText}>
-                  {order.fulfillmentType === "PICKUP"
-                    ? "Retirada na loja"
-                    : "Entrega"}
-                  {" - "}
-                  Total atual R$ {order.total.toFixed(2)}
+                  {getFulfillmentText(order)} - Total atual R$ {order.total.toFixed(2)}
                 </Text>
               </View>
+              <OrderTimeline audience="client" order={order} />
             </View>
           ))}
 

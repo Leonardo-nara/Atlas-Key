@@ -13,6 +13,10 @@ export function courierRoom(courierId: string) {
   return `courier:${courierId}`;
 }
 
+export function clientRoom(clientId: string) {
+  return `client:${clientId}`;
+}
+
 export function availableOrdersStoreRoom(storeId: string) {
   return `orders:available:${storeId}`;
 }

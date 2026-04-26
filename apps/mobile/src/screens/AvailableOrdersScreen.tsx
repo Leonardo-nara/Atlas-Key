@@ -10,6 +10,7 @@ import {
 } from "react-native";
 
 import { OrderCard } from "../components/OrderCard";
+import { OrderTimeline } from "../components/OrderTimeline";
 import { ScreenContainer } from "../components/ScreenContainer";
 import { SectionHeader } from "../components/SectionHeader";
 import { useAuth } from "../features/auth/auth-context";
@@ -170,13 +171,16 @@ export function AvailableOrdersScreen() {
           {orders.length > 0 ? (
             <>
               {orders.map((order) => (
-                <OrderCard
-                  actionLabel={actingOrderId === order.id ? "Aceitando..." : "Aceitar pedido"}
-                  disabled={actingOrderId === order.id}
-                  key={order.id}
-                  onAction={() => void handleAccept(order.id)}
-                  order={order}
-                />
+                <View key={order.id} style={styles.orderStack}>
+                  <OrderCard
+                    actionLabel={actingOrderId === order.id ? "Aceitando..." : "Aceitar pedido"}
+                    audience="courier"
+                    disabled={actingOrderId === order.id}
+                    onAction={() => void handleAccept(order.id)}
+                    order={order}
+                  />
+                  <OrderTimeline audience="courier" order={order} />
+                </View>
               ))}
 
               <View style={styles.pagination}>
@@ -260,6 +264,9 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: mobileTheme.colors.textMuted,
     lineHeight: 21
+  },
+  orderStack: {
+    gap: 10
   },
   pagination: {
     marginTop: 8,

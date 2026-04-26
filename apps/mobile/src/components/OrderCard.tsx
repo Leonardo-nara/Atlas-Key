@@ -1,30 +1,12 @@
-﻿import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import {
+  getFulfillmentText,
+  getOrderStatusText,
+  type OrderTimelineAudience
+} from "../features/orders/order-display";
 import { mobileShadow, mobileTheme } from "../theme";
 import type { Order } from "../types/api";
-
-function formatOrderStatus(order: Order) {
-  const status = order.statusLabel ?? order.status.toLowerCase();
-
-  switch (status) {
-    case "awaiting_store_confirmation":
-      return "Aguardando loja";
-    case "confirmed":
-      return "Confirmado";
-    case "pending":
-      return "Pendente";
-    case "accepted":
-      return "Aceito";
-    case "picked_up":
-      return "Em entrega";
-    case "delivered":
-      return "Entregue";
-    case "cancelled":
-      return "Cancelado";
-    default:
-      return order.statusLabel ?? order.status;
-  }
-}
 
 function getStatusVariant(label: string) {
   if (label === "Entregue") {
@@ -41,7 +23,7 @@ function getStatusVariant(label: string) {
     };
   }
 
-  if (label === "Em entrega") {
+  if (label === "Saiu para entrega" || label === "Retirado para entrega") {
     return {
       container: styles.badgePrimary,
       text: styles.badgeTextPrimary
@@ -58,14 +40,16 @@ export function OrderCard({
   order,
   actionLabel,
   onAction,
-  disabled
+  disabled,
+  audience = actionLabel ? "courier" : "client"
 }: {
   order: Order;
   actionLabel?: string;
   onAction?: () => void;
   disabled?: boolean;
+  audience?: OrderTimelineAudience;
 }) {
-  const statusLabel = formatOrderStatus(order);
+  const statusLabel = getOrderStatusText(order, audience);
   const statusVariant = getStatusVariant(statusLabel);
 
   return (
@@ -80,6 +64,12 @@ export function OrderCard({
         </View>
       </View>
 
+      <View style={styles.fulfillmentRow}>
+        <Text style={styles.fulfillment}>{getFulfillmentText(order)}</Text>
+        <Text style={styles.meta}>
+          {order.storeConfirmedAt ? "Loja confirmou" : "Aguardando loja"}
+        </Text>
+      </View>
       <Text style={styles.meta}>{order.customerAddress}</Text>
 
       <View style={styles.storeBlock}>
@@ -103,7 +93,10 @@ export function OrderCard({
       </View>
 
       <View style={styles.line}>
-        <Text style={styles.meta}>Total</Text>
+        <View>
+          <Text style={styles.meta}>Subtotal R$ {order.subtotal.toFixed(2)}</Text>
+          <Text style={styles.meta}>Entrega R$ {order.deliveryFee.toFixed(2)}</Text>
+        </View>
         <Text style={styles.total}>R$ {order.total.toFixed(2)}</Text>
       </View>
 
@@ -151,6 +144,16 @@ const styles = StyleSheet.create({
   meta: {
     color: mobileTheme.colors.textMuted,
     fontSize: 14
+  },
+  fulfillmentRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12
+  },
+  fulfillment: {
+    color: mobileTheme.colors.primaryStrong,
+    fontWeight: "800"
   },
   storeBlock: {
     gap: 6,

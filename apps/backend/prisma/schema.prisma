@@ -78,6 +78,7 @@ model User {
   courierProfile CourierProfile?
   storeLinks    StoreCourierLink[]
   courierOrders Order[] @relation("CourierOrders")
+  clientOrders  Order[] @relation("ClientOrders")
   orderEvents   OrderEvent[]
   authSessions  AuthSession[]
   authAuditEvents AuthAuditEvent[]
@@ -202,6 +203,7 @@ model Order {
   id              String      @id @default(cuid())
   storeId         String
   courierId       String?
+  clientId        String?
   customerName    String
   customerPhone   String
   customerAddress String
@@ -216,11 +218,13 @@ model Order {
 
   store   Store       @relation(fields: [storeId], references: [id])
   courier User?       @relation("CourierOrders", fields: [courierId], references: [id])
+  client  User?       @relation("ClientOrders", fields: [clientId], references: [id], onDelete: SetNull)
   items   OrderItem[]
   events  OrderEvent[]
 
   @@index([storeId])
   @@index([courierId])
+  @@index([clientId])
   @@map("orders")
 }
 

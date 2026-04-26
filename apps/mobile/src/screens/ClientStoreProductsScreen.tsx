@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { Image, StyleSheet, Text, TextInput, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useRoute } from "@react-navigation/native";
 import type { RouteProp } from "@react-navigation/native";
 
 import { ScreenContainer } from "../components/ScreenContainer";
 import { SectionHeader } from "../components/SectionHeader";
+import { useCart } from "../features/cart/cart-context";
 import { catalogService } from "../features/catalog/catalog-service";
 import { ApiError } from "../lib/http";
 import { mobileShadow, mobileTheme } from "../theme";
@@ -16,6 +17,7 @@ type ClientStackParamList = {
 
 export function ClientStoreProductsScreen() {
   const route = useRoute<RouteProp<ClientStackParamList, "ClientStoreProducts">>();
+  const { addItem, items } = useCart();
   const [store, setStore] = useState<Store | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
@@ -107,7 +109,27 @@ export function ClientStoreProductsScreen() {
               <Text style={styles.productDescription}>
                 {product.description || "Sem descricao informada."}
               </Text>
-              <Text style={styles.productPrice}>R$ {product.price.toFixed(2)}</Text>
+              <View style={styles.productFooter}>
+                <Text style={styles.productPrice}>R$ {product.price.toFixed(2)}</Text>
+                <Pressable
+                  disabled={!store}
+                  onPress={() => {
+                    if (store) {
+                      addItem(store, product);
+                    }
+                  }}
+                  style={({ pressed }) => [
+                    styles.addButton,
+                    pressed ? styles.addButtonPressed : undefined
+                  ]}
+                >
+                  <Text style={styles.addButtonText}>
+                    {items.find((item) => item.product.id === product.id)
+                      ? "Adicionar mais"
+                      : "Adicionar"}
+                  </Text>
+                </Pressable>
+              </View>
             </View>
           </View>
         ))
@@ -196,6 +218,24 @@ const styles = StyleSheet.create({
     color: mobileTheme.colors.primaryStrong,
     fontWeight: "800",
     fontSize: 17
+  },
+  productFooter: {
+    marginTop: 4,
+    gap: 12
+  },
+  addButton: {
+    alignItems: "center",
+    borderRadius: mobileTheme.radii.sm,
+    backgroundColor: mobileTheme.colors.primaryStrong,
+    paddingVertical: 12
+  },
+  addButtonPressed: {
+    opacity: 0.92,
+    transform: [{ scale: 0.985 }]
+  },
+  addButtonText: {
+    color: "#ffffff",
+    fontWeight: "800"
   },
   emptyState: {
     padding: 18,

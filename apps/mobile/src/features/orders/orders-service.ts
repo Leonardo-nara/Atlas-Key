@@ -14,6 +14,27 @@ export const ordersService = {
       { token }
     );
   },
+  clientMine(token: string, page = 1, limit = 10) {
+    return http<PaginatedResponse<Order>>(
+      `/orders/client/my?page=${page}&limit=${limit}`,
+      { token }
+    );
+  },
+  createClient(
+    token: string,
+    input: {
+      storeId: string;
+      customerAddress: string;
+      notes?: string;
+      items: Array<{ productId: string; quantity: number }>;
+    }
+  ) {
+    return http<Order>("/orders/client", {
+      method: "POST",
+      token,
+      body: JSON.stringify(input)
+    });
+  },
   accept(token: string, orderId: string) {
     return http<Order>(`/orders/${orderId}/accept`, {
       method: "PATCH",

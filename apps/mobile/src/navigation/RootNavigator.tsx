@@ -3,7 +3,10 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 
 import { useAuth } from "../features/auth/auth-context";
+import { useCart } from "../features/cart/cart-context";
 import { AvailableOrdersScreen } from "../screens/AvailableOrdersScreen";
+import { ClientCartScreen } from "../screens/ClientCartScreen";
+import { ClientOrdersScreen } from "../screens/ClientOrdersScreen";
 import { ClientProfileScreen } from "../screens/ClientProfileScreen";
 import { ClientRegisterScreen } from "../screens/ClientRegisterScreen";
 import { ClientStoreProductsScreen } from "../screens/ClientStoreProductsScreen";
@@ -109,6 +112,8 @@ function ClientHomeStack() {
 }
 
 function ClientTabs() {
+  const { itemCount } = useCart();
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -144,6 +149,19 @@ function ClientTabs() {
         component={ClientHomeStack}
         name="ClientCatalog"
         options={{ title: "Empresas", headerShown: false }}
+      />
+      <Tab.Screen
+        component={ClientCartScreen}
+        name="ClientCart"
+        options={{
+          title: "Carrinho",
+          tabBarBadge: itemCount > 0 ? itemCount : undefined
+        }}
+      />
+      <Tab.Screen
+        component={ClientOrdersScreen}
+        name="ClientOrders"
+        options={{ title: "Pedidos" }}
       />
       <Tab.Screen
         component={ClientProfileScreen}

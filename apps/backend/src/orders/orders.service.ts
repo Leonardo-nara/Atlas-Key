@@ -21,6 +21,7 @@ import { OrdersRealtimeService } from "../realtime/orders-realtime.service";
 import { StoreCourierLinkStatus } from "../store-courier-links/enums/store-courier-link-status.enum";
 import { StoresService } from "../stores/stores.service";
 import { CancelOrderDto } from "./dto/cancel-order.dto";
+import { CreateClientOrderDto } from "./dto/create-client-order.dto";
 import { CreateOrderDto } from "./dto/create-order.dto";
 import { ListOrdersQueryDto } from "./dto/list-orders-query.dto";
 import { OrderAuditEvent } from "./order-audit-event.interface";
@@ -131,6 +132,132 @@ export class OrdersService {
     return serializedOrder;
   }
 
+  async createClientOrder(
+    clientUserId: string,
+    role: UserRole,
+    dto: CreateClientOrderDto
+  ) {
+    this.ensureClient(role);
+
+    const client = await this.prisma.user.findFirst({
+      where: {
+        id: clientUserId,
+        role: PrismaUserRole.CLIENT,
+        active: true
+      },
+      select: {
+        id: true,
+        name: true,
+        phone: true
+      }
+    });
+
+    if (!client) {
+      throw new ForbiddenException("Conta de cliente nao encontrada");
+    }
+
+    const store = await this.prisma.store.findFirst({
+      where: {
+        id: dto.storeId,
+        active: true
+      },
+      select: {
+        id: true
+      }
+    });
+
+    if (!store) {
+      throw new NotFoundException("Empresa nao encontrada");
+    }
+
+    const requestedProductIds = [...new Set(dto.items.map((item) => item.productId))];
+    const products = await this.prisma.product.findMany({
+      where: {
+        id: { in: requestedProductIds },
+        storeId: store.id,
+        available: true
+      }
+    });
+
+    if (products.length !== requestedProductIds.length) {
+      throw new BadRequestException(
+        "Um ou mais produtos nao estao disponiveis nesta empresa"
+      );
+    }
+
+    const productMap = new Map(products.map((product) => [product.id, product]));
+    const normalizedItems = dto.items.map((item) => {
+      const product = productMap.get(item.productId);
+
+      if (!product) {
+        throw new BadRequestException("Produto indisponivel para o pedido");
+      }
+
+      const unitPrice = Number(product.price);
+      const totalPrice = unitPrice * item.quantity;
+
+      return {
+        productId: product.id,
+        nameSnapshot: product.name,
+        quantity: item.quantity,
+        unitPrice,
+        totalPrice
+      };
+    });
+
+    const subtotal = normalizedItems.reduce(
+      (accumulator, item) => accumulator + item.totalPrice,
+      0
+    );
+    const deliveryFee = 0;
+    const total = subtotal + deliveryFee;
+
+    const order = await this.prisma.$transaction(async (transaction) => {
+      const createdOrder = await transaction.order.create({
+        data: {
+          storeId: store.id,
+          clientId: client.id,
+          customerName: client.name,
+          customerPhone: client.phone,
+          customerAddress: dto.customerAddress,
+          subtotal: new Prisma.Decimal(subtotal),
+          deliveryFee: new Prisma.Decimal(deliveryFee),
+          total: new Prisma.Decimal(total),
+          notes: dto.notes,
+          items: {
+            create: normalizedItems.map((item) => ({
+              productId: item.productId,
+              nameSnapshot: item.nameSnapshot,
+              quantity: item.quantity,
+              unitPrice: new Prisma.Decimal(item.unitPrice),
+              totalPrice: new Prisma.Decimal(item.totalPrice)
+            }))
+          }
+        },
+        include: {
+          items: true,
+          store: true
+        }
+      });
+
+      await transaction.orderEvent.create({
+        data: {
+          orderId: createdOrder.id,
+          type: OrderEventType.CREATED,
+          actorUserId: clientUserId,
+          actorRole: PrismaUserRole.CLIENT
+        }
+      });
+
+      return createdOrder;
+    });
+
+    const serializedOrder = this.serializeOrder(order);
+    this.ordersRealtimeService.emitOrderCreated(serializedOrder);
+
+    return serializedOrder;
+  }
+
   async list(
     ownerUserId: string,
     role: UserRole,
@@ -139,6 +266,24 @@ export class OrdersService {
     const store = await this.storesService.getStoreByOwner(ownerUserId, role);
     const where: Prisma.OrderWhereInput = {
       storeId: store.id
+    };
+
+    if (query.status) {
+      where.status = this.parseStatusFilter(query.status);
+    }
+
+    return this.paginateOrders(where, query);
+  }
+
+  async listClientOrders(
+    clientUserId: string,
+    role: UserRole,
+    query: ListOrdersQueryDto
+  ) {
+    this.ensureClient(role);
+
+    const where: Prisma.OrderWhereInput = {
+      clientId: clientUserId
     };
 
     if (query.status) {
@@ -459,6 +604,12 @@ export class OrdersService {
   private ensureCourier(role: UserRole) {
     if (role !== UserRole.COURIER) {
       throw new ForbiddenException("Apenas COURIER pode acessar este fluxo");
+    }
+  }
+
+  private ensureClient(role: UserRole) {
+    if (role !== UserRole.CLIENT) {
+      throw new ForbiddenException("Apenas CLIENT pode acessar este fluxo");
     }
   }
 

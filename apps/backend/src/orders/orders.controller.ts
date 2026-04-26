@@ -16,6 +16,7 @@ import { UserRole } from "../common/enums/user-role.enum";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { CancelOrderDto } from "./dto/cancel-order.dto";
+import { CreateClientOrderDto } from "./dto/create-client-order.dto";
 import { CreateOrderDto } from "./dto/create-order.dto";
 import { ListOrdersQueryDto } from "./dto/list-orders-query.dto";
 import { UpdateCourierOrderStatusDto } from "./dto/update-courier-order-status.dto";
@@ -33,6 +34,26 @@ export class OrdersController {
     @Body() dto: CreateOrderDto
   ) {
     return this.ordersService.create(user.sub, user.role, dto);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.CLIENT)
+  @Post("client")
+  createClientOrder(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: CreateClientOrderDto
+  ) {
+    return this.ordersService.createClientOrder(user.sub, user.role, dto);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.CLIENT)
+  @Get("client/my")
+  listClientOrders(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: ListOrdersQueryDto
+  ) {
+    return this.ordersService.listClientOrders(user.sub, user.role, query);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

@@ -5,6 +5,7 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { DeliveryZonesPage } from "./pages/DeliveryZonesPage";
 import { LoginPage } from "./pages/LoginPage";
 import { OrdersPage } from "./pages/OrdersPage";
+import { PixSettingsPage } from "./pages/PixSettingsPage";
 import { ProductsPage } from "./pages/ProductsPage";
 import { ProtectedRoute } from "./shared/routing/ProtectedRoute";
 import { AppLayout } from "./shared/layout/AppLayout";
@@ -41,6 +42,10 @@ export const appRouter = createHashRouter([
       {
         path: "delivery-zones",
         element: <DeliveryZonesPage />
+      },
+      {
+        path: "pix-settings",
+        element: <PixSettingsPage />
       }
     ]
   },

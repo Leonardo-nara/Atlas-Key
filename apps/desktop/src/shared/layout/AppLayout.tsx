@@ -7,7 +7,8 @@ const navigationItems = [
   { to: "/products", label: "Produtos" },
   { to: "/orders", label: "Pedidos" },
   { to: "/couriers", label: "Motoboys" },
-  { to: "/delivery-zones", label: "Taxas por bairro" }
+  { to: "/delivery-zones", label: "Taxas por bairro" },
+  { to: "/pix-settings", label: "Pix manual" }
 ];
 
 export function AppLayout() {

@@ -66,6 +66,14 @@ enum OrderPaymentProvider {
   FUTURE_GATEWAY
 }
 
+enum StorePixKeyType {
+  CPF
+  CNPJ
+  EMAIL
+  PHONE
+  RANDOM_KEY
+}
+
 enum OrderEventType {
   CREATED
   ACCEPTED
@@ -193,6 +201,11 @@ model Store {
   address     String
   ownerUserId String   @unique
   active      Boolean  @default(true)
+  pixKeyType  StorePixKeyType?
+  pixKey      String?
+  pixRecipientName String?
+  pixInstructions String?
+  pixEnabled  Boolean @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

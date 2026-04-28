@@ -16,7 +16,12 @@ import { useCart } from "../features/cart/cart-context";
 import { ordersService } from "../features/orders/orders-service";
 import { ApiError } from "../lib/http";
 import { mobileShadow, mobileTheme } from "../theme";
-import type { ClientAddress, OrderPaymentMethod } from "../types/api";
+import type {
+  ClientAddress,
+  Order,
+  OrderPaymentMethod,
+  StorePixKeyType
+} from "../types/api";
 
 const paymentMethodOptions: Array<{
   value: Exclude<OrderPaymentMethod, "ONLINE">;
@@ -39,6 +44,22 @@ const paymentMethodOptions: Array<{
     description: "A loja confirmará o pagamento manualmente."
   }
 ];
+
+function formatPixKeyType(type: StorePixKeyType) {
+  if (type === "RANDOM_KEY") {
+    return "Chave aleatoria";
+  }
+
+  if (type === "PHONE") {
+    return "Telefone";
+  }
+
+  if (type === "EMAIL") {
+    return "E-mail";
+  }
+
+  return type;
+}
 
 export function ClientCartScreen() {
   const { token, user } = useAuth();
@@ -67,6 +88,7 @@ export function ClientCartScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [pixOrders, setPixOrders] = useState<Order[]>([]);
 
   useEffect(() => {
     if (!token || user?.role !== "CLIENT") {
@@ -125,6 +147,7 @@ export function ClientCartScreen() {
   async function handleCheckout() {
     setError(null);
     setSuccess(null);
+    setPixOrders([]);
 
     if (!token) {
       setError("Sessao nao encontrada. Entre novamente para finalizar o pedido.");
@@ -161,8 +184,10 @@ export function ClientCartScreen() {
         setAddressMode("saved");
       }
 
+      const createdOrders: Order[] = [];
+
       for (const group of groups) {
-        await ordersService.createClient(token, {
+        const createdOrder = await ordersService.createClient(token, {
           storeId: group.store.id,
           fulfillmentType,
           customerAddress:
@@ -184,6 +209,8 @@ export function ClientCartScreen() {
             quantity: item.quantity
           }))
         });
+
+        createdOrders.push(createdOrder);
       }
 
       clearCart();
@@ -191,6 +218,9 @@ export function ClientCartScreen() {
         clearAddressDraft();
       }
       setNotes("");
+      setPixOrders(
+        createdOrders.filter((order) => order.paymentMethod === "PIX_MANUAL")
+      );
       setSuccess(
         groups.length > 1
           ? "Pedidos enviados para as empresas."
@@ -480,6 +510,40 @@ export function ClientCartScreen() {
 
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
           {success ? <Text style={styles.successText}>{success}</Text> : null}
+          {pixOrders.length > 0 ? (
+            <View style={styles.pixResultBox}>
+              <Text style={styles.pixResultTitle}>Instruções de Pix manual</Text>
+              {pixOrders.map((order) =>
+                order.pixPaymentInstructions ? (
+                  <View key={order.id} style={styles.pixResultItem}>
+                    <Text style={styles.pixResultText}>
+                      {order.store?.name ?? "Empresa"} -{" "}
+                      {formatPixKeyType(order.pixPaymentInstructions.pixKeyType)}:{" "}
+                      {order.pixPaymentInstructions.pixKey}
+                    </Text>
+                    <Text style={styles.pixResultText}>
+                      Recebedor: {order.pixPaymentInstructions.pixRecipientName}
+                    </Text>
+                    <Text style={styles.pixResultMeta}>
+                      {order.pixPaymentInstructions.pixInstructions}
+                    </Text>
+                  </View>
+                ) : (
+                  <View key={order.id} style={styles.pixResultItem}>
+                    <Text style={styles.pixResultText}>
+                      {order.store?.name ?? "Empresa"} ainda nao informou uma chave Pix ativa.
+                    </Text>
+                    <Text style={styles.pixResultMeta}>
+                      Aguarde a loja orientar o pagamento manualmente.
+                    </Text>
+                  </View>
+                )
+              )}
+              <Text style={styles.pixResultMeta}>
+                O status continuará pendente até a loja confirmar o pagamento.
+              </Text>
+            </View>
+          ) : null}
 
           <Pressable
             disabled={submitting || groups.length === 0}
@@ -796,6 +860,30 @@ const styles = StyleSheet.create({
     backgroundColor: mobileTheme.colors.successSoft,
     padding: 12,
     borderRadius: mobileTheme.radii.sm
+  },
+  pixResultBox: {
+    gap: 10,
+    padding: 12,
+    borderRadius: mobileTheme.radii.sm,
+    backgroundColor: mobileTheme.colors.warningSoft
+  },
+  pixResultTitle: {
+    color: mobileTheme.colors.warning,
+    fontWeight: "900"
+  },
+  pixResultItem: {
+    gap: 4,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: mobileTheme.colors.border
+  },
+  pixResultText: {
+    color: mobileTheme.colors.text,
+    fontWeight: "700"
+  },
+  pixResultMeta: {
+    color: mobileTheme.colors.textMuted,
+    lineHeight: 20
   },
   checkoutButton: {
     alignItems: "center",

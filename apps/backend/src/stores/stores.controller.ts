@@ -8,6 +8,7 @@ import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { CreateDeliveryZoneDto } from "./dto/create-delivery-zone.dto";
 import { UpdateDeliveryZoneDto } from "./dto/update-delivery-zone.dto";
+import { UpdateStorePixSettingsDto } from "./dto/update-store-pix-settings.dto";
 import { StoresService } from "./stores.service";
 
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -24,6 +25,19 @@ export class StoresController {
   @Get("me/delivery-zones")
   listDeliveryZones(@CurrentUser() user: AuthenticatedUser) {
     return this.storesService.listDeliveryZones(user.sub, user.role);
+  }
+
+  @Get("me/pix-settings")
+  getPixSettings(@CurrentUser() user: AuthenticatedUser) {
+    return this.storesService.getPixSettings(user.sub, user.role);
+  }
+
+  @Patch("me/pix-settings")
+  updatePixSettings(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: UpdateStorePixSettingsDto
+  ) {
+    return this.storesService.updatePixSettings(user.sub, user.role, dto);
   }
 
   @Post("me/delivery-zones")

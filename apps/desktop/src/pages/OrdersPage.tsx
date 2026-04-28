@@ -122,6 +122,22 @@ function formatPaymentStatus(status?: Order["paymentStatus"]) {
   return "Aguardando pagamento";
 }
 
+function formatPixKeyType(type?: string) {
+  if (type === "RANDOM_KEY") {
+    return "Chave aleatória";
+  }
+
+  if (type === "PHONE") {
+    return "Telefone";
+  }
+
+  if (type === "EMAIL") {
+    return "E-mail";
+  }
+
+  return type ?? "Chave Pix";
+}
+
 function canMarkPaymentPaid(order: Order) {
   return Boolean(
     order.paymentStatus !== "PAID" &&
@@ -816,6 +832,22 @@ export function OrdersPage() {
                 ) : (
                   <p className="muted-text">Motoboy: ainda não atribuído</p>
                 )}
+                {selectedOrder.paymentMethod === "PIX_MANUAL" ? (
+                  selectedOrder.pixPaymentInstructions ? (
+                    <div className="feedback feedback-warning">
+                      <strong>Pix manual:</strong>{" "}
+                      {formatPixKeyType(selectedOrder.pixPaymentInstructions.pixKeyType)} -{" "}
+                      {selectedOrder.pixPaymentInstructions.pixKey}. Recebedor:{" "}
+                      {selectedOrder.pixPaymentInstructions.pixRecipientName}.{" "}
+                      {selectedOrder.pixPaymentInstructions.pixInstructions}
+                    </div>
+                  ) : (
+                    <div className="feedback feedback-warning">
+                      Pedido com Pix manual, mas a loja ainda não configurou uma chave Pix
+                      ativa. Configure em Pix manual antes de orientar o cliente.
+                    </div>
+                  )
+                ) : null}
                 {selectedOrder.addressReference ? (
                   <p className="muted-text">Referência: {selectedOrder.addressReference}</p>
                 ) : null}

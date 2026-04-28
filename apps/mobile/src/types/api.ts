@@ -47,6 +47,8 @@ export interface Store {
   updatedAt: string;
 }
 
+export type StorePixKeyType = "CPF" | "CNPJ" | "EMAIL" | "PHONE" | "RANDOM_KEY";
+
 export type ClientCatalogStore = Store;
 
 export interface Product {
@@ -154,6 +156,13 @@ export interface OrderCourier {
   phone: string;
 }
 
+export interface OrderPixPaymentInstructions {
+  pixKeyType: StorePixKeyType;
+  pixKey: string;
+  pixRecipientName: string;
+  pixInstructions: string;
+}
+
 export interface Order {
   id: string;
   storeId: string;
@@ -177,6 +186,7 @@ export interface Order {
   paymentStatus: OrderPaymentStatus;
   paymentProvider?: OrderPaymentProvider | null;
   paidAt?: string | null;
+  pixPaymentInstructions?: OrderPixPaymentInstructions | null;
   status: string;
   statusLabel?: string;
   notes?: string | null;

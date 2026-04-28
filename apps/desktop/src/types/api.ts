@@ -62,6 +62,18 @@ export interface StoreDeliveryZone {
   updatedAt: string;
 }
 
+export type StorePixKeyType = "CPF" | "CNPJ" | "EMAIL" | "PHONE" | "RANDOM_KEY";
+
+export interface StorePixSettings {
+  storeId: string;
+  pixKeyType?: StorePixKeyType | null;
+  pixKey?: string | null;
+  pixRecipientName?: string | null;
+  pixInstructions?: string | null;
+  pixEnabled: boolean;
+  updatedAt: string;
+}
+
 export type StoreCourierLinkStatus =
   | "PENDING"
   | "APPROVED"
@@ -139,6 +151,13 @@ export interface OrderCourier {
   phone: string;
 }
 
+export interface OrderPixPaymentInstructions {
+  pixKeyType: StorePixKeyType;
+  pixKey: string;
+  pixRecipientName: string;
+  pixInstructions: string;
+}
+
 export interface Order {
   id: string;
   storeId: string;
@@ -162,6 +181,7 @@ export interface Order {
   paymentStatus: OrderPaymentStatus;
   paymentProvider?: OrderPaymentProvider | null;
   paidAt?: string | null;
+  pixPaymentInstructions?: OrderPixPaymentInstructions | null;
   status:
     | "PENDING"
     | "ACCEPTED"

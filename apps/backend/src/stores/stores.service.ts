@@ -1,15 +1,17 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException
 } from "@nestjs/common";
-import { Prisma } from "@prisma/client";
+import { Prisma, StorePixKeyType } from "@prisma/client";
 
 import { UserRole } from "../common/enums/user-role.enum";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateDeliveryZoneDto } from "./dto/create-delivery-zone.dto";
 import { UpdateDeliveryZoneDto } from "./dto/update-delivery-zone.dto";
+import { UpdateStorePixSettingsDto } from "./dto/update-store-pix-settings.dto";
 
 @Injectable()
 export class StoresService {
@@ -39,6 +41,47 @@ export class StoresService {
     });
 
     return zones.map((zone) => this.serializeDeliveryZone(zone));
+  }
+
+  async getPixSettings(ownerUserId: string, role: UserRole) {
+    const store = await this.getStoreByOwner(ownerUserId, role);
+
+    return this.serializePixSettings(store);
+  }
+
+  async updatePixSettings(
+    ownerUserId: string,
+    role: UserRole,
+    dto: UpdateStorePixSettingsDto
+  ) {
+    const store = await this.getStoreByOwner(ownerUserId, role);
+    const nextSettings = {
+      pixEnabled: dto.pixEnabled ?? store.pixEnabled,
+      pixKeyType: dto.pixKeyType ?? store.pixKeyType,
+      pixKey:
+        dto.pixKey !== undefined
+          ? dto.pixKey.trim() || null
+          : store.pixKey,
+      pixRecipientName:
+        dto.pixRecipientName !== undefined
+          ? dto.pixRecipientName.trim() || null
+          : store.pixRecipientName,
+      pixInstructions:
+        dto.pixInstructions !== undefined
+          ? dto.pixInstructions.trim() || null
+          : store.pixInstructions
+    };
+
+    if (nextSettings.pixEnabled) {
+      this.validateEnabledPixSettings(nextSettings);
+    }
+
+    const updatedStore = await this.prisma.store.update({
+      where: { id: store.id },
+      data: nextSettings
+    });
+
+    return this.serializePixSettings(updatedStore);
   }
 
   async createDeliveryZone(
@@ -167,6 +210,38 @@ export class StoresService {
       isActive: zone.isActive,
       createdAt: zone.createdAt,
       updatedAt: zone.updatedAt
+    };
+  }
+
+  private validateEnabledPixSettings(settings: {
+    pixKeyType: StorePixKeyType | null;
+    pixKey: string | null;
+    pixRecipientName: string | null;
+  }) {
+    if (!settings.pixKeyType || !settings.pixKey || !settings.pixRecipientName) {
+      throw new BadRequestException(
+        "Para ativar Pix manual, informe tipo de chave, chave Pix e nome do recebedor"
+      );
+    }
+  }
+
+  private serializePixSettings(store: {
+    id: string;
+    pixKeyType: StorePixKeyType | null;
+    pixKey: string | null;
+    pixRecipientName: string | null;
+    pixInstructions: string | null;
+    pixEnabled: boolean;
+    updatedAt: Date;
+  }) {
+    return {
+      storeId: store.id,
+      pixKeyType: store.pixKeyType,
+      pixKey: store.pixKey,
+      pixRecipientName: store.pixRecipientName,
+      pixInstructions: store.pixInstructions,
+      pixEnabled: store.pixEnabled,
+      updatedAt: store.updatedAt
     };
   }
 }

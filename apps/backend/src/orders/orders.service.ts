@@ -297,7 +297,9 @@ export class OrdersService {
       return createdOrder;
     });
 
-    const serializedOrder = this.serializeOrder(order);
+    const serializedOrder = this.serializeOrder(order, {
+      includePixPaymentInstructions: true
+    });
     this.ordersRealtimeService.emitOrderCreated(serializedOrder);
 
     return serializedOrder;
@@ -317,7 +319,9 @@ export class OrdersService {
       where.status = this.parseStatusFilter(query.status);
     }
 
-    return this.paginateOrders(where, query);
+    return this.paginateOrders(where, query, {
+      includePixPaymentInstructions: true
+    });
   }
 
   async listClientOrders(
@@ -335,7 +339,9 @@ export class OrdersService {
       where.status = this.parseStatusFilter(query.status);
     }
 
-    return this.paginateOrders(where, query);
+    return this.paginateOrders(where, query, {
+      includePixPaymentInstructions: true
+    });
   }
 
   async getHistory(orderId: string, ownerUserId: string, role: UserRole) {
@@ -661,7 +667,9 @@ export class OrdersService {
       return updated;
     });
 
-    const serializedOrder = this.serializeOrder(updatedOrder);
+    const serializedOrder = this.serializeOrder(updatedOrder, {
+      includePixPaymentInstructions: true
+    });
     this.ordersRealtimeService.emitOrderStatusUpdated(serializedOrder);
 
     return serializedOrder;
@@ -747,7 +755,9 @@ export class OrdersService {
       return updated;
     });
 
-    const serializedOrder = this.serializeOrder(updatedOrder);
+    const serializedOrder = this.serializeOrder(updatedOrder, {
+      includePixPaymentInstructions: true
+    });
     this.ordersRealtimeService.emitOrderStatusUpdated(serializedOrder);
 
     return serializedOrder;
@@ -820,7 +830,9 @@ export class OrdersService {
       return this.getOrderWithRelations(transaction, orderId);
     });
 
-    const serializedOrder = this.serializeOrder(updatedOrder);
+    const serializedOrder = this.serializeOrder(updatedOrder, {
+      includePixPaymentInstructions: true
+    });
     this.ordersRealtimeService.emitOrderCancelled(serializedOrder);
 
     return serializedOrder;
@@ -956,7 +968,8 @@ export class OrdersService {
 
   private async paginateOrders(
     where: Prisma.OrderWhereInput,
-    query: ListOrdersQueryDto
+    query: ListOrdersQueryDto,
+    options?: { includePixPaymentInstructions?: boolean }
   ) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
@@ -987,7 +1000,7 @@ export class OrdersService {
     ]);
 
     return {
-      items: orders.map((order) => this.serializeOrder(order)),
+      items: orders.map((order) => this.serializeOrder(order, options)),
       meta: {
         page,
         limit,
@@ -1000,24 +1013,75 @@ export class OrdersService {
   private serializeOrder(
     order: Order & {
       items: OrderItem[];
-      store?: { id: string; name: string; address: string };
+      store?: {
+        id: string;
+        name: string;
+        address: string;
+        pixEnabled?: boolean;
+        pixKeyType?: string | null;
+        pixKey?: string | null;
+        pixRecipientName?: string | null;
+        pixInstructions?: string | null;
+      };
       courier?: { id: string; name: string; email: string; phone: string } | null;
-    }
+    },
+    options?: { includePixPaymentInstructions?: boolean }
   ) {
     return {
       ...order,
+      store: order.store
+        ? {
+            id: order.store.id,
+            name: order.store.name,
+            address: order.store.address
+          }
+        : undefined,
       subtotal: Number(order.subtotal),
       suggestedDeliveryFee: order.suggestedDeliveryFee
         ? Number(order.suggestedDeliveryFee)
         : null,
       deliveryFee: Number(order.deliveryFee),
       total: Number(order.total),
+      pixPaymentInstructions: options?.includePixPaymentInstructions
+        ? this.buildPixPaymentInstructions(order)
+        : null,
       statusLabel: this.serializeOrderStatus(order),
       items: order.items.map((item) => ({
         ...item,
         unitPrice: Number(item.unitPrice),
         totalPrice: Number(item.totalPrice)
       }))
+    };
+  }
+
+  private buildPixPaymentInstructions(
+    order: Order & {
+      store?: {
+        pixEnabled?: boolean;
+        pixKeyType?: string | null;
+        pixKey?: string | null;
+        pixRecipientName?: string | null;
+        pixInstructions?: string | null;
+      };
+    }
+  ) {
+    if (
+      order.paymentMethod !== OrderPaymentMethod.PIX_MANUAL ||
+      !order.store?.pixEnabled ||
+      !order.store.pixKeyType ||
+      !order.store.pixKey ||
+      !order.store.pixRecipientName
+    ) {
+      return null;
+    }
+
+    return {
+      pixKeyType: order.store.pixKeyType,
+      pixKey: order.store.pixKey,
+      pixRecipientName: order.store.pixRecipientName,
+      pixInstructions:
+        order.store.pixInstructions ??
+        "Envie o comprovante para a loja. O pagamento sera confirmado manualmente."
     };
   }
 

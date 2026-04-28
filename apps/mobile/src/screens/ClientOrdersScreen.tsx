@@ -19,7 +19,23 @@ import { ordersService } from "../features/orders/orders-service";
 import { useRealtime } from "../features/realtime/realtime-context";
 import { ApiError } from "../lib/http";
 import { mobileTheme } from "../theme";
-import type { Order } from "../types/api";
+import type { Order, StorePixKeyType } from "../types/api";
+
+function formatPixKeyType(type: StorePixKeyType) {
+  if (type === "RANDOM_KEY") {
+    return "Chave aleatoria";
+  }
+
+  if (type === "PHONE") {
+    return "Telefone";
+  }
+
+  if (type === "EMAIL") {
+    return "E-mail";
+  }
+
+  return type;
+}
 
 export function ClientOrdersScreen() {
   const { token } = useAuth();
@@ -115,6 +131,33 @@ export function ClientOrdersScreen() {
                   {getFulfillmentText(order)} - Total atual R$ {order.total.toFixed(2)}
                 </Text>
               </View>
+              {order.paymentMethod === "PIX_MANUAL" ? (
+                <View style={styles.pixBox}>
+                  <Text style={styles.pixTitle}>Pix manual</Text>
+                  {order.pixPaymentInstructions ? (
+                    <>
+                      <Text style={styles.pixText}>
+                        {formatPixKeyType(order.pixPaymentInstructions.pixKeyType)}:{" "}
+                        {order.pixPaymentInstructions.pixKey}
+                      </Text>
+                      <Text style={styles.pixText}>
+                        Recebedor: {order.pixPaymentInstructions.pixRecipientName}
+                      </Text>
+                      <Text style={styles.pixMeta}>
+                        {order.pixPaymentInstructions.pixInstructions}
+                      </Text>
+                    </>
+                  ) : (
+                    <Text style={styles.pixMeta}>
+                      A loja ainda nao informou uma chave Pix ativa. Aguarde a orientacao
+                      da empresa.
+                    </Text>
+                  )}
+                  <Text style={styles.pixMeta}>
+                    O pagamento continua pendente até a loja confirmar manualmente.
+                  </Text>
+                </View>
+              ) : null}
               <OrderTimeline audience="client" order={order} />
             </View>
           ))}
@@ -195,6 +238,27 @@ const styles = StyleSheet.create({
   },
   statusText: {
     color: mobileTheme.colors.textMuted
+  },
+  pixBox: {
+    padding: 14,
+    borderRadius: mobileTheme.radii.sm,
+    backgroundColor: mobileTheme.colors.warningSoft,
+    borderWidth: 1,
+    borderColor: mobileTheme.colors.borderStrong
+  },
+  pixTitle: {
+    color: mobileTheme.colors.warning,
+    fontWeight: "900",
+    marginBottom: 6
+  },
+  pixText: {
+    color: mobileTheme.colors.text,
+    fontWeight: "700",
+    marginBottom: 4
+  },
+  pixMeta: {
+    color: mobileTheme.colors.textMuted,
+    lineHeight: 20
   },
   pagination: {
     marginTop: 8,

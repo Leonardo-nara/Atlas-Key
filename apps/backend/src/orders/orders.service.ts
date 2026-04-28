@@ -10,6 +10,9 @@ import {
   OrderEventType,
   OrderFulfillmentType,
   OrderItem,
+  OrderPaymentMethod,
+  OrderPaymentProvider,
+  OrderPaymentStatus,
   OrderStatus as PrismaOrderStatus,
   Prisma,
   UserRole as PrismaUserRole
@@ -90,6 +93,7 @@ export class OrdersService {
       0
     );
     const total = subtotal + dto.deliveryFee;
+    const paymentMethod = dto.paymentMethod ?? OrderPaymentMethod.CASH;
 
     const order = await this.prisma.$transaction(async (transaction) => {
       const createdOrder = await transaction.order.create({
@@ -101,6 +105,9 @@ export class OrdersService {
           subtotal: new Prisma.Decimal(subtotal),
           deliveryFee: new Prisma.Decimal(dto.deliveryFee),
           total: new Prisma.Decimal(total),
+          paymentMethod,
+          paymentStatus: OrderPaymentStatus.PENDING,
+          paymentProvider: this.resolvePaymentProvider(paymentMethod),
           notes: dto.notes,
           items: {
             create: normalizedItems.map((item) => ({
@@ -215,6 +222,7 @@ export class OrdersService {
     const deliveryFee = 0;
     const total = subtotal + deliveryFee;
     const fulfillmentType = dto.fulfillmentType as OrderFulfillmentType;
+    const paymentMethod = dto.paymentMethod ?? OrderPaymentMethod.CASH;
     const customerAddress = this.buildCustomerAddress(dto);
     const suggestedDeliveryZone =
       fulfillmentType === OrderFulfillmentType.DELIVERY
@@ -249,6 +257,9 @@ export class OrdersService {
             : null,
           deliveryFee: new Prisma.Decimal(deliveryFee),
           total: new Prisma.Decimal(total),
+          paymentMethod,
+          paymentStatus: OrderPaymentStatus.PENDING,
+          paymentProvider: this.resolvePaymentProvider(paymentMethod),
           notes: dto.notes,
           items: {
             create: normalizedItems.map((item) => ({
@@ -262,7 +273,15 @@ export class OrdersService {
         },
         include: {
           items: true,
-          store: true
+          store: true,
+          courier: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true
+            }
+          }
         }
       });
 
@@ -571,7 +590,15 @@ export class OrdersService {
         where: { id: orderId },
         include: {
           items: true,
-          store: true
+          store: true,
+          courier: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true
+            }
+          }
         }
       });
 
@@ -607,7 +634,15 @@ export class OrdersService {
         },
         include: {
           items: true,
-          store: true
+          store: true,
+          courier: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true
+            }
+          }
         }
       });
 
@@ -619,6 +654,92 @@ export class OrdersService {
           actorRole: PrismaUserRole.STORE_ADMIN,
           metadata: {
             deliveryFee
+          }
+        }
+      });
+
+      return updated;
+    });
+
+    const serializedOrder = this.serializeOrder(updatedOrder);
+    this.ordersRealtimeService.emitOrderStatusUpdated(serializedOrder);
+
+    return serializedOrder;
+  }
+
+  async markManualPaymentPaid(
+    orderId: string,
+    ownerUserId: string,
+    role: UserRole
+  ) {
+    const store = await this.storesService.getStoreByOwner(ownerUserId, role);
+
+    const updatedOrder = await this.prisma.$transaction(async (transaction) => {
+      const order = await transaction.order.findUnique({
+        where: { id: orderId },
+        include: {
+          items: true,
+          store: true,
+          courier: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true
+            }
+          }
+        }
+      });
+
+      if (!order || order.storeId !== store.id) {
+        throw new NotFoundException("Pedido nao encontrado para a loja autenticada");
+      }
+
+      if (order.paymentMethod === OrderPaymentMethod.ONLINE) {
+        throw new BadRequestException(
+          "Pagamento online sera tratado por integracao futura"
+        );
+      }
+
+      if (order.status === PrismaOrderStatus.CANCELLED) {
+        throw new BadRequestException(
+          "Nao e possivel marcar pagamento de pedido cancelado"
+        );
+      }
+
+      if (order.paymentStatus === OrderPaymentStatus.PAID) {
+        return order;
+      }
+
+      const updated = await transaction.order.update({
+        where: { id: orderId },
+        data: {
+          paymentStatus: OrderPaymentStatus.PAID,
+          paymentProvider: OrderPaymentProvider.MANUAL,
+          paidAt: new Date()
+        },
+        include: {
+          items: true,
+          store: true,
+          courier: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true
+            }
+          }
+        }
+      });
+
+      await transaction.orderEvent.create({
+        data: {
+          orderId,
+          type: OrderEventType.PAYMENT_PAID,
+          actorUserId: ownerUserId,
+          actorRole: PrismaUserRole.STORE_ADMIN,
+          metadata: {
+            paymentMethod: order.paymentMethod
           }
         }
       });
@@ -813,6 +934,12 @@ export class OrdersService {
     return OrderEventType.CANCELLED;
   }
 
+  private resolvePaymentProvider(paymentMethod: OrderPaymentMethod) {
+    return paymentMethod === OrderPaymentMethod.ONLINE
+      ? OrderPaymentProvider.FUTURE_GATEWAY
+      : OrderPaymentProvider.MANUAL;
+  }
+
   private async paginateOrders(
     where: Prisma.OrderWhereInput,
     query: ListOrdersQueryDto
@@ -826,7 +953,15 @@ export class OrdersService {
         where,
         include: {
           items: true,
-          store: true
+          store: true,
+          courier: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true
+            }
+          }
         },
         orderBy: {
           createdAt: "desc"
@@ -849,7 +984,11 @@ export class OrdersService {
   }
 
   private serializeOrder(
-    order: Order & { items: OrderItem[]; store?: { id: string; name: string; address: string } }
+    order: Order & {
+      items: OrderItem[];
+      store?: { id: string; name: string; address: string };
+      courier?: { id: string; name: string; email: string; phone: string } | null;
+    }
   ) {
     return {
       ...order,
@@ -902,7 +1041,15 @@ export class OrdersService {
       where: { id: orderId },
       include: {
         items: true,
-        store: true
+        store: true,
+        courier: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true
+          }
+        }
       }
     });
   }

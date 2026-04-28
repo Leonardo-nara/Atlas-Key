@@ -1,9 +1,15 @@
 export interface OrderAuditEvent {
   id: string;
   orderId: string;
-  type: "created" | "accepted" | "picked_up" | "delivered" | "cancelled";
+  type:
+    | "created"
+    | "accepted"
+    | "picked_up"
+    | "delivered"
+    | "cancelled"
+    | "payment_paid";
   actorUserId?: string | null;
-  actorRole?: "STORE_ADMIN" | "COURIER" | null;
+  actorRole?: "STORE_ADMIN" | "COURIER" | "CLIENT" | null;
   actorName?: string | null;
   actorEmail?: string | null;
   reason?: string | null;

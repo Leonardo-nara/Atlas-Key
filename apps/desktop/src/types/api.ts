@@ -117,6 +117,28 @@ export interface OrderItem {
   totalPrice: number;
 }
 
+export type OrderPaymentMethod =
+  | "CASH"
+  | "CARD_ON_DELIVERY"
+  | "PIX_MANUAL"
+  | "ONLINE";
+
+export type OrderPaymentStatus =
+  | "PENDING"
+  | "PAID"
+  | "FAILED"
+  | "CANCELLED"
+  | "REFUNDED";
+
+export type OrderPaymentProvider = "MANUAL" | "FUTURE_GATEWAY";
+
+export interface OrderCourier {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+}
+
 export interface Order {
   id: string;
   storeId: string;
@@ -136,6 +158,10 @@ export interface Order {
   suggestedDeliveryFee?: number | null;
   deliveryFee: number;
   total: number;
+  paymentMethod: OrderPaymentMethod;
+  paymentStatus: OrderPaymentStatus;
+  paymentProvider?: OrderPaymentProvider | null;
+  paidAt?: string | null;
   status:
     | "PENDING"
     | "ACCEPTED"
@@ -150,12 +176,13 @@ export interface Order {
   updatedAt: string;
   statusLabel?: string;
   items: OrderItem[];
+  courier?: OrderCourier | null;
 }
 
 export interface OrderAuditEvent {
   id: string;
   orderId: string;
-  type: "created" | "accepted" | "picked_up" | "delivered" | "cancelled";
+  type: "created" | "accepted" | "picked_up" | "delivered" | "cancelled" | "payment_paid";
   actorUserId?: string | null;
   actorRole?: "STORE_ADMIN" | "COURIER" | "CLIENT" | null;
   actorName?: string | null;

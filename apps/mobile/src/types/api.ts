@@ -132,6 +132,28 @@ export interface OrderStore {
   address: string;
 }
 
+export type OrderPaymentMethod =
+  | "CASH"
+  | "CARD_ON_DELIVERY"
+  | "PIX_MANUAL"
+  | "ONLINE";
+
+export type OrderPaymentStatus =
+  | "PENDING"
+  | "PAID"
+  | "FAILED"
+  | "CANCELLED"
+  | "REFUNDED";
+
+export type OrderPaymentProvider = "MANUAL" | "FUTURE_GATEWAY";
+
+export interface OrderCourier {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+}
+
 export interface Order {
   id: string;
   storeId: string;
@@ -151,6 +173,10 @@ export interface Order {
   suggestedDeliveryFee?: number | null;
   deliveryFee: number;
   total: number;
+  paymentMethod: OrderPaymentMethod;
+  paymentStatus: OrderPaymentStatus;
+  paymentProvider?: OrderPaymentProvider | null;
+  paidAt?: string | null;
   status: string;
   statusLabel?: string;
   notes?: string | null;
@@ -160,6 +186,7 @@ export interface Order {
   updatedAt: string;
   items: OrderItem[];
   store?: OrderStore;
+  courier?: OrderCourier | null;
 }
 
 export interface PaginationMeta {

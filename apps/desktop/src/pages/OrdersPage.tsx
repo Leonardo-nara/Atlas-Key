@@ -59,6 +59,10 @@ function formatAuditType(type: OrderAuditEvent["type"]) {
     return "Pedido entregue";
   }
 
+  if (type === "payment_paid") {
+    return "Pagamento marcado como pago";
+  }
+
   return "Pedido cancelado";
 }
 
@@ -80,6 +84,50 @@ function formatActorRole(role?: OrderAuditEvent["actorRole"]) {
 
 function formatFulfillmentType(order: Order) {
   return order.fulfillmentType === "PICKUP" ? "Retirada na loja" : "Entrega";
+}
+
+function formatPaymentMethod(method?: Order["paymentMethod"]) {
+  if (method === "CARD_ON_DELIVERY") {
+    return "Cartão na entrega";
+  }
+
+  if (method === "PIX_MANUAL") {
+    return "Pix manual";
+  }
+
+  if (method === "ONLINE") {
+    return "Online (futuro)";
+  }
+
+  return "Dinheiro na entrega";
+}
+
+function formatPaymentStatus(status?: Order["paymentStatus"]) {
+  if (status === "PAID") {
+    return "Pago";
+  }
+
+  if (status === "FAILED") {
+    return "Falhou";
+  }
+
+  if (status === "CANCELLED") {
+    return "Cancelado";
+  }
+
+  if (status === "REFUNDED") {
+    return "Reembolsado";
+  }
+
+  return "Aguardando pagamento";
+}
+
+function canMarkPaymentPaid(order: Order) {
+  return Boolean(
+    order.paymentStatus !== "PAID" &&
+      order.paymentMethod !== "ONLINE" &&
+      order.status !== "CANCELLED"
+  );
 }
 
 function getOrderStatusRank(order: Order) {
@@ -215,6 +263,9 @@ export function OrdersPage() {
   const [confirmModalOrder, setConfirmModalOrder] = useState<Order | null>(null);
   const [deliveryFeeDraft, setDeliveryFeeDraft] = useState("");
   const [confirmError, setConfirmError] = useState<string | null>(null);
+  const [paymentModalOrder, setPaymentModalOrder] = useState<Order | null>(null);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [lastRealtimeAt, setLastRealtimeAt] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -233,6 +284,7 @@ export function OrdersPage() {
     }
 
     return subscribeToOrderEvents(() => {
+      setLastRealtimeAt(new Date());
       void loadData({ silent: true });
 
       if (selectedOrderId) {
@@ -383,6 +435,12 @@ export function OrdersPage() {
     setError(null);
   }
 
+  function openPaymentModal(order: Order) {
+    setPaymentModalOrder(order);
+    setPaymentError(null);
+    setError(null);
+  }
+
   function closeCancelModal() {
     if (actingOrderId) {
       return;
@@ -401,6 +459,15 @@ export function OrdersPage() {
     setConfirmModalOrder(null);
     setDeliveryFeeDraft("");
     setConfirmError(null);
+  }
+
+  function closePaymentModal() {
+    if (actingOrderId) {
+      return;
+    }
+
+    setPaymentModalOrder(null);
+    setPaymentError(null);
   }
 
   async function handleConfirmOrder() {
@@ -481,6 +548,35 @@ export function OrdersPage() {
     }
   }
 
+  async function handleMarkPaymentPaid() {
+    if (!token || !paymentModalOrder) {
+      return;
+    }
+
+    setActingOrderId(paymentModalOrder.id);
+    setPaymentError(null);
+    setError(null);
+
+    try {
+      const paidOrder = await ordersService.markPaymentPaid(token, paymentModalOrder.id);
+      setSuccessMessage("Pagamento marcado como pago.");
+      setSelectedOrderId(paidOrder.id);
+      setPaymentModalOrder(null);
+      await loadData({ silent: true });
+      await loadHistory(paidOrder.id, { silent: true });
+    } catch (paymentRequestError) {
+      const message =
+        paymentRequestError instanceof ApiError
+          ? paymentRequestError.message
+          : "Não foi possível marcar o pagamento como pago.";
+
+      setError(message);
+      setPaymentError(message);
+    } finally {
+      setActingOrderId(null);
+    }
+  }
+
   return (
     <section className="page-section">
       <PageHeader
@@ -491,6 +587,11 @@ export function OrdersPage() {
             <span className={`status-chip ${isConnected ? "live" : "offline"}`}>
               {isConnected ? "Tempo real ativo" : "Tempo real offline"}
             </span>
+            {lastRealtimeAt ? (
+              <span className="status-chip live">
+                Atualizado às {lastRealtimeAt.toLocaleTimeString("pt-BR")}
+              </span>
+            ) : null}
             <select
               className="filter-select"
               onChange={(event) => {
@@ -580,6 +681,10 @@ export function OrdersPage() {
 
                   <p className="muted-text">{formatFulfillmentType(order)}</p>
                   <p>{order.customerAddress}</p>
+                  <p className="muted-text">
+                    Pagamento: {formatPaymentMethod(order.paymentMethod)} ·{" "}
+                    {formatPaymentStatus(order.paymentStatus)}
+                  </p>
 
                   <ul className="order-items">
                     {order.items.map((item) => (
@@ -617,6 +722,20 @@ export function OrdersPage() {
                       Confirmar pedido
                     </button>
                   ) : null}
+
+                  {canMarkPaymentPaid(order) ? (
+                    <button
+                      className="secondary-button"
+                      disabled={actingOrderId === order.id}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        openPaymentModal(order);
+                      }}
+                      type="button"
+                    >
+                      Marcar pagamento pago
+                    </button>
+                  ) : null}
                 </article>
               ))}
             </div>
@@ -649,6 +768,16 @@ export function OrdersPage() {
                 {actingOrderId === selectedOrder.id ? "Cancelando..." : "Cancelar pedido"}
               </button>
               ) : null}
+              {selectedOrder && canMarkPaymentPaid(selectedOrder) ? (
+                <button
+                  className="secondary-button"
+                  disabled={actingOrderId === selectedOrder.id}
+                  onClick={() => openPaymentModal(selectedOrder)}
+                  type="button"
+                >
+                  Marcar pagamento pago
+                </button>
+              ) : null}
             </div>
           </div>
 
@@ -670,6 +799,23 @@ export function OrdersPage() {
                 </div>
                 <p className="muted-text">{formatFulfillmentType(selectedOrder)}</p>
                 <p>{selectedOrder.customerAddress}</p>
+                <p className="muted-text">
+                  Status atual: {formatOrderStatus(selectedOrder.status, selectedOrder.statusLabel)}
+                </p>
+                <p className="muted-text">
+                  Pagamento: {formatPaymentMethod(selectedOrder.paymentMethod)} ·{" "}
+                  {formatPaymentStatus(selectedOrder.paymentStatus)}
+                  {selectedOrder.paidAt
+                    ? ` em ${new Date(selectedOrder.paidAt).toLocaleString("pt-BR")}`
+                    : ""}
+                </p>
+                {selectedOrder.courier ? (
+                  <p className="muted-text">
+                    Motoboy: {selectedOrder.courier.name} · {selectedOrder.courier.phone}
+                  </p>
+                ) : (
+                  <p className="muted-text">Motoboy: ainda não atribuído</p>
+                )}
                 {selectedOrder.addressReference ? (
                   <p className="muted-text">Referência: {selectedOrder.addressReference}</p>
                 ) : null}
@@ -840,6 +986,72 @@ export function OrdersPage() {
                 type="button"
               >
                 {actingOrderId === confirmModalOrder.id ? "Confirmando..." : "Confirmar pedido"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {paymentModalOrder ? (
+        <div className="modal-backdrop" onClick={closePaymentModal} role="presentation">
+          <div
+            aria-labelledby="payment-order-title"
+            aria-modal="true"
+            className="modal-card"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+          >
+            <div className="modal-header">
+              <div>
+                <p className="section-kicker">Pagamento manual</p>
+                <h3 id="payment-order-title">Marcar como pago</h3>
+              </div>
+              <button
+                className="ghost-button"
+                disabled={Boolean(actingOrderId)}
+                onClick={closePaymentModal}
+                type="button"
+              >
+                Fechar
+              </button>
+            </div>
+
+            <p className="muted-text">
+              Confirme apenas se a loja recebeu o pagamento manual do pedido de{" "}
+              <strong>{paymentModalOrder.customerName}</strong>.
+            </p>
+
+            <div className="order-totals">
+              <span>Método: {formatPaymentMethod(paymentModalOrder.paymentMethod)}</span>
+              <span>Status atual: {formatPaymentStatus(paymentModalOrder.paymentStatus)}</span>
+              <strong>Total: R$ {paymentModalOrder.total.toFixed(2)}</strong>
+            </div>
+
+            <div className="feedback feedback-warning">
+              Esta ação registra o pagamento como pago no histórico do pedido. Integração Pix
+              automática ainda não está ativa.
+            </div>
+
+            {paymentError ? <div className="feedback feedback-error">{paymentError}</div> : null}
+
+            <div className="modal-actions">
+              <button
+                className="secondary-button"
+                disabled={Boolean(actingOrderId)}
+                onClick={closePaymentModal}
+                type="button"
+              >
+                Voltar
+              </button>
+              <button
+                className="primary-button"
+                disabled={Boolean(actingOrderId)}
+                onClick={() => void handleMarkPaymentPaid()}
+                type="button"
+              >
+                {actingOrderId === paymentModalOrder.id
+                  ? "Registrando..."
+                  : "Confirmar pagamento"}
               </button>
             </div>
           </div>

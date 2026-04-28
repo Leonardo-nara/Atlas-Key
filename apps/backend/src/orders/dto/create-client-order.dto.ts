@@ -9,6 +9,7 @@ import {
   ValidateNested
 } from "class-validator";
 import { Type } from "class-transformer";
+import { OrderPaymentMethod } from "@prisma/client";
 
 import { CreateClientOrderItemDto } from "./create-client-order-item.dto";
 
@@ -65,6 +66,10 @@ export class CreateClientOrderDto {
   @IsString()
   @MaxLength(500)
   notes?: string;
+
+  @IsOptional()
+  @IsEnum(OrderPaymentMethod)
+  paymentMethod?: OrderPaymentMethod;
 
   @IsArray()
   @ArrayMinSize(1)

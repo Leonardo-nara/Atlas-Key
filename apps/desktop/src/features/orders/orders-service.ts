@@ -13,6 +13,7 @@ export interface CreateOrderInput {
   customerPhone: string;
   customerAddress: string;
   deliveryFee: number;
+  paymentMethod?: Order["paymentMethod"];
   notes?: string;
   items: CreateOrderItemInput[];
 }
@@ -78,6 +79,12 @@ export const ordersService = {
       method: "PATCH",
       token,
       body: JSON.stringify(input)
+    });
+  },
+  markPaymentPaid(token: string, orderId: string) {
+    return http<Order>(`/orders/${orderId}/payment/paid`, {
+      method: "PATCH",
+      token
     });
   }
 };

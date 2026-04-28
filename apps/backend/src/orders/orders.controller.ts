@@ -90,6 +90,16 @@ export class OrdersController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.STORE_ADMIN)
+  @Patch(":orderId/payment/paid")
+  markPaymentPaid(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("orderId") orderId: string
+  ) {
+    return this.ordersService.markManualPaymentPaid(orderId, user.sub, user.role);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.STORE_ADMIN)
   @Patch(":orderId/cancel")
   cancel(
     @CurrentUser() user: AuthenticatedUser,

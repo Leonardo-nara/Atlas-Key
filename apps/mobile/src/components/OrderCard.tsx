@@ -36,6 +36,42 @@ function getStatusVariant(label: string) {
   };
 }
 
+function formatPaymentMethod(method?: Order["paymentMethod"]) {
+  if (method === "CARD_ON_DELIVERY") {
+    return "Cartao na entrega";
+  }
+
+  if (method === "PIX_MANUAL") {
+    return "Pix manual";
+  }
+
+  if (method === "ONLINE") {
+    return "Online";
+  }
+
+  return "Dinheiro na entrega";
+}
+
+function formatPaymentStatus(status?: Order["paymentStatus"]) {
+  if (status === "PAID") {
+    return "Pago";
+  }
+
+  if (status === "FAILED") {
+    return "Falhou";
+  }
+
+  if (status === "CANCELLED") {
+    return "Cancelado";
+  }
+
+  if (status === "REFUNDED") {
+    return "Reembolsado";
+  }
+
+  return "Aguardando pagamento";
+}
+
 export function OrderCard({
   order,
   actionLabel,
@@ -78,6 +114,15 @@ export function OrderCard({
         </Text>
         {order.store?.address ? (
           <Text style={styles.meta}>Origem: {order.store.address}</Text>
+        ) : null}
+        <Text style={styles.meta}>
+          Pagamento: {formatPaymentMethod(order.paymentMethod)} -{" "}
+          {formatPaymentStatus(order.paymentStatus)}
+        </Text>
+        {order.courier ? (
+          <Text style={styles.meta}>
+            Motoboy: {order.courier.name} - {order.courier.phone}
+          </Text>
         ) : null}
       </View>
 

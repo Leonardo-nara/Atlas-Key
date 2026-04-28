@@ -46,12 +46,33 @@ enum OrderFulfillmentType {
   PICKUP
 }
 
+enum OrderPaymentMethod {
+  CASH
+  CARD_ON_DELIVERY
+  PIX_MANUAL
+  ONLINE
+}
+
+enum OrderPaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+enum OrderPaymentProvider {
+  MANUAL
+  FUTURE_GATEWAY
+}
+
 enum OrderEventType {
   CREATED
   ACCEPTED
   PICKED_UP
   DELIVERED
   CANCELLED
+  PAYMENT_PAID
 }
 
 enum AuthAuditEventType {
@@ -260,6 +281,10 @@ model Order {
   suggestedDeliveryFee Decimal? @db.Decimal(10, 2)
   deliveryFee     Decimal     @db.Decimal(10, 2)
   total           Decimal     @db.Decimal(10, 2)
+  paymentMethod   OrderPaymentMethod @default(CASH)
+  paymentStatus   OrderPaymentStatus @default(PENDING)
+  paymentProvider OrderPaymentProvider?
+  paidAt          DateTime?
   status          OrderStatus @default(PENDING)
   notes           String?
   cancelReason    String?

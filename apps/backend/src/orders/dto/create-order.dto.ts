@@ -1,6 +1,7 @@
 import {
   ArrayMinSize,
   IsArray,
+  IsEnum,
   IsNumber,
   IsOptional,
   IsString,
@@ -10,6 +11,7 @@ import {
   ValidateNested
 } from "class-validator";
 import { Type } from "class-transformer";
+import { OrderPaymentMethod } from "@prisma/client";
 
 import { CreateOrderItemDto } from "./create-order-item.dto";
 
@@ -37,6 +39,10 @@ export class CreateOrderDto {
   @IsString()
   @MaxLength(500)
   notes?: string;
+
+  @IsOptional()
+  @IsEnum(OrderPaymentMethod)
+  paymentMethod?: OrderPaymentMethod;
 
   @IsArray()
   @ArrayMinSize(1)

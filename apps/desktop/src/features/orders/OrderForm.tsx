@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 
-import type { Product } from "../../types/api";
+import type { OrderPaymentMethod, Product } from "../../types/api";
 import type { CreateOrderInput } from "./orders-service";
 
 interface OrderFormProps {
@@ -15,6 +15,15 @@ interface OrderFormItem {
   quantity: number;
 }
 
+const paymentMethodOptions: Array<{
+  value: Exclude<OrderPaymentMethod, "ONLINE">;
+  label: string;
+}> = [
+  { value: "CASH", label: "Dinheiro" },
+  { value: "CARD_ON_DELIVERY", label: "Cartão na entrega" },
+  { value: "PIX_MANUAL", label: "Pix manual" }
+];
+
 export function OrderForm({
   products,
   submitting,
@@ -25,6 +34,8 @@ export function OrderForm({
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
   const [deliveryFee, setDeliveryFee] = useState(8);
+  const [paymentMethod, setPaymentMethod] =
+    useState<Exclude<OrderPaymentMethod, "ONLINE">>("CASH");
   const [notes, setNotes] = useState("");
   const [localError, setLocalError] = useState<string | null>(null);
   const [items, setItems] = useState<OrderFormItem[]>([
@@ -89,6 +100,7 @@ export function OrderForm({
       customerPhone,
       customerAddress,
       deliveryFee,
+      paymentMethod,
       notes: notes.trim() || undefined,
       items: selectedItems.map((item) => ({
           productId: item.productId,
@@ -100,6 +112,7 @@ export function OrderForm({
     setCustomerPhone("");
     setCustomerAddress("");
     setDeliveryFee(8);
+    setPaymentMethod("CASH");
     setNotes("");
     setItems([{ productId: "", quantity: 1 }]);
   }
@@ -213,14 +226,38 @@ export function OrderForm({
         </label>
 
         <label className="field">
-          <span>Observações</span>
-          <input
-            value={notes}
-            onChange={(event) => setNotes(event.target.value)}
-            placeholder="Opcional"
-          />
+          <span>Forma de pagamento</span>
+          <select
+            onChange={(event) =>
+              setPaymentMethod(event.target.value as Exclude<OrderPaymentMethod, "ONLINE">)
+            }
+            required
+            value={paymentMethod}
+          >
+            {paymentMethodOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </label>
       </div>
+
+      {paymentMethod === "PIX_MANUAL" ? (
+        <div className="feedback feedback-warning">
+          A loja confirmará o pagamento manualmente. Nenhum QR Code ou Pix automático
+          será gerado nesta etapa.
+        </div>
+      ) : null}
+
+      <label className="field">
+        <span>Observações</span>
+        <input
+          value={notes}
+          onChange={(event) => setNotes(event.target.value)}
+          placeholder="Opcional"
+        />
+      </label>
 
       <div className="order-summary">
         <div>

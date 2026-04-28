@@ -733,7 +733,7 @@ export function OrdersPage() {
                       }}
                       type="button"
                     >
-                      Marcar pagamento pago
+                      Marcar pagamento como pago
                     </button>
                   ) : null}
                 </article>
@@ -775,7 +775,7 @@ export function OrdersPage() {
                   onClick={() => openPaymentModal(selectedOrder)}
                   type="button"
                 >
-                  Marcar pagamento pago
+                  Marcar pagamento como pago
                 </button>
               ) : null}
             </div>

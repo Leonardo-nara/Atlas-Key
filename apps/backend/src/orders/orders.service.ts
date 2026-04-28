@@ -93,7 +93,7 @@ export class OrdersService {
       0
     );
     const total = subtotal + dto.deliveryFee;
-    const paymentMethod = dto.paymentMethod ?? OrderPaymentMethod.CASH;
+    const paymentMethod = this.resolveOrderCreationPaymentMethod(dto.paymentMethod);
 
     const order = await this.prisma.$transaction(async (transaction) => {
       const createdOrder = await transaction.order.create({
@@ -222,7 +222,7 @@ export class OrdersService {
     const deliveryFee = 0;
     const total = subtotal + deliveryFee;
     const fulfillmentType = dto.fulfillmentType as OrderFulfillmentType;
-    const paymentMethod = dto.paymentMethod ?? OrderPaymentMethod.CASH;
+    const paymentMethod = this.resolveOrderCreationPaymentMethod(dto.paymentMethod);
     const customerAddress = this.buildCustomerAddress(dto);
     const suggestedDeliveryZone =
       fulfillmentType === OrderFulfillmentType.DELIVERY
@@ -938,6 +938,20 @@ export class OrdersService {
     return paymentMethod === OrderPaymentMethod.ONLINE
       ? OrderPaymentProvider.FUTURE_GATEWAY
       : OrderPaymentProvider.MANUAL;
+  }
+
+  private resolveOrderCreationPaymentMethod(paymentMethod?: OrderPaymentMethod) {
+    if (!paymentMethod) {
+      return OrderPaymentMethod.CASH;
+    }
+
+    if (paymentMethod === OrderPaymentMethod.ONLINE) {
+      throw new BadRequestException(
+        "Pagamento online ainda nao esta disponivel para criacao de pedidos"
+      );
+    }
+
+    return paymentMethod;
   }
 
   private async paginateOrders(

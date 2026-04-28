@@ -1,5 +1,5 @@
 import { http } from "../../lib/http";
-import type { Order, PaginatedResponse } from "../../types/api";
+import type { Order, OrderPaymentMethod, PaginatedResponse } from "../../types/api";
 
 export const ordersService = {
   available(token: string, page = 1, limit = 10) {
@@ -32,6 +32,7 @@ export const ordersService = {
       addressComplement?: string;
       addressCity?: string;
       addressReference?: string;
+      paymentMethod: Exclude<OrderPaymentMethod, "ONLINE">;
       notes?: string;
       items: Array<{ productId: string; quantity: number }>;
     }

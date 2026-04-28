@@ -16,7 +16,29 @@ import { useCart } from "../features/cart/cart-context";
 import { ordersService } from "../features/orders/orders-service";
 import { ApiError } from "../lib/http";
 import { mobileShadow, mobileTheme } from "../theme";
-import type { ClientAddress } from "../types/api";
+import type { ClientAddress, OrderPaymentMethod } from "../types/api";
+
+const paymentMethodOptions: Array<{
+  value: Exclude<OrderPaymentMethod, "ONLINE">;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "CASH",
+    label: "Dinheiro",
+    description: "Pagamento combinado com a loja na entrega ou retirada."
+  },
+  {
+    value: "CARD_ON_DELIVERY",
+    label: "Cartão na entrega",
+    description: "A loja confirma o pedido e o pagamento fica pendente."
+  },
+  {
+    value: "PIX_MANUAL",
+    label: "Pix manual",
+    description: "A loja confirmará o pagamento manualmente."
+  }
+];
 
 export function ClientCartScreen() {
   const { token, user } = useAuth();
@@ -30,6 +52,8 @@ export function ClientCartScreen() {
     clearCart
   } = useCart();
   const [fulfillmentType, setFulfillmentType] = useState<"DELIVERY" | "PICKUP">("DELIVERY");
+  const [paymentMethod, setPaymentMethod] =
+    useState<Exclude<OrderPaymentMethod, "ONLINE">>("CASH");
   const [savedAddress, setSavedAddress] = useState<ClientAddress | null>(null);
   const [addressMode, setAddressMode] = useState<"saved" | "other">("other");
   const [saveAddress, setSaveAddress] = useState(false);
@@ -153,6 +177,7 @@ export function ClientCartScreen() {
           addressComplement: complement.trim() || undefined,
           addressCity: city.trim() || undefined,
           addressReference: reference.trim() || undefined,
+          paymentMethod,
           notes: notes.trim() || undefined,
           items: group.items.map((item) => ({
             productId: item.product.id,
@@ -389,6 +414,43 @@ export function ClientCartScreen() {
               </Text>
             </View>
           )}
+
+          <Text style={styles.label}>Forma de pagamento</Text>
+          <View style={styles.paymentOptions}>
+            {paymentMethodOptions.map((option) => (
+              <Pressable
+                key={option.value}
+                onPress={() => setPaymentMethod(option.value)}
+                style={[
+                  styles.paymentOption,
+                  paymentMethod === option.value ? styles.paymentOptionActive : undefined
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.paymentOptionTitle,
+                    paymentMethod === option.value
+                      ? styles.paymentOptionTitleActive
+                      : undefined
+                  ]}
+                >
+                  {option.label}
+                </Text>
+                <Text style={styles.paymentOptionDescription}>
+                  {option.description}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          {paymentMethod === "PIX_MANUAL" ? (
+            <View style={styles.paymentNotice}>
+              <Text style={styles.paymentNoticeText}>
+                A loja confirmará o pagamento manualmente. Ainda não há QR Code,
+                webhook ou confirmação automática de Pix.
+              </Text>
+            </View>
+          ) : null}
 
           <Text style={styles.label}>Observacoes</Text>
           <TextInput
@@ -634,6 +696,42 @@ const styles = StyleSheet.create({
   pickupText: {
     color: mobileTheme.colors.success,
     lineHeight: 20
+  },
+  paymentOptions: {
+    gap: 10
+  },
+  paymentOption: {
+    gap: 5,
+    padding: 13,
+    borderRadius: mobileTheme.radii.sm,
+    backgroundColor: mobileTheme.colors.surfaceMuted,
+    borderWidth: 1,
+    borderColor: mobileTheme.colors.border
+  },
+  paymentOptionActive: {
+    borderColor: mobileTheme.colors.primaryStrong,
+    backgroundColor: mobileTheme.colors.primarySoft
+  },
+  paymentOptionTitle: {
+    color: mobileTheme.colors.text,
+    fontWeight: "900"
+  },
+  paymentOptionTitleActive: {
+    color: mobileTheme.colors.primaryStrong
+  },
+  paymentOptionDescription: {
+    color: mobileTheme.colors.textMuted,
+    lineHeight: 19
+  },
+  paymentNotice: {
+    padding: 12,
+    borderRadius: mobileTheme.radii.sm,
+    backgroundColor: mobileTheme.colors.warningSoft
+  },
+  paymentNoticeText: {
+    color: mobileTheme.colors.warning,
+    lineHeight: 20,
+    fontWeight: "700"
   },
   totalRow: {
     flexDirection: "row",

@@ -148,6 +148,7 @@ export interface Order {
   addressCity?: string | null;
   addressReference?: string | null;
   subtotal: number;
+  suggestedDeliveryFee?: number | null;
   deliveryFee: number;
   total: number;
   status: string;

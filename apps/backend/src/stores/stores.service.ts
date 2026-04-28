@@ -1,7 +1,15 @@
-import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException
+} from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 
 import { UserRole } from "../common/enums/user-role.enum";
 import { PrismaService } from "../prisma/prisma.service";
+import { CreateDeliveryZoneDto } from "./dto/create-delivery-zone.dto";
+import { UpdateDeliveryZoneDto } from "./dto/update-delivery-zone.dto";
 
 @Injectable()
 export class StoresService {
@@ -22,4 +30,156 @@ export class StoresService {
 
     return store;
   }
+
+  async listDeliveryZones(ownerUserId: string, role: UserRole) {
+    const store = await this.getStoreByOwner(ownerUserId, role);
+    const zones = await this.prisma.storeDeliveryZone.findMany({
+      where: { storeId: store.id },
+      orderBy: [{ isActive: "desc" }, { district: "asc" }]
+    });
+
+    return zones.map((zone) => this.serializeDeliveryZone(zone));
+  }
+
+  async createDeliveryZone(
+    ownerUserId: string,
+    role: UserRole,
+    dto: CreateDeliveryZoneDto
+  ) {
+    const store = await this.getStoreByOwner(ownerUserId, role);
+
+    try {
+      const zone = await this.prisma.storeDeliveryZone.create({
+        data: {
+          storeId: store.id,
+          name: dto.name,
+          district: dto.district,
+          districtNormalized: normalizeDistrict(dto.district),
+          fee: new Prisma.Decimal(dto.fee),
+          isActive: dto.isActive ?? true
+        }
+      });
+
+      return this.serializeDeliveryZone(zone);
+    } catch (error) {
+      if (isUniqueConstraintError(error)) {
+        throw new ConflictException("Ja existe uma taxa cadastrada para este bairro");
+      }
+
+      throw error;
+    }
+  }
+
+  async updateDeliveryZone(
+    ownerUserId: string,
+    role: UserRole,
+    zoneId: string,
+    dto: UpdateDeliveryZoneDto
+  ) {
+    const store = await this.getStoreByOwner(ownerUserId, role);
+    await this.ensureDeliveryZoneBelongsToStore(zoneId, store.id);
+
+    const district = dto.district?.trim();
+
+    try {
+      const zone = await this.prisma.storeDeliveryZone.update({
+        where: { id: zoneId },
+        data: {
+          ...(dto.name !== undefined ? { name: dto.name } : {}),
+          ...(district !== undefined
+            ? {
+                district,
+                districtNormalized: normalizeDistrict(district)
+              }
+            : {}),
+          ...(dto.fee !== undefined ? { fee: new Prisma.Decimal(dto.fee) } : {}),
+          ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {})
+        }
+      });
+
+      return this.serializeDeliveryZone(zone);
+    } catch (error) {
+      if (isUniqueConstraintError(error)) {
+        throw new ConflictException("Ja existe uma taxa cadastrada para este bairro");
+      }
+
+      throw error;
+    }
+  }
+
+  async deactivateDeliveryZone(ownerUserId: string, role: UserRole, zoneId: string) {
+    const store = await this.getStoreByOwner(ownerUserId, role);
+    await this.ensureDeliveryZoneBelongsToStore(zoneId, store.id);
+
+    const zone = await this.prisma.storeDeliveryZone.update({
+      where: { id: zoneId },
+      data: { isActive: false }
+    });
+
+    return this.serializeDeliveryZone(zone);
+  }
+
+  async findDeliveryZoneSuggestion(storeId: string, district?: string | null) {
+    if (!district?.trim()) {
+      return null;
+    }
+
+    const zone = await this.prisma.storeDeliveryZone.findFirst({
+      where: {
+        storeId,
+        districtNormalized: normalizeDistrict(district),
+        isActive: true
+      }
+    });
+
+    return zone ? this.serializeDeliveryZone(zone) : null;
+  }
+
+  private async ensureDeliveryZoneBelongsToStore(zoneId: string, storeId: string) {
+    const zone = await this.prisma.storeDeliveryZone.findUnique({
+      where: { id: zoneId },
+      select: { storeId: true }
+    });
+
+    if (!zone || zone.storeId !== storeId) {
+      throw new NotFoundException("Regiao de entrega nao encontrada para a loja");
+    }
+  }
+
+  private serializeDeliveryZone(zone: {
+    id: string;
+    storeId: string;
+    name: string;
+    district: string;
+    districtNormalized: string;
+    fee: Prisma.Decimal;
+    isActive: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+  }) {
+    return {
+      id: zone.id,
+      storeId: zone.storeId,
+      name: zone.name,
+      district: zone.district,
+      districtNormalized: zone.districtNormalized,
+      fee: Number(zone.fee),
+      isActive: zone.isActive,
+      createdAt: zone.createdAt,
+      updatedAt: zone.updatedAt
+    };
+  }
+}
+
+export function normalizeDistrict(value: string) {
+  return value
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
+
+function isUniqueConstraintError(error: unknown) {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
 }

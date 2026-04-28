@@ -179,8 +179,27 @@ model Store {
   products     Product[]
   orders       Order[]
   courierLinks StoreCourierLink[]
+  deliveryZones StoreDeliveryZone[]
 
   @@map("stores")
+}
+
+model StoreDeliveryZone {
+  id                 String   @id @default(cuid())
+  storeId            String
+  name               String
+  district           String
+  districtNormalized String
+  fee                Decimal  @db.Decimal(10, 2)
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, districtNormalized])
+  @@index([storeId, isActive])
+  @@map("store_delivery_zones")
 }
 
 model StoreCourierLink {
@@ -238,6 +257,7 @@ model Order {
   addressCity     String?
   addressReference String?
   subtotal        Decimal     @db.Decimal(10, 2)
+  suggestedDeliveryFee Decimal? @db.Decimal(10, 2)
   deliveryFee     Decimal     @db.Decimal(10, 2)
   total           Decimal     @db.Decimal(10, 2)
   status          OrderStatus @default(PENDING)

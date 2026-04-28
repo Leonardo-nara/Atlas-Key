@@ -749,6 +749,34 @@ p {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.zones-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.delivery-zone-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 16px;
+  align-items: center;
+  padding: 18px;
+  border-radius: 22px;
+  background: var(--rp-surface-muted);
+  border: 1px solid rgba(23, 119, 217, 0.08);
+}
+
+.delivery-zone-card p {
+  color: var(--rp-text-muted);
+  margin-top: 4px;
+}
+
+.pill-muted {
+  background: rgba(18, 50, 77, 0.06);
+  color: var(--rp-text-muted);
+}
+
 .courier-card-approved {
   background: linear-gradient(180deg, rgba(230, 248, 239, 0.98) 0%, rgba(247, 252, 250, 0.98) 100%);
 }
@@ -774,6 +802,7 @@ p {
 @media (max-width: 1180px) {
   .desktop-shell,
   .orders-grid,
+  .zones-grid,
   .couriers-grid,
   .login-card {
     grid-template-columns: 1fr;
@@ -807,6 +836,7 @@ p {
   .table-row,
   .order-summary,
   .inline-card,
+  .delivery-zone-card,
   .courier-card-grid {
     grid-template-columns: 1fr;
   }

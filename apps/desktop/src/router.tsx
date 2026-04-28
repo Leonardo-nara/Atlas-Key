@@ -2,6 +2,7 @@ import { createHashRouter, Navigate } from "react-router-dom";
 
 import { CouriersPage } from "./pages/CouriersPage";
 import { DashboardPage } from "./pages/DashboardPage";
+import { DeliveryZonesPage } from "./pages/DeliveryZonesPage";
 import { LoginPage } from "./pages/LoginPage";
 import { OrdersPage } from "./pages/OrdersPage";
 import { ProductsPage } from "./pages/ProductsPage";
@@ -36,6 +37,10 @@ export const appRouter = createHashRouter([
       {
         path: "couriers",
         element: <CouriersPage />
+      },
+      {
+        path: "delivery-zones",
+        element: <DeliveryZonesPage />
       }
     ]
   },

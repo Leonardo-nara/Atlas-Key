@@ -375,7 +375,9 @@ export function OrdersPage() {
   function openConfirmModal(order: Order) {
     setConfirmModalOrder(order);
     setDeliveryFeeDraft(
-      order.fulfillmentType === "PICKUP" ? "0" : order.deliveryFee.toFixed(2)
+      order.fulfillmentType === "PICKUP"
+        ? "0"
+        : (order.suggestedDeliveryFee ?? order.deliveryFee).toFixed(2)
     );
     setConfirmError(null);
     setError(null);
@@ -776,6 +778,18 @@ export function OrdersPage() {
 
             {confirmModalOrder.fulfillmentType === "DELIVERY" ? (
               <div className="delivery-fee-panel">
+                {confirmModalOrder.suggestedDeliveryFee !== null &&
+                confirmModalOrder.suggestedDeliveryFee !== undefined ? (
+                  <div className="feedback feedback-success">
+                    Taxa sugerida para o bairro: R${" "}
+                    {confirmModalOrder.suggestedDeliveryFee.toFixed(2)}. Ajuste se
+                    necessario antes de confirmar.
+                  </div>
+                ) : (
+                  <div className="feedback feedback-warning">
+                    Sem taxa sugerida para este bairro. Informe a taxa manualmente.
+                  </div>
+                )}
                 <label className="field">
                   <span>Taxa de entrega</span>
                   <input
@@ -800,9 +814,6 @@ export function OrdersPage() {
                       R$ {value.toFixed(2)}
                     </button>
                   ))}
-                </div>
-                <div className="feedback feedback-warning">
-                  Informe a taxa combinada para este pedido. O cliente vera o total atualizado assim que confirmar.
                 </div>
               </div>
             ) : (

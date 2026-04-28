@@ -6,7 +6,8 @@ const navigationItems = [
   { to: "/", label: "Visao geral", end: true },
   { to: "/products", label: "Produtos" },
   { to: "/orders", label: "Pedidos" },
-  { to: "/couriers", label: "Motoboys" }
+  { to: "/couriers", label: "Motoboys" },
+  { to: "/delivery-zones", label: "Taxas por bairro" }
 ];
 
 export function AppLayout() {

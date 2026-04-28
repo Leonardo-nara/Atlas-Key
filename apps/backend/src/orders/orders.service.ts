@@ -216,6 +216,13 @@ export class OrdersService {
     const total = subtotal + deliveryFee;
     const fulfillmentType = dto.fulfillmentType as OrderFulfillmentType;
     const customerAddress = this.buildCustomerAddress(dto);
+    const suggestedDeliveryZone =
+      fulfillmentType === OrderFulfillmentType.DELIVERY
+        ? await this.storesService.findDeliveryZoneSuggestion(
+            store.id,
+            dto.addressDistrict
+          )
+        : null;
 
     if (fulfillmentType === OrderFulfillmentType.DELIVERY && !customerAddress) {
       throw new BadRequestException("Endereco de entrega obrigatorio");
@@ -237,6 +244,9 @@ export class OrdersService {
           addressCity: dto.addressCity?.trim() || null,
           addressReference: dto.addressReference?.trim() || null,
           subtotal: new Prisma.Decimal(subtotal),
+          suggestedDeliveryFee: suggestedDeliveryZone
+            ? new Prisma.Decimal(suggestedDeliveryZone.fee)
+            : null,
           deliveryFee: new Prisma.Decimal(deliveryFee),
           total: new Prisma.Decimal(total),
           notes: dto.notes,
@@ -582,7 +592,10 @@ export class OrdersService {
       const deliveryFee =
         order.fulfillmentType === OrderFulfillmentType.PICKUP
           ? 0
-          : dto.deliveryFee ?? Number(order.deliveryFee);
+          : dto.deliveryFee ??
+            (order.suggestedDeliveryFee
+              ? Number(order.suggestedDeliveryFee)
+              : Number(order.deliveryFee));
       const total = Number(order.subtotal) + deliveryFee;
 
       const updated = await transaction.order.update({
@@ -841,6 +854,9 @@ export class OrdersService {
     return {
       ...order,
       subtotal: Number(order.subtotal),
+      suggestedDeliveryFee: order.suggestedDeliveryFee
+        ? Number(order.suggestedDeliveryFee)
+        : null,
       deliveryFee: Number(order.deliveryFee),
       total: Number(order.total),
       statusLabel: this.serializeOrderStatus(order),

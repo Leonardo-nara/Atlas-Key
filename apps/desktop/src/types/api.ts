@@ -50,6 +50,18 @@ export interface Store {
   updatedAt: string;
 }
 
+export interface StoreDeliveryZone {
+  id: string;
+  storeId: string;
+  name: string;
+  district: string;
+  districtNormalized: string;
+  fee: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type StoreCourierLinkStatus =
   | "PENDING"
   | "APPROVED"
@@ -121,6 +133,7 @@ export interface Order {
   addressCity?: string | null;
   addressReference?: string | null;
   subtotal: number;
+  suggestedDeliveryFee?: number | null;
   deliveryFee: number;
   total: number;
   status:

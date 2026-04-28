@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
 
 import type { AuthenticatedUser } from "../common/authenticated-user.interface";
 import { CurrentUser } from "../common/decorators/current-user.decorator";
@@ -6,6 +6,8 @@ import { Roles } from "../common/decorators/roles.decorator";
 import { UserRole } from "../common/enums/user-role.enum";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { RolesGuard } from "../common/guards/roles.guard";
+import { CreateDeliveryZoneDto } from "./dto/create-delivery-zone.dto";
+import { UpdateDeliveryZoneDto } from "./dto/update-delivery-zone.dto";
 import { StoresService } from "./stores.service";
 
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -17,5 +19,35 @@ export class StoresController {
   @Get("me")
   getMyStore(@CurrentUser() user: AuthenticatedUser) {
     return this.storesService.getStoreByOwner(user.sub, user.role);
+  }
+
+  @Get("me/delivery-zones")
+  listDeliveryZones(@CurrentUser() user: AuthenticatedUser) {
+    return this.storesService.listDeliveryZones(user.sub, user.role);
+  }
+
+  @Post("me/delivery-zones")
+  createDeliveryZone(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: CreateDeliveryZoneDto
+  ) {
+    return this.storesService.createDeliveryZone(user.sub, user.role, dto);
+  }
+
+  @Patch("me/delivery-zones/:zoneId")
+  updateDeliveryZone(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("zoneId") zoneId: string,
+    @Body() dto: UpdateDeliveryZoneDto
+  ) {
+    return this.storesService.updateDeliveryZone(user.sub, user.role, zoneId, dto);
+  }
+
+  @Delete("me/delivery-zones/:zoneId")
+  deactivateDeliveryZone(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("zoneId") zoneId: string
+  ) {
+    return this.storesService.deactivateDeliveryZone(user.sub, user.role, zoneId);
   }
 }

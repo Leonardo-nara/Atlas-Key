@@ -1,5 +1,12 @@
-import { http } from "../../lib/http";
+import { mobileEnv } from "../../env";
+import { ApiError, http } from "../../lib/http";
 import type { Order, OrderPaymentMethod, PaginatedResponse } from "../../types/api";
+
+export interface PaymentProofAttachment {
+  uri: string;
+  name: string;
+  type: string;
+}
 
 export const ordersService = {
   available(token: string, page = 1, limit = 10) {
@@ -58,6 +65,78 @@ export const ordersService = {
       token,
       body: JSON.stringify(input)
     });
+  },
+  async uploadPaymentProofFile(
+    token: string,
+    orderId: string,
+    input: {
+      payerName?: string;
+      amount?: string;
+      reference?: string;
+      notes?: string;
+      file: PaymentProofAttachment;
+    }
+  ) {
+    const formData = new FormData();
+
+    formData.append("file", {
+      uri: input.file.uri,
+      name: input.file.name,
+      type: input.file.type
+    } as unknown as Blob);
+
+    if (input.payerName) {
+      formData.append("payerName", input.payerName);
+    }
+
+    if (input.amount) {
+      formData.append("amount", input.amount);
+    }
+
+    if (input.reference) {
+      formData.append("reference", input.reference);
+    }
+
+    if (input.notes) {
+      formData.append("notes", input.notes);
+    }
+
+    let response: Response;
+
+    try {
+      response = await fetch(`${mobileEnv.apiUrl}/orders/${orderId}/payment-proof/file`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        body: formData
+      });
+    } catch {
+      throw new ApiError(
+        "Nao foi possivel conectar ao backend. Confira o IP ou dominio configurado no app.",
+        0
+      );
+    }
+
+    if (!response.ok) {
+      let message = "Nao foi possivel enviar o comprovante.";
+
+      try {
+        const payload = (await response.json()) as {
+          message?: string | string[];
+          error?: string;
+        };
+        message = Array.isArray(payload.message)
+          ? payload.message.join(", ")
+          : payload.message ?? payload.error ?? message;
+      } catch {
+        // Mantem mensagem padrao quando a resposta nao for JSON.
+      }
+
+      throw new ApiError(message, response.status);
+    }
+
+    return (await response.json()) as Order;
   },
   accept(token: string, orderId: string) {
     return http<Order>(`/orders/${orderId}/accept`, {

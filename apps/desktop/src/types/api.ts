@@ -193,6 +193,11 @@ export interface Order {
   paymentProofAmount?: number | null;
   paymentProofReference?: string | null;
   paymentProofNotes?: string | null;
+  paymentProofFileUrl?: string | null;
+  paymentProofFileName?: string | null;
+  paymentProofFileMimeType?: string | null;
+  paymentProofFileSize?: number | null;
+  paymentProofUploadedAt?: string | null;
   pixPaymentInstructions?: OrderPixPaymentInstructions | null;
   status:
     | "PENDING"

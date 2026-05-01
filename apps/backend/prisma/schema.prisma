@@ -314,6 +314,11 @@ model Order {
   paymentProofAmount Decimal? @db.Decimal(10, 2)
   paymentProofReference String?
   paymentProofNotes String?
+  paymentProofFilePath String?
+  paymentProofFileName String?
+  paymentProofFileMimeType String?
+  paymentProofFileSize Int?
+  paymentProofUploadedAt DateTime?
   status          OrderStatus @default(PENDING)
   notes           String?
   cancelReason    String?

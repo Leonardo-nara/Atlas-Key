@@ -150,6 +150,18 @@ function formatPaymentProofStatus(status?: Order["paymentProofStatus"]) {
   return "Não enviado";
 }
 
+function formatFileSize(size?: number | null) {
+  if (!size) {
+    return "tamanho não informado";
+  }
+
+  if (size < 1024 * 1024) {
+    return `${(size / 1024).toFixed(1)} KB`;
+  }
+
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function formatPixKeyType(type?: string) {
   if (type === "RANDOM_KEY") {
     return "Chave aleatória";
@@ -689,6 +701,42 @@ export function OrdersPage() {
     }
   }
 
+  async function handleOpenPaymentProofFile(order: Order) {
+    if (!token) {
+      return;
+    }
+
+    setActingOrderId(order.id);
+    setError(null);
+    setProofError(null);
+
+    try {
+      const proofFile = await ordersService.downloadPaymentProofFile(token, order);
+      const fileUrl = window.URL.createObjectURL(proofFile.blob);
+      const anchor = document.createElement("a");
+
+      anchor.href = fileUrl;
+      anchor.download = proofFile.fileName;
+      anchor.target = "_blank";
+      anchor.rel = "noopener noreferrer";
+      anchor.click();
+
+      window.setTimeout(() => {
+        window.URL.revokeObjectURL(fileUrl);
+      }, 60_000);
+    } catch (downloadError) {
+      const message =
+        downloadError instanceof Error
+          ? downloadError.message
+          : "Não foi possível abrir o comprovante.";
+
+      setError(message);
+      setProofError(message);
+    } finally {
+      setActingOrderId(null);
+    }
+  }
+
   return (
     <section className="page-section">
       <PageHeader
@@ -995,8 +1043,31 @@ export function OrdersPage() {
                     {selectedOrder.paymentProofNotes ? (
                       <p className="muted-text">Observações: {selectedOrder.paymentProofNotes}</p>
                     ) : null}
+                    {selectedOrder.paymentProofFileName ? (
+                      <div className="feedback feedback-info">
+                        <strong>Arquivo anexado:</strong>{" "}
+                        {selectedOrder.paymentProofFileName} ·{" "}
+                        {selectedOrder.paymentProofFileMimeType ?? "tipo não informado"} ·{" "}
+                        {formatFileSize(selectedOrder.paymentProofFileSize)}
+                        {selectedOrder.paymentProofUploadedAt
+                          ? ` · enviado em ${new Date(
+                              selectedOrder.paymentProofUploadedAt
+                            ).toLocaleString("pt-BR")}`
+                          : ""}
+                      </div>
+                    ) : null}
                     {canReviewPaymentProof(selectedOrder) ? (
                       <div className="row-actions">
+                        {selectedOrder.paymentProofFileUrl ? (
+                          <button
+                            className="secondary-button"
+                            disabled={actingOrderId === selectedOrder.id}
+                            onClick={() => void handleOpenPaymentProofFile(selectedOrder)}
+                            type="button"
+                          >
+                            Abrir comprovante
+                          </button>
+                        ) : null}
                         <button
                           className="primary-button"
                           disabled={actingOrderId === selectedOrder.id}
@@ -1306,6 +1377,29 @@ export function OrdersPage() {
               <p className="muted-text">
                 Referência: {proofModalOrder.paymentProofReference}
               </p>
+            ) : null}
+
+            {proofModalOrder.paymentProofFileName ? (
+              <div className="feedback feedback-info">
+                <strong>Arquivo anexado:</strong> {proofModalOrder.paymentProofFileName} ·{" "}
+                {proofModalOrder.paymentProofFileMimeType ?? "tipo não informado"} ·{" "}
+                {formatFileSize(proofModalOrder.paymentProofFileSize)}
+                {proofModalOrder.paymentProofUploadedAt
+                  ? ` · enviado em ${new Date(
+                      proofModalOrder.paymentProofUploadedAt
+                    ).toLocaleString("pt-BR")}`
+                  : ""}
+                <div className="row-actions">
+                  <button
+                    className="secondary-button"
+                    disabled={Boolean(actingOrderId)}
+                    onClick={() => void handleOpenPaymentProofFile(proofModalOrder)}
+                    type="button"
+                  >
+                    Abrir comprovante
+                  </button>
+                </div>
+              </div>
             ) : null}
 
             <label className="field">

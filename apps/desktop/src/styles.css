@@ -495,6 +495,11 @@ p {
   color: var(--rp-success);
 }
 
+.feedback-info {
+  background: var(--rp-primary-soft);
+  color: var(--rp-primary-strong);
+}
+
 .feedback-warning {
   background: var(--rp-warning-soft);
   color: var(--rp-warning);

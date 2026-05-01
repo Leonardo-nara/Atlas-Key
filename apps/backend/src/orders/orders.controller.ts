@@ -6,8 +6,13 @@ import {
   Patch,
   Post,
   Query,
+  Res,
+  StreamableFile,
+  UploadedFile,
   UseGuards
 } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
+import { UseInterceptors } from "@nestjs/common";
 
 import type { AuthenticatedUser } from "../common/authenticated-user.interface";
 import { CurrentUser } from "../common/decorators/current-user.decorator";
@@ -22,8 +27,17 @@ import { CreateOrderDto } from "./dto/create-order.dto";
 import { ListOrdersQueryDto } from "./dto/list-orders-query.dto";
 import { ReviewPaymentProofDto } from "./dto/review-payment-proof.dto";
 import { SubmitPaymentProofDto } from "./dto/submit-payment-proof.dto";
+import { UploadPaymentProofDto } from "./dto/upload-payment-proof.dto";
 import { UpdateCourierOrderStatusDto } from "./dto/update-courier-order-status.dto";
 import { OrdersService } from "./orders.service";
+import {
+  PAYMENT_PROOF_MAX_FILE_SIZE_BYTES,
+  type UploadedPaymentProofFile
+} from "./payment-proof-storage.service";
+
+interface HeaderResponse {
+  set(headers: Record<string, string>): void;
+}
 
 @Controller("orders")
 export class OrdersController {
@@ -91,6 +105,31 @@ export class OrdersController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.STORE_ADMIN, UserRole.CLIENT)
+  @Get(":orderId/payment-proof/file")
+  async getPaymentProofFile(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("orderId") orderId: string,
+    @Res({ passthrough: true }) response: HeaderResponse
+  ) {
+    const proofFile = await this.ordersService.getPaymentProofFile(
+      orderId,
+      user.sub,
+      user.role
+    );
+
+    response.set({
+      "Content-Type": proofFile.mimeType,
+      "Content-Length": String(proofFile.size),
+      "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(
+        proofFile.fileName
+      )}`
+    });
+
+    return new StreamableFile(proofFile.stream);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.STORE_ADMIN)
   @Patch(":orderId/payment-proof/approve")
   approvePaymentProof(
@@ -121,6 +160,31 @@ export class OrdersController {
     @Body() dto: SubmitPaymentProofDto
   ) {
     return this.ordersService.submitPaymentProof(orderId, user.sub, user.role, dto);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.CLIENT)
+  @Post(":orderId/payment-proof/file")
+  @UseInterceptors(
+    FileInterceptor("file", {
+      limits: {
+        fileSize: PAYMENT_PROOF_MAX_FILE_SIZE_BYTES
+      }
+    })
+  )
+  uploadPaymentProofFile(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("orderId") orderId: string,
+    @Body() dto: UploadPaymentProofDto,
+    @UploadedFile() file: UploadedPaymentProofFile
+  ) {
+    return this.ordersService.uploadPaymentProofFile(
+      orderId,
+      user.sub,
+      user.role,
+      dto,
+      file
+    );
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

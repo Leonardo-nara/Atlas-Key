@@ -1,4 +1,5 @@
 import { http } from "../../lib/http";
+import { env } from "../../lib/env";
 import type { Order, OrderAuditEvent, PaginatedResponse } from "../../types/api";
 
 export interface CreateOrderItemInput {
@@ -104,5 +105,36 @@ export const ordersService = {
       token,
       body: JSON.stringify(input)
     });
+  },
+  async downloadPaymentProofFile(token: string, order: Order) {
+    if (!order.paymentProofFileUrl) {
+      throw new Error("Este pedido nao possui arquivo de comprovante.");
+    }
+
+    const response = await fetch(`${env.apiUrl}${order.paymentProofFileUrl}`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      let message = "Nao foi possivel abrir o comprovante.";
+
+      try {
+        const payload = (await response.json()) as { message?: string | string[]; error?: string };
+        message = Array.isArray(payload.message)
+          ? payload.message.join(", ")
+          : payload.message ?? payload.error ?? message;
+      } catch {
+        // Mantem mensagem padrao quando a resposta nao for JSON.
+      }
+
+      throw new Error(message);
+    }
+
+    return {
+      blob: await response.blob(),
+      fileName: order.paymentProofFileName ?? "comprovante-pix"
+    };
   }
 };

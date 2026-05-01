@@ -34,17 +34,23 @@ import { ListOrdersQueryDto } from "./dto/list-orders-query.dto";
 import { OrderAuditEvent } from "./order-audit-event.interface";
 import { ReviewPaymentProofDto } from "./dto/review-payment-proof.dto";
 import { SubmitPaymentProofDto } from "./dto/submit-payment-proof.dto";
+import { UploadPaymentProofDto } from "./dto/upload-payment-proof.dto";
 import {
   CourierOrderStatusInput,
   UpdateCourierOrderStatusDto
 } from "./dto/update-courier-order-status.dto";
+import {
+  PaymentProofStorageService,
+  type UploadedPaymentProofFile
+} from "./payment-proof-storage.service";
 
 @Injectable()
 export class OrdersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storesService: StoresService,
-    private readonly ordersRealtimeService: OrdersRealtimeService
+    private readonly ordersRealtimeService: OrdersRealtimeService,
+    private readonly paymentProofStorageService: PaymentProofStorageService
   ) {}
 
   async create(ownerUserId: string, role: UserRole, dto: CreateOrderDto) {
@@ -875,6 +881,177 @@ export class OrdersService {
     return serializedOrder;
   }
 
+  async uploadPaymentProofFile(
+    orderId: string,
+    clientUserId: string,
+    role: UserRole,
+    dto: UploadPaymentProofDto,
+    file: UploadedPaymentProofFile
+  ) {
+    this.ensureClient(role);
+
+    const payerName = dto.payerName?.trim() || null;
+    const reference = dto.reference?.trim() || null;
+    const notes = dto.notes?.trim() || null;
+    const amount = this.parsePaymentProofAmount(dto.amount);
+
+    const existingOrder = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      select: {
+        id: true,
+        clientId: true,
+        paymentMethod: true,
+        paymentStatus: true,
+        status: true,
+        paymentProofFilePath: true
+      }
+    });
+
+    if (!existingOrder || existingOrder.clientId !== clientUserId) {
+      throw new NotFoundException("Pedido nao encontrado para o cliente autenticado");
+    }
+
+    if (existingOrder.paymentMethod !== OrderPaymentMethod.PIX_MANUAL) {
+      throw new BadRequestException(
+        "Arquivo de comprovante so pode ser enviado para pedidos com Pix manual"
+      );
+    }
+
+    if (existingOrder.paymentStatus === OrderPaymentStatus.PAID) {
+      throw new BadRequestException("Pagamento deste pedido ja foi marcado como pago");
+    }
+
+    if (existingOrder.status === PrismaOrderStatus.CANCELLED) {
+      throw new BadRequestException("Pedido cancelado nao aceita comprovante");
+    }
+
+    const storedFile = await this.paymentProofStorageService.saveProofFile(
+      orderId,
+      file
+    );
+
+    let updatedOrder: Awaited<ReturnType<typeof this.getOrderWithRelations>>;
+
+    try {
+      updatedOrder = await this.prisma.$transaction(async (transaction) => {
+        const updated = await transaction.order.update({
+          where: { id: orderId },
+          data: {
+            paymentProofStatus: OrderPaymentProofStatus.SUBMITTED,
+            paymentProofSubmittedAt: new Date(),
+            paymentProofPayerName: payerName,
+            paymentProofAmount: amount !== null ? new Prisma.Decimal(amount) : null,
+            paymentProofReference: reference,
+            paymentProofNotes: notes,
+            paymentProofFilePath: storedFile.storageKey,
+            paymentProofFileName: storedFile.originalFileName,
+            paymentProofFileMimeType: storedFile.mimeType,
+            paymentProofFileSize: storedFile.size,
+            paymentProofUploadedAt: new Date()
+          },
+          include: {
+            items: true,
+            store: true,
+            courier: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true
+              }
+            }
+          }
+        });
+
+        await transaction.orderEvent.create({
+          data: {
+            orderId,
+            type: OrderEventType.PAYMENT_PROOF_SUBMITTED,
+            actorUserId: clientUserId,
+            actorRole: PrismaUserRole.CLIENT,
+            metadata: {
+              payerName,
+              reference,
+              amount,
+              fileName: storedFile.originalFileName,
+              fileMimeType: storedFile.mimeType,
+              fileSize: storedFile.size
+            }
+          }
+        });
+
+        return updated;
+      });
+    } catch (error) {
+      await this.paymentProofStorageService.deleteProofFile(storedFile.storageKey);
+      throw error;
+    }
+
+    await this.paymentProofStorageService.deleteProofFile(
+      existingOrder.paymentProofFilePath
+    );
+
+    const serializedOrder = this.serializeOrder(updatedOrder, {
+      includePixPaymentInstructions: true,
+      includePaymentProofDetails: true
+    });
+    this.ordersRealtimeService.emitOrderStatusUpdated(serializedOrder);
+
+    return serializedOrder;
+  }
+
+  async getPaymentProofFile(orderId: string, userId: string, role: UserRole) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      select: {
+        id: true,
+        storeId: true,
+        clientId: true,
+        paymentProofFilePath: true,
+        paymentProofFileName: true,
+        paymentProofFileMimeType: true,
+        paymentProofFileSize: true
+      }
+    });
+
+    if (
+      !order?.paymentProofFilePath ||
+      !order.paymentProofFileName ||
+      !order.paymentProofFileMimeType ||
+      !order.paymentProofFileSize
+    ) {
+      throw new NotFoundException("Arquivo de comprovante nao encontrado");
+    }
+
+    if (role === UserRole.CLIENT) {
+      if (order.clientId !== userId) {
+        throw new NotFoundException("Arquivo de comprovante nao encontrado");
+      }
+
+      return this.paymentProofStorageService.getProofFile(order.paymentProofFilePath, {
+        fileName: order.paymentProofFileName,
+        mimeType: order.paymentProofFileMimeType,
+        size: order.paymentProofFileSize
+      });
+    }
+
+    if (role === UserRole.STORE_ADMIN) {
+      const store = await this.storesService.getStoreByOwner(userId, role);
+
+      if (order.storeId !== store.id) {
+        throw new NotFoundException("Arquivo de comprovante nao encontrado");
+      }
+
+      return this.paymentProofStorageService.getProofFile(order.paymentProofFilePath, {
+        fileName: order.paymentProofFileName,
+        mimeType: order.paymentProofFileMimeType,
+        size: order.paymentProofFileSize
+      });
+    }
+
+    throw new ForbiddenException("Usuario sem permissao para acessar comprovante");
+  }
+
   async approvePaymentProof(
     orderId: string,
     ownerUserId: string,
@@ -1267,6 +1444,20 @@ export class OrdersService {
     return paymentMethod;
   }
 
+  private parsePaymentProofAmount(amount?: string) {
+    if (!amount?.trim()) {
+      return null;
+    }
+
+    const parsedAmount = Number(amount.trim().replace(",", "."));
+
+    if (!Number.isFinite(parsedAmount) || parsedAmount < 0) {
+      throw new BadRequestException("Informe um valor pago valido.");
+    }
+
+    return parsedAmount;
+  }
+
   private async paginateOrders(
     where: Prisma.OrderWhereInput,
     query: ListOrdersQueryDto,
@@ -1372,6 +1563,23 @@ export class OrdersService {
         : undefined,
       paymentProofNotes: includePaymentProofDetails
         ? order.paymentProofNotes
+        : undefined,
+      paymentProofFilePath: undefined,
+      paymentProofFileUrl:
+        includePaymentProofDetails && order.paymentProofFilePath
+          ? `/orders/${order.id}/payment-proof/file`
+          : undefined,
+      paymentProofFileName: includePaymentProofDetails
+        ? order.paymentProofFileName
+        : undefined,
+      paymentProofFileMimeType: includePaymentProofDetails
+        ? order.paymentProofFileMimeType
+        : undefined,
+      paymentProofFileSize: includePaymentProofDetails
+        ? order.paymentProofFileSize
+        : undefined,
+      paymentProofUploadedAt: includePaymentProofDetails
+        ? order.paymentProofUploadedAt
         : undefined,
       statusLabel: this.serializeOrderStatus(order),
       items: order.items.map((item) => ({

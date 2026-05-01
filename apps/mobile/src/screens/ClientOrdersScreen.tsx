@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
+import * as DocumentPicker from "expo-document-picker";
+import * as ImagePicker from "expo-image-picker";
 import {
   ActivityIndicator,
   Pressable,
@@ -16,11 +18,16 @@ import { ScreenContainer } from "../components/ScreenContainer";
 import { SectionHeader } from "../components/SectionHeader";
 import { useAuth } from "../features/auth/auth-context";
 import { getFulfillmentText, getOrderStatusText } from "../features/orders/order-display";
-import { ordersService } from "../features/orders/orders-service";
+import {
+  ordersService,
+  type PaymentProofAttachment
+} from "../features/orders/orders-service";
 import { useRealtime } from "../features/realtime/realtime-context";
 import { ApiError } from "../lib/http";
 import { mobileTheme } from "../theme";
 import type { Order, StorePixKeyType } from "../types/api";
+
+const MAX_PROOF_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 
 function formatPixKeyType(type: StorePixKeyType) {
   if (type === "RANDOM_KEY") {
@@ -54,11 +61,24 @@ function formatPaymentProofStatus(status?: Order["paymentProofStatus"]) {
   return "Comprovante ainda não enviado";
 }
 
+function formatFileSize(size?: number | null) {
+  if (!size) {
+    return "tamanho nao informado";
+  }
+
+  if (size < 1024 * 1024) {
+    return `${(size / 1024).toFixed(1)} KB`;
+  }
+
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 interface PaymentProofDraft {
   payerName: string;
   amount: string;
   reference: string;
   notes: string;
+  file?: PaymentProofAttachment;
 }
 
 export function ClientOrdersScreen() {
@@ -127,7 +147,8 @@ export function ClientOrdersScreen() {
           payerName: "",
           amount: "",
           reference: "",
-          notes: ""
+          notes: "",
+          file: undefined
         }),
         ...patch
       }
@@ -146,7 +167,7 @@ export function ClientOrdersScreen() {
       ? Number(draft.amount.replace(",", "."))
       : undefined;
 
-    if (!payerName && !reference) {
+    if (!draft.file && !payerName && !reference) {
       setProofError("Informe o nome de quem pagou ou a referência do pagamento.");
       return;
     }
@@ -160,12 +181,20 @@ export function ClientOrdersScreen() {
     setProofError(null);
 
     try {
-      const updatedOrder = await ordersService.submitPaymentProof(token, order.id, {
-        payerName: payerName || undefined,
-        amount,
-        reference: reference || undefined,
-        notes: draft.notes.trim() || undefined
-      });
+      const updatedOrder = draft.file
+        ? await ordersService.uploadPaymentProofFile(token, order.id, {
+            payerName: payerName || undefined,
+            amount: draft.amount.trim() || undefined,
+            reference: reference || undefined,
+            notes: draft.notes.trim() || undefined,
+            file: draft.file
+          })
+        : await ordersService.submitPaymentProof(token, order.id, {
+            payerName: payerName || undefined,
+            amount,
+            reference: reference || undefined,
+            notes: draft.notes.trim() || undefined
+          });
       setOrders((current) =>
         current.map((entry) => (entry.id === updatedOrder.id ? updatedOrder : entry))
       );
@@ -175,7 +204,8 @@ export function ClientOrdersScreen() {
           payerName: "",
           amount: "",
           reference: "",
-          notes: ""
+          notes: "",
+          file: undefined
         }
       }));
     } catch (submitError) {
@@ -187,6 +217,68 @@ export function ClientOrdersScreen() {
     } finally {
       setProofSubmittingOrderId(null);
     }
+  }
+
+  async function pickProofImage(orderId: string) {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permission.granted) {
+      setProofError("Permita acesso a galeria para anexar uma imagem.");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.85
+    });
+
+    if (result.canceled || !result.assets[0]) {
+      return;
+    }
+
+    const asset = result.assets[0];
+
+    if (asset.fileSize && asset.fileSize > MAX_PROOF_FILE_SIZE_BYTES) {
+      setProofError("O arquivo precisa ter no maximo 5 MB.");
+      return;
+    }
+
+    updateProofDraft(orderId, {
+      file: {
+        uri: asset.uri,
+        name: asset.fileName ?? `comprovante-${orderId}.jpg`,
+        type: asset.mimeType ?? "image/jpeg"
+      }
+    });
+    setProofError(null);
+  }
+
+  async function pickProofDocument(orderId: string) {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: ["application/pdf", "image/jpeg", "image/png", "image/webp"],
+      multiple: false,
+      copyToCacheDirectory: true
+    });
+
+    if (result.canceled || !result.assets[0]) {
+      return;
+    }
+
+    const asset = result.assets[0];
+
+    if (asset.size && asset.size > MAX_PROOF_FILE_SIZE_BYTES) {
+      setProofError("O arquivo precisa ter no maximo 5 MB.");
+      return;
+    }
+
+    updateProofDraft(orderId, {
+      file: {
+        uri: asset.uri,
+        name: asset.name || `comprovante-${orderId}`,
+        type: asset.mimeType ?? "application/pdf"
+      }
+    });
+    setProofError(null);
   }
 
   return (
@@ -281,6 +373,18 @@ export function ClientOrdersScreen() {
                   <Text style={styles.pixMeta}>
                     O pagamento continua pendente até a loja confirmar manualmente.
                   </Text>
+                  {order.paymentProofFileName ? (
+                    <Text style={styles.pixMeta}>
+                      Arquivo: {order.paymentProofFileName} -{" "}
+                      {formatFileSize(order.paymentProofFileSize)}
+                    </Text>
+                  ) : null}
+                  {order.paymentProofUploadedAt ? (
+                    <Text style={styles.pixMeta}>
+                      Arquivo enviado em:{" "}
+                      {new Date(order.paymentProofUploadedAt).toLocaleString("pt-BR")}
+                    </Text>
+                  ) : null}
                   {order.paymentStatus === "PENDING" &&
                   order.paymentProofStatus !== "SUBMITTED" &&
                   order.paymentProofStatus !== "APPROVED" ? (
@@ -324,6 +428,35 @@ export function ClientOrdersScreen() {
                         style={styles.textArea}
                         value={getProofDraft(order.id).notes}
                       />
+                      {getProofDraft(order.id).file ? (
+                        <View style={styles.attachmentBox}>
+                          <Text style={styles.pixText}>
+                            Anexo: {getProofDraft(order.id).file?.name}
+                          </Text>
+                          <Pressable
+                            onPress={() => updateProofDraft(order.id, { file: undefined })}
+                            style={styles.secondaryProofButton}
+                          >
+                            <Text style={styles.secondaryProofButtonText}>
+                              Remover anexo
+                            </Text>
+                          </Pressable>
+                        </View>
+                      ) : null}
+                      <View style={styles.attachmentActions}>
+                        <Pressable
+                          onPress={() => void pickProofImage(order.id)}
+                          style={styles.secondaryProofButton}
+                        >
+                          <Text style={styles.secondaryProofButtonText}>Anexar imagem</Text>
+                        </Pressable>
+                        <Pressable
+                          onPress={() => void pickProofDocument(order.id)}
+                          style={styles.secondaryProofButton}
+                        >
+                          <Text style={styles.secondaryProofButtonText}>Anexar PDF</Text>
+                        </Pressable>
+                      </View>
                       {proofError ? <Text style={styles.errorText}>{proofError}</Text> : null}
                       <Pressable
                         disabled={proofSubmittingOrderId === order.id}
@@ -474,6 +607,30 @@ const styles = StyleSheet.create({
   },
   proofButtonText: {
     color: "#ffffff",
+    fontWeight: "800"
+  },
+  attachmentBox: {
+    gap: 8,
+    padding: 12,
+    borderRadius: mobileTheme.radii.sm,
+    backgroundColor: mobileTheme.colors.surface,
+    borderWidth: 1,
+    borderColor: mobileTheme.colors.borderStrong
+  },
+  attachmentActions: {
+    flexDirection: "row",
+    gap: 8,
+    flexWrap: "wrap"
+  },
+  secondaryProofButton: {
+    alignItems: "center",
+    borderRadius: mobileTheme.radii.sm,
+    backgroundColor: mobileTheme.colors.primarySoft,
+    paddingVertical: 10,
+    paddingHorizontal: 12
+  },
+  secondaryProofButtonText: {
+    color: mobileTheme.colors.primaryStrong,
     fontWeight: "800"
   },
   pagination: {

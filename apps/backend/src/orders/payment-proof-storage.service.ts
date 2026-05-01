@@ -1,14 +1,26 @@
 import {
   BadRequestException,
   Injectable,
-  InternalServerErrorException
+  InternalServerErrorException,
+  NotFoundException
 } from "@nestjs/common";
+import {
+  DeleteObjectCommand,
+  GetObjectCommand,
+  NoSuchKey,
+  PutObjectCommand,
+  S3Client,
+  S3ServiceException
+} from "@aws-sdk/client-s3";
 import { createReadStream } from "node:fs";
 import { mkdir, unlink, writeFile } from "node:fs/promises";
 import { basename, dirname, extname, join, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
+import { Readable } from "node:stream";
 
 export const PAYMENT_PROOF_MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
+
+type PaymentProofStorageDriverName = "local" | "s3";
 
 const ALLOWED_MIME_TYPES = new Set([
   "image/jpeg",
@@ -39,7 +51,19 @@ export interface StoredPaymentProofFile {
 }
 
 export interface PaymentProofFileReadResult {
-  stream: ReturnType<typeof createReadStream>;
+  stream: Readable;
+  fileName: string;
+  mimeType: string;
+  size: number;
+}
+
+interface PaymentProofStorageDriver {
+  save(storageKey: string, file: UploadedPaymentProofFile): Promise<void>;
+  read(storageKey: string, metadata: PaymentProofFileMetadata): Promise<PaymentProofFileReadResult>;
+  delete(storageKey: string): Promise<void>;
+}
+
+interface PaymentProofFileMetadata {
   fileName: string;
   mimeType: string;
   size: number;
@@ -47,10 +71,15 @@ export interface PaymentProofFileReadResult {
 
 @Injectable()
 export class PaymentProofStorageService {
-  private readonly baseDirectory = resolve(
-    process.env.PAYMENT_PROOF_STORAGE_DIR ??
-      join(process.cwd(), "storage", "payment-proofs")
-  );
+  private readonly driver: PaymentProofStorageDriver;
+
+  constructor() {
+    const driverName = this.resolveDriverName();
+    this.driver =
+      driverName === "s3"
+        ? new S3PaymentProofStorageDriver()
+        : new LocalPaymentProofStorageDriver();
+  }
 
   async saveProofFile(
     orderId: string,
@@ -68,10 +97,8 @@ export class PaymentProofStorageService {
 
     const originalFileName = this.sanitizeFileName(file.originalname);
     const storageKey = `${orderId}/${randomUUID()}${EXTENSIONS_BY_MIME_TYPE[detectedMimeType]}`;
-    const absolutePath = this.resolveStorageKey(storageKey);
 
-    await mkdir(dirname(absolutePath), { recursive: true });
-    await writeFile(absolutePath, file.buffer);
+    await this.driver.save(storageKey, file);
 
     return {
       storageKey,
@@ -81,22 +108,8 @@ export class PaymentProofStorageService {
     };
   }
 
-  getProofFile(
-    storageKey: string,
-    metadata: {
-      fileName: string;
-      mimeType: string;
-      size: number;
-    }
-  ): PaymentProofFileReadResult {
-    const absolutePath = this.resolveStorageKey(storageKey);
-
-    return {
-      stream: createReadStream(absolutePath),
-      fileName: metadata.fileName,
-      mimeType: metadata.mimeType,
-      size: metadata.size
-    };
+  getProofFile(storageKey: string, metadata: PaymentProofFileMetadata) {
+    return this.driver.read(storageKey, metadata);
   }
 
   async deleteProofFile(storageKey?: string | null) {
@@ -105,7 +118,7 @@ export class PaymentProofStorageService {
     }
 
     try {
-      await unlink(this.resolveStorageKey(storageKey));
+      await this.driver.delete(storageKey);
     } catch {
       // A ausencia do arquivo antigo nao deve impedir a atualizacao do comprovante.
     }
@@ -184,6 +197,54 @@ export class PaymentProofStorageService {
     return `${truncatedName}${extension}`.trim();
   }
 
+  private resolveDriverName(): PaymentProofStorageDriverName {
+    const driver = process.env.PAYMENT_PROOF_STORAGE_DRIVER?.trim().toLowerCase();
+
+    if (!driver || driver === "local") {
+      return "local";
+    }
+
+    if (driver === "s3") {
+      return "s3";
+    }
+
+    throw new InternalServerErrorException(
+      "Storage de comprovantes invalido. Use local ou s3."
+    );
+  }
+}
+
+class LocalPaymentProofStorageDriver implements PaymentProofStorageDriver {
+  private readonly baseDirectory = resolve(
+    process.env.PAYMENT_PROOF_STORAGE_DIR ??
+      join(process.cwd(), "storage", "payment-proofs")
+  );
+
+  async save(storageKey: string, file: UploadedPaymentProofFile) {
+    const absolutePath = this.resolveStorageKey(storageKey);
+
+    await mkdir(dirname(absolutePath), { recursive: true });
+    await writeFile(absolutePath, file.buffer);
+  }
+
+  async read(
+    storageKey: string,
+    metadata: PaymentProofFileMetadata
+  ): Promise<PaymentProofFileReadResult> {
+    const absolutePath = this.resolveStorageKey(storageKey);
+
+    return {
+      stream: createReadStream(absolutePath),
+      fileName: metadata.fileName,
+      mimeType: metadata.mimeType,
+      size: metadata.size
+    };
+  }
+
+  async delete(storageKey: string) {
+    await unlink(this.resolveStorageKey(storageKey));
+  }
+
   private resolveStorageKey(storageKey: string) {
     const absolutePath = resolve(this.baseDirectory, storageKey);
 
@@ -196,4 +257,134 @@ export class PaymentProofStorageService {
 
     return absolutePath;
   }
+}
+
+class S3PaymentProofStorageDriver implements PaymentProofStorageDriver {
+  private readonly bucket = requireEnv("PAYMENT_PROOF_S3_BUCKET");
+  private readonly client = new S3Client({
+    endpoint: requireEnv("PAYMENT_PROOF_S3_ENDPOINT"),
+    region: process.env.PAYMENT_PROOF_S3_REGION?.trim() || "auto",
+    credentials: {
+      accessKeyId: requireEnv("PAYMENT_PROOF_S3_ACCESS_KEY_ID"),
+      secretAccessKey: requireEnv("PAYMENT_PROOF_S3_SECRET_ACCESS_KEY")
+    },
+    forcePathStyle: parseBoolean(process.env.PAYMENT_PROOF_S3_FORCE_PATH_STYLE)
+  });
+
+  async save(storageKey: string, file: UploadedPaymentProofFile) {
+    try {
+      await this.client.send(
+        new PutObjectCommand({
+          Bucket: this.bucket,
+          Key: storageKey,
+          Body: file.buffer,
+          ContentType: file.mimetype,
+          ContentLength: file.size,
+          Metadata: {
+            originalName: sanitizeMetadataValue(file.originalname)
+          }
+        })
+      );
+    } catch (error) {
+      throw this.toStorageException(error, "Nao foi possivel salvar o comprovante.");
+    }
+  }
+
+  async read(
+    storageKey: string,
+    metadata: PaymentProofFileMetadata
+  ): Promise<PaymentProofFileReadResult> {
+    try {
+      const object = await this.client.send(
+        new GetObjectCommand({
+          Bucket: this.bucket,
+          Key: storageKey
+        })
+      );
+
+      if (!object.Body) {
+        throw new NotFoundException("Arquivo de comprovante nao encontrado.");
+      }
+
+      return {
+        stream: this.toReadable(object.Body),
+        fileName: metadata.fileName,
+        mimeType: metadata.mimeType,
+        size: metadata.size
+      };
+    } catch (error) {
+      throw this.toStorageException(error, "Nao foi possivel abrir o comprovante.");
+    }
+  }
+
+  async delete(storageKey: string) {
+    await this.client.send(
+      new DeleteObjectCommand({
+        Bucket: this.bucket,
+        Key: storageKey
+      })
+    );
+  }
+
+  private toReadable(body: unknown): Readable {
+    if (body instanceof Readable) {
+      return body;
+    }
+
+    if (
+      body &&
+      typeof body === "object" &&
+      "transformToWebStream" in body &&
+      typeof body.transformToWebStream === "function"
+    ) {
+      return Readable.fromWeb(body.transformToWebStream());
+    }
+
+    throw new InternalServerErrorException(
+      "Resposta invalida do storage de comprovantes."
+    );
+  }
+
+  private toStorageException(error: unknown, fallbackMessage: string) {
+    if (error instanceof NotFoundException) {
+      return error;
+    }
+
+    if (error instanceof NoSuchKey) {
+      return new NotFoundException("Arquivo de comprovante nao encontrado.");
+    }
+
+    if (
+      error instanceof S3ServiceException &&
+      (error.name === "NoSuchKey" || error.$metadata.httpStatusCode === 404)
+    ) {
+      return new NotFoundException("Arquivo de comprovante nao encontrado.");
+    }
+
+    if (error instanceof InternalServerErrorException) {
+      return error;
+    }
+
+    return new InternalServerErrorException(fallbackMessage);
+  }
+}
+
+function requireEnv(name: string) {
+  const value = process.env[name]?.trim();
+
+  if (!value) {
+    throw new InternalServerErrorException(
+      `Configuracao de storage ausente: ${name}.`
+    );
+  }
+
+  return value;
+}
+
+function parseBoolean(value?: string) {
+  return ["1", "true", "yes", "sim"].includes(value?.trim().toLowerCase() ?? "");
+}
+
+function sanitizeMetadataValue(value: string) {
+  return value.replace(/[^\w.\- ]+/g, "").slice(0, 120) || "comprovante";
 }

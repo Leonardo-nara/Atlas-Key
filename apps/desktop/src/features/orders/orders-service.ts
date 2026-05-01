@@ -118,7 +118,8 @@ export const ordersService = {
     });
 
     if (!response.ok) {
-      let message = "Nao foi possivel abrir o comprovante.";
+      let message =
+        "Não foi possível abrir o comprovante. Tente novamente ou solicite um novo envio ao cliente.";
 
       try {
         const payload = (await response.json()) as { message?: string | string[]; error?: string };

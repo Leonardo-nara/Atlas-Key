@@ -21,6 +21,14 @@ Consumidas em runtime pelo NestJS:
 - `CORS_ALLOWED_ORIGINS`
 - `CORS_ORIGIN_DESKTOP`
 - `CORS_ORIGIN_MOBILE`
+- `PAYMENT_PROOF_STORAGE_DRIVER`
+- `PAYMENT_PROOF_STORAGE_DIR`
+- `PAYMENT_PROOF_S3_ENDPOINT`
+- `PAYMENT_PROOF_S3_REGION`
+- `PAYMENT_PROOF_S3_BUCKET`
+- `PAYMENT_PROOF_S3_ACCESS_KEY_ID`
+- `PAYMENT_PROOF_S3_SECRET_ACCESS_KEY`
+- `PAYMENT_PROOF_S3_FORCE_PATH_STYLE`
 
 ### Desktop
 
@@ -62,14 +70,40 @@ Consumidas no bundle do Expo:
 ### Backend local
 
 1. Copie `.env.example` para `.env`
-2. Rode o backend com `pnpm dev:backend`
+2. Mantenha `PAYMENT_PROOF_STORAGE_DRIVER=local`
+3. Opcionalmente ajuste `PAYMENT_PROOF_STORAGE_DIR`
+4. Rode o backend com `pnpm dev:backend`
 
 ### Backend em producao
 
 1. Use os valores de `.env.production.example` na plataforma de deploy
-2. Rode migrations Prisma
-3. Rode `pnpm --filter @deliveries/backend build`
-4. Suba com `pnpm --filter @deliveries/backend start:prod`
+2. Para comprovantes Pix, prefira `PAYMENT_PROOF_STORAGE_DRIVER=s3` com Cloudflare R2/S3
+3. Rode migrations Prisma
+4. Rode `pnpm --filter @deliveries/backend build`
+5. Suba com `pnpm --filter @deliveries/backend start:prod`
+
+### Storage de comprovantes Pix
+
+Em desenvolvimento, o backend salva comprovantes no filesystem local:
+
+```env
+PAYMENT_PROOF_STORAGE_DRIVER=local
+PAYMENT_PROOF_STORAGE_DIR=./storage/payment-proofs
+```
+
+Em producao no Render, filesystem local pode ser perdido em restart/deploy se nao houver disco persistente. Para producao real, use storage S3-compativel, preferencialmente Cloudflare R2:
+
+```env
+PAYMENT_PROOF_STORAGE_DRIVER=s3
+PAYMENT_PROOF_S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
+PAYMENT_PROOF_S3_REGION=auto
+PAYMENT_PROOF_S3_BUCKET=rotapronta-payment-proofs
+PAYMENT_PROOF_S3_ACCESS_KEY_ID=<r2-access-key-id>
+PAYMENT_PROOF_S3_SECRET_ACCESS_KEY=<r2-secret-access-key>
+PAYMENT_PROOF_S3_FORCE_PATH_STYLE=true
+```
+
+O backend continua servindo os arquivos por endpoint autenticado e nao expoe bucket, URL publica, path local ou segredo.
 
 ### Build desktop para producao
 

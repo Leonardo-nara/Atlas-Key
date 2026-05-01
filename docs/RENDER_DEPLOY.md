@@ -41,11 +41,29 @@ pnpm --filter @deliveries/backend start:prod
 - `JWT_SECRET=<segredo-forte-e-longo>`
 - `JWT_EXPIRES_IN=7d`
 - `CORS_ALLOWED_ORIGINS=https://painel.rotapronta.com,https://app.rotapronta.com`
+- `PAYMENT_PROOF_STORAGE_DRIVER=s3`
+- `PAYMENT_PROOF_S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com`
+- `PAYMENT_PROOF_S3_REGION=auto`
+- `PAYMENT_PROOF_S3_BUCKET=rotapronta-payment-proofs`
+- `PAYMENT_PROOF_S3_ACCESS_KEY_ID=<r2-access-key-id>`
+- `PAYMENT_PROOF_S3_SECRET_ACCESS_KEY=<r2-secret-access-key>`
+- `PAYMENT_PROOF_S3_FORCE_PATH_STYLE=true`
 - Se desktop e mobile publicados forem consumir este backend, use neles:
   - `VITE_API_URL=https://rotapronta-api.onrender.com/api`
   - `VITE_SOCKET_URL=https://rotapronta-api.onrender.com`
   - `EXPO_PUBLIC_API_URL=https://rotapronta-api.onrender.com/api`
   - `EXPO_PUBLIC_SOCKET_URL=https://rotapronta-api.onrender.com`
+
+### Storage de comprovantes Pix no Render
+
+Nao use filesystem local para comprovantes em producao, exceto se o servico tiver disco persistente configurado e `PAYMENT_PROOF_STORAGE_DIR` apontar para esse disco.
+
+Fluxo recomendado com Cloudflare R2:
+
+1. Criar um bucket privado no R2, por exemplo `rotapronta-payment-proofs`.
+2. Criar um token/chave R2 com permissao de leitura e escrita apenas nesse bucket.
+3. Configurar as envs `PAYMENT_PROOF_*` no servico `rotapronta-api`.
+4. Manter os arquivos privados. O backend faz stream pelo endpoint autenticado `GET /api/orders/:orderId/payment-proof/file`.
 
 ## 5. Como o Prisma roda em producao
 

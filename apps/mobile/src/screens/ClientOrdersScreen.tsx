@@ -6,6 +6,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View
 } from "react-native";
 
@@ -37,6 +38,29 @@ function formatPixKeyType(type: StorePixKeyType) {
   return type;
 }
 
+function formatPaymentProofStatus(status?: Order["paymentProofStatus"]) {
+  if (status === "SUBMITTED") {
+    return "Comprovante enviado para conferência";
+  }
+
+  if (status === "APPROVED") {
+    return "Aprovado pela loja";
+  }
+
+  if (status === "REJECTED") {
+    return "Recusado pela loja";
+  }
+
+  return "Comprovante ainda não enviado";
+}
+
+interface PaymentProofDraft {
+  payerName: string;
+  amount: string;
+  reference: string;
+  notes: string;
+}
+
 export function ClientOrdersScreen() {
   const { token } = useAuth();
   const { isConnected, subscribeToOrderEvents } = useRealtime();
@@ -46,6 +70,9 @@ export function ClientOrdersScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [proofDrafts, setProofDrafts] = useState<Record<string, PaymentProofDraft>>({});
+  const [proofSubmittingOrderId, setProofSubmittingOrderId] = useState<string | null>(null);
+  const [proofError, setProofError] = useState<string | null>(null);
 
   const loadOrders = useCallback(async () => {
     if (!token) {
@@ -82,6 +109,85 @@ export function ClientOrdersScreen() {
       void loadOrders();
     });
   }, [loadOrders, subscribeToOrderEvents, token]);
+
+  function getProofDraft(orderId: string): PaymentProofDraft {
+    return proofDrafts[orderId] ?? {
+      payerName: "",
+      amount: "",
+      reference: "",
+      notes: ""
+    };
+  }
+
+  function updateProofDraft(orderId: string, patch: Partial<PaymentProofDraft>) {
+    setProofDrafts((current) => ({
+      ...current,
+      [orderId]: {
+        ...(current[orderId] ?? {
+          payerName: "",
+          amount: "",
+          reference: "",
+          notes: ""
+        }),
+        ...patch
+      }
+    }));
+  }
+
+  async function submitPaymentProof(order: Order) {
+    if (!token) {
+      return;
+    }
+
+    const draft = getProofDraft(order.id);
+    const payerName = draft.payerName.trim();
+    const reference = draft.reference.trim();
+    const amount = draft.amount.trim()
+      ? Number(draft.amount.replace(",", "."))
+      : undefined;
+
+    if (!payerName && !reference) {
+      setProofError("Informe o nome de quem pagou ou a referência do pagamento.");
+      return;
+    }
+
+    if (amount !== undefined && (!Number.isFinite(amount) || amount < 0)) {
+      setProofError("Informe um valor pago válido.");
+      return;
+    }
+
+    setProofSubmittingOrderId(order.id);
+    setProofError(null);
+
+    try {
+      const updatedOrder = await ordersService.submitPaymentProof(token, order.id, {
+        payerName: payerName || undefined,
+        amount,
+        reference: reference || undefined,
+        notes: draft.notes.trim() || undefined
+      });
+      setOrders((current) =>
+        current.map((entry) => (entry.id === updatedOrder.id ? updatedOrder : entry))
+      );
+      setProofDrafts((current) => ({
+        ...current,
+        [order.id]: {
+          payerName: "",
+          amount: "",
+          reference: "",
+          notes: ""
+        }
+      }));
+    } catch (submitError) {
+      setProofError(
+        submitError instanceof ApiError
+          ? submitError.message
+          : "Nao foi possivel enviar o comprovante."
+      );
+    } finally {
+      setProofSubmittingOrderId(null);
+    }
+  }
 
   return (
     <ScreenContainer>
@@ -154,8 +260,84 @@ export function ClientOrdersScreen() {
                     </Text>
                   )}
                   <Text style={styles.pixMeta}>
+                    Status do comprovante: {formatPaymentProofStatus(order.paymentProofStatus)}
+                  </Text>
+                  {order.paymentProofSubmittedAt ? (
+                    <Text style={styles.pixMeta}>
+                      Enviado em:{" "}
+                      {new Date(order.paymentProofSubmittedAt).toLocaleString("pt-BR")}
+                    </Text>
+                  ) : null}
+                  {order.paymentProofPayerName ? (
+                    <Text style={styles.pixMeta}>
+                      Pagador: {order.paymentProofPayerName}
+                    </Text>
+                  ) : null}
+                  {order.paymentProofReference ? (
+                    <Text style={styles.pixMeta}>
+                      Referência: {order.paymentProofReference}
+                    </Text>
+                  ) : null}
+                  <Text style={styles.pixMeta}>
                     O pagamento continua pendente até a loja confirmar manualmente.
                   </Text>
+                  {order.paymentStatus === "PENDING" &&
+                  order.paymentProofStatus !== "SUBMITTED" &&
+                  order.paymentProofStatus !== "APPROVED" ? (
+                    <View style={styles.proofForm}>
+                      <Text style={styles.pixTitle}>Enviar referência do pagamento</Text>
+                      <TextInput
+                        onChangeText={(value) =>
+                          updateProofDraft(order.id, { payerName: value })
+                        }
+                        placeholder="Nome de quem pagou"
+                        placeholderTextColor={mobileTheme.colors.textSoft}
+                        style={styles.input}
+                        value={getProofDraft(order.id).payerName}
+                      />
+                      <TextInput
+                        keyboardType="decimal-pad"
+                        onChangeText={(value) =>
+                          updateProofDraft(order.id, { amount: value })
+                        }
+                        placeholder="Valor pago"
+                        placeholderTextColor={mobileTheme.colors.textSoft}
+                        style={styles.input}
+                        value={getProofDraft(order.id).amount}
+                      />
+                      <TextInput
+                        onChangeText={(value) =>
+                          updateProofDraft(order.id, { reference: value })
+                        }
+                        placeholder="Código/referência do pagamento"
+                        placeholderTextColor={mobileTheme.colors.textSoft}
+                        style={styles.input}
+                        value={getProofDraft(order.id).reference}
+                      />
+                      <TextInput
+                        multiline
+                        onChangeText={(value) =>
+                          updateProofDraft(order.id, { notes: value })
+                        }
+                        placeholder="Observações"
+                        placeholderTextColor={mobileTheme.colors.textSoft}
+                        style={styles.textArea}
+                        value={getProofDraft(order.id).notes}
+                      />
+                      {proofError ? <Text style={styles.errorText}>{proofError}</Text> : null}
+                      <Pressable
+                        disabled={proofSubmittingOrderId === order.id}
+                        onPress={() => void submitPaymentProof(order)}
+                        style={styles.proofButton}
+                      >
+                        <Text style={styles.proofButtonText}>
+                          {proofSubmittingOrderId === order.id
+                            ? "Enviando..."
+                            : "Enviar comprovante"}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  ) : null}
                 </View>
               ) : null}
               <OrderTimeline audience="client" order={order} />
@@ -259,6 +441,40 @@ const styles = StyleSheet.create({
   pixMeta: {
     color: mobileTheme.colors.textMuted,
     lineHeight: 20
+  },
+  proofForm: {
+    gap: 10,
+    marginTop: 10
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: mobileTheme.colors.borderStrong,
+    borderRadius: mobileTheme.radii.sm,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: mobileTheme.colors.surface,
+    color: mobileTheme.colors.text
+  },
+  textArea: {
+    minHeight: 72,
+    textAlignVertical: "top",
+    borderWidth: 1,
+    borderColor: mobileTheme.colors.borderStrong,
+    borderRadius: mobileTheme.radii.sm,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: mobileTheme.colors.surface,
+    color: mobileTheme.colors.text
+  },
+  proofButton: {
+    alignItems: "center",
+    borderRadius: mobileTheme.radii.sm,
+    backgroundColor: mobileTheme.colors.primaryStrong,
+    paddingVertical: 12
+  },
+  proofButtonText: {
+    color: "#ffffff",
+    fontWeight: "800"
   },
   pagination: {
     marginTop: 8,

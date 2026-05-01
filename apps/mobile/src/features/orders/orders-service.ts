@@ -43,6 +43,22 @@ export const ordersService = {
       body: JSON.stringify(input)
     });
   },
+  submitPaymentProof(
+    token: string,
+    orderId: string,
+    input: {
+      payerName?: string;
+      amount?: number;
+      reference?: string;
+      notes?: string;
+    }
+  ) {
+    return http<Order>(`/orders/${orderId}/payment-proof`, {
+      method: "PATCH",
+      token,
+      body: JSON.stringify(input)
+    });
+  },
   accept(token: string, orderId: string) {
     return http<Order>(`/orders/${orderId}/accept`, {
       method: "PATCH",

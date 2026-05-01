@@ -144,6 +144,12 @@ export type OrderPaymentStatus =
 
 export type OrderPaymentProvider = "MANUAL" | "FUTURE_GATEWAY";
 
+export type OrderPaymentProofStatus =
+  | "NOT_SUBMITTED"
+  | "SUBMITTED"
+  | "APPROVED"
+  | "REJECTED";
+
 export interface OrderCourier {
   id: string;
   name: string;
@@ -181,6 +187,12 @@ export interface Order {
   paymentStatus: OrderPaymentStatus;
   paymentProvider?: OrderPaymentProvider | null;
   paidAt?: string | null;
+  paymentProofStatus?: OrderPaymentProofStatus;
+  paymentProofSubmittedAt?: string | null;
+  paymentProofPayerName?: string | null;
+  paymentProofAmount?: number | null;
+  paymentProofReference?: string | null;
+  paymentProofNotes?: string | null;
   pixPaymentInstructions?: OrderPixPaymentInstructions | null;
   status:
     | "PENDING"
@@ -202,7 +214,16 @@ export interface Order {
 export interface OrderAuditEvent {
   id: string;
   orderId: string;
-  type: "created" | "accepted" | "picked_up" | "delivered" | "cancelled" | "payment_paid";
+  type:
+    | "created"
+    | "accepted"
+    | "picked_up"
+    | "delivered"
+    | "cancelled"
+    | "payment_paid"
+    | "payment_proof_submitted"
+    | "payment_proof_approved"
+    | "payment_proof_rejected";
   actorUserId?: string | null;
   actorRole?: "STORE_ADMIN" | "COURIER" | "CLIENT" | null;
   actorName?: string | null;

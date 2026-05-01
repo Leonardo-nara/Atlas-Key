@@ -61,6 +61,13 @@ enum OrderPaymentStatus {
   REFUNDED
 }
 
+enum OrderPaymentProofStatus {
+  NOT_SUBMITTED
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
 enum OrderPaymentProvider {
   MANUAL
   FUTURE_GATEWAY
@@ -81,6 +88,9 @@ enum OrderEventType {
   DELIVERED
   CANCELLED
   PAYMENT_PAID
+  PAYMENT_PROOF_SUBMITTED
+  PAYMENT_PROOF_APPROVED
+  PAYMENT_PROOF_REJECTED
 }
 
 enum AuthAuditEventType {
@@ -298,6 +308,12 @@ model Order {
   paymentStatus   OrderPaymentStatus @default(PENDING)
   paymentProvider OrderPaymentProvider?
   paidAt          DateTime?
+  paymentProofStatus OrderPaymentProofStatus @default(NOT_SUBMITTED)
+  paymentProofSubmittedAt DateTime?
+  paymentProofPayerName String?
+  paymentProofAmount Decimal? @db.Decimal(10, 2)
+  paymentProofReference String?
+  paymentProofNotes String?
   status          OrderStatus @default(PENDING)
   notes           String?
   cancelReason    String?

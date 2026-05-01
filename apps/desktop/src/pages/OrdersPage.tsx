@@ -63,6 +63,18 @@ function formatAuditType(type: OrderAuditEvent["type"]) {
     return "Pagamento marcado como pago";
   }
 
+  if (type === "payment_proof_submitted") {
+    return "Comprovante enviado";
+  }
+
+  if (type === "payment_proof_approved") {
+    return "Comprovante aprovado";
+  }
+
+  if (type === "payment_proof_rejected") {
+    return "Comprovante recusado";
+  }
+
   return "Pedido cancelado";
 }
 
@@ -122,6 +134,22 @@ function formatPaymentStatus(status?: Order["paymentStatus"]) {
   return "Aguardando pagamento";
 }
 
+function formatPaymentProofStatus(status?: Order["paymentProofStatus"]) {
+  if (status === "SUBMITTED") {
+    return "Enviado para conferência";
+  }
+
+  if (status === "APPROVED") {
+    return "Aprovado pela loja";
+  }
+
+  if (status === "REJECTED") {
+    return "Recusado pela loja";
+  }
+
+  return "Não enviado";
+}
+
 function formatPixKeyType(type?: string) {
   if (type === "RANDOM_KEY") {
     return "Chave aleatória";
@@ -144,6 +172,10 @@ function canMarkPaymentPaid(order: Order) {
       order.paymentMethod !== "ONLINE" &&
       order.status !== "CANCELLED"
   );
+}
+
+function canReviewPaymentProof(order: Order) {
+  return order.paymentMethod === "PIX_MANUAL" && order.paymentProofStatus === "SUBMITTED";
 }
 
 function getOrderStatusRank(order: Order) {
@@ -281,6 +313,10 @@ export function OrdersPage() {
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [paymentModalOrder, setPaymentModalOrder] = useState<Order | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [proofModalOrder, setProofModalOrder] = useState<Order | null>(null);
+  const [proofAction, setProofAction] = useState<"approve" | "reject">("approve");
+  const [proofReasonDraft, setProofReasonDraft] = useState("");
+  const [proofError, setProofError] = useState<string | null>(null);
   const [lastRealtimeAt, setLastRealtimeAt] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
@@ -457,6 +493,14 @@ export function OrdersPage() {
     setError(null);
   }
 
+  function openProofModal(order: Order, action: "approve" | "reject") {
+    setProofModalOrder(order);
+    setProofAction(action);
+    setProofReasonDraft("");
+    setProofError(null);
+    setError(null);
+  }
+
   function closeCancelModal() {
     if (actingOrderId) {
       return;
@@ -484,6 +528,16 @@ export function OrdersPage() {
 
     setPaymentModalOrder(null);
     setPaymentError(null);
+  }
+
+  function closeProofModal() {
+    if (actingOrderId) {
+      return;
+    }
+
+    setProofModalOrder(null);
+    setProofReasonDraft("");
+    setProofError(null);
   }
 
   async function handleConfirmOrder() {
@@ -588,6 +642,48 @@ export function OrdersPage() {
 
       setError(message);
       setPaymentError(message);
+    } finally {
+      setActingOrderId(null);
+    }
+  }
+
+  async function handleReviewPaymentProof() {
+    if (!token || !proofModalOrder) {
+      return;
+    }
+
+    setActingOrderId(proofModalOrder.id);
+    setProofError(null);
+    setError(null);
+
+    try {
+      const reviewedOrder =
+        proofAction === "approve"
+          ? await ordersService.approvePaymentProof(token, proofModalOrder.id, {
+              reason: proofReasonDraft.trim() || undefined
+            })
+          : await ordersService.rejectPaymentProof(token, proofModalOrder.id, {
+              reason: proofReasonDraft.trim() || undefined
+            });
+
+      setSuccessMessage(
+        proofAction === "approve"
+          ? "Comprovante aprovado e pagamento marcado como pago."
+          : "Comprovante recusado."
+      );
+      setSelectedOrderId(reviewedOrder.id);
+      setProofModalOrder(null);
+      setProofReasonDraft("");
+      await loadData({ silent: true });
+      await loadHistory(reviewedOrder.id, { silent: true });
+    } catch (proofRequestError) {
+      const message =
+        proofRequestError instanceof ApiError
+          ? proofRequestError.message
+          : "Não foi possível revisar o comprovante.";
+
+      setError(message);
+      setProofError(message);
     } finally {
       setActingOrderId(null);
     }
@@ -794,6 +890,26 @@ export function OrdersPage() {
                   Marcar pagamento como pago
                 </button>
               ) : null}
+              {selectedOrder && canReviewPaymentProof(selectedOrder) ? (
+                <>
+                  <button
+                    className="primary-button"
+                    disabled={actingOrderId === selectedOrder.id}
+                    onClick={() => openProofModal(selectedOrder, "approve")}
+                    type="button"
+                  >
+                    Aprovar comprovante
+                  </button>
+                  <button
+                    className="danger-button"
+                    disabled={actingOrderId === selectedOrder.id}
+                    onClick={() => openProofModal(selectedOrder, "reject")}
+                    type="button"
+                  >
+                    Rejeitar comprovante
+                  </button>
+                </>
+              ) : null}
             </div>
           </div>
 
@@ -847,6 +963,59 @@ export function OrdersPage() {
                       ativa. Configure em Pix manual antes de orientar o cliente.
                     </div>
                   )
+                ) : null}
+                {selectedOrder.paymentMethod === "PIX_MANUAL" ? (
+                  <div className="order-detail-card">
+                    <p className="section-kicker">Comprovante Pix</p>
+                    <p className="muted-text">
+                      Status: {formatPaymentProofStatus(selectedOrder.paymentProofStatus)}
+                    </p>
+                    {selectedOrder.paymentProofSubmittedAt ? (
+                      <p className="muted-text">
+                        Enviado em:{" "}
+                        {new Date(selectedOrder.paymentProofSubmittedAt).toLocaleString("pt-BR")}
+                      </p>
+                    ) : null}
+                    {selectedOrder.paymentProofPayerName ? (
+                      <p className="muted-text">
+                        Pagador: {selectedOrder.paymentProofPayerName}
+                      </p>
+                    ) : null}
+                    {selectedOrder.paymentProofAmount !== undefined &&
+                    selectedOrder.paymentProofAmount !== null ? (
+                      <p className="muted-text">
+                        Valor informado: R$ {selectedOrder.paymentProofAmount.toFixed(2)}
+                      </p>
+                    ) : null}
+                    {selectedOrder.paymentProofReference ? (
+                      <p className="muted-text">
+                        Referência: {selectedOrder.paymentProofReference}
+                      </p>
+                    ) : null}
+                    {selectedOrder.paymentProofNotes ? (
+                      <p className="muted-text">Observações: {selectedOrder.paymentProofNotes}</p>
+                    ) : null}
+                    {canReviewPaymentProof(selectedOrder) ? (
+                      <div className="row-actions">
+                        <button
+                          className="primary-button"
+                          disabled={actingOrderId === selectedOrder.id}
+                          onClick={() => openProofModal(selectedOrder, "approve")}
+                          type="button"
+                        >
+                          Aprovar comprovante
+                        </button>
+                        <button
+                          className="danger-button"
+                          disabled={actingOrderId === selectedOrder.id}
+                          onClick={() => openProofModal(selectedOrder, "reject")}
+                          type="button"
+                        >
+                          Rejeitar comprovante
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
                 ) : null}
                 {selectedOrder.addressReference ? (
                   <p className="muted-text">Referência: {selectedOrder.addressReference}</p>
@@ -1084,6 +1253,99 @@ export function OrdersPage() {
                 {actingOrderId === paymentModalOrder.id
                   ? "Registrando..."
                   : "Confirmar pagamento"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {proofModalOrder ? (
+        <div className="modal-backdrop" onClick={closeProofModal} role="presentation">
+          <div
+            aria-labelledby="proof-order-title"
+            aria-modal="true"
+            className="modal-card"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+          >
+            <div className="modal-header">
+              <div>
+                <p className="section-kicker">Comprovante Pix</p>
+                <h3 id="proof-order-title">
+                  {proofAction === "approve" ? "Aprovar comprovante" : "Rejeitar comprovante"}
+                </h3>
+              </div>
+              <button
+                className="ghost-button"
+                disabled={Boolean(actingOrderId)}
+                onClick={closeProofModal}
+                type="button"
+              >
+                Fechar
+              </button>
+            </div>
+
+            <p className="muted-text">
+              Revise o comprovante enviado por <strong>{proofModalOrder.customerName}</strong>.
+              Aprovar também marca o pagamento como pago.
+            </p>
+
+            <div className="order-totals">
+              <span>Pagador: {proofModalOrder.paymentProofPayerName ?? "não informado"}</span>
+              <span>
+                Valor: R${" "}
+                {proofModalOrder.paymentProofAmount !== undefined &&
+                proofModalOrder.paymentProofAmount !== null
+                  ? proofModalOrder.paymentProofAmount.toFixed(2)
+                  : "não informado"}
+              </span>
+              <strong>Pedido: R$ {proofModalOrder.total.toFixed(2)}</strong>
+            </div>
+
+            {proofModalOrder.paymentProofReference ? (
+              <p className="muted-text">
+                Referência: {proofModalOrder.paymentProofReference}
+              </p>
+            ) : null}
+
+            <label className="field">
+              <span>
+                {proofAction === "approve"
+                  ? "Observação da aprovação"
+                  : "Motivo da recusa"}
+              </span>
+              <textarea
+                disabled={Boolean(actingOrderId)}
+                maxLength={300}
+                onChange={(event) => setProofReasonDraft(event.target.value)}
+                placeholder="Opcional"
+                rows={4}
+                value={proofReasonDraft}
+              />
+            </label>
+
+            {proofError ? <div className="feedback feedback-error">{proofError}</div> : null}
+
+            <div className="modal-actions">
+              <button
+                className="secondary-button"
+                disabled={Boolean(actingOrderId)}
+                onClick={closeProofModal}
+                type="button"
+              >
+                Voltar
+              </button>
+              <button
+                className={proofAction === "approve" ? "primary-button" : "danger-button"}
+                disabled={Boolean(actingOrderId)}
+                onClick={() => void handleReviewPaymentProof()}
+                type="button"
+              >
+                {actingOrderId === proofModalOrder.id
+                  ? "Registrando..."
+                  : proofAction === "approve"
+                    ? "Confirmar aprovação"
+                    : "Confirmar recusa"}
               </button>
             </div>
           </div>

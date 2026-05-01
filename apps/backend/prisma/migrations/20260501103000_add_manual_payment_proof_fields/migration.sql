@@ -1,0 +1,13 @@
+CREATE TYPE "OrderPaymentProofStatus" AS ENUM ('NOT_SUBMITTED', 'SUBMITTED', 'APPROVED', 'REJECTED');
+
+ALTER TYPE "OrderEventType" ADD VALUE 'PAYMENT_PROOF_SUBMITTED';
+ALTER TYPE "OrderEventType" ADD VALUE 'PAYMENT_PROOF_APPROVED';
+ALTER TYPE "OrderEventType" ADD VALUE 'PAYMENT_PROOF_REJECTED';
+
+ALTER TABLE "orders"
+ADD COLUMN "paymentProofStatus" "OrderPaymentProofStatus" NOT NULL DEFAULT 'NOT_SUBMITTED',
+ADD COLUMN "paymentProofSubmittedAt" TIMESTAMP(3),
+ADD COLUMN "paymentProofPayerName" TEXT,
+ADD COLUMN "paymentProofAmount" DECIMAL(10, 2),
+ADD COLUMN "paymentProofReference" TEXT,
+ADD COLUMN "paymentProofNotes" TEXT;

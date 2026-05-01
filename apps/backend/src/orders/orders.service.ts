@@ -11,6 +11,7 @@ import {
   OrderFulfillmentType,
   OrderItem,
   OrderPaymentMethod,
+  OrderPaymentProofStatus,
   OrderPaymentProvider,
   OrderPaymentStatus,
   OrderStatus as PrismaOrderStatus,
@@ -31,6 +32,8 @@ import { ClientOrderFulfillmentInput } from "./dto/create-client-order.dto";
 import { CreateOrderDto } from "./dto/create-order.dto";
 import { ListOrdersQueryDto } from "./dto/list-orders-query.dto";
 import { OrderAuditEvent } from "./order-audit-event.interface";
+import { ReviewPaymentProofDto } from "./dto/review-payment-proof.dto";
+import { SubmitPaymentProofDto } from "./dto/submit-payment-proof.dto";
 import {
   CourierOrderStatusInput,
   UpdateCourierOrderStatusDto
@@ -298,7 +301,8 @@ export class OrdersService {
     });
 
     const serializedOrder = this.serializeOrder(order, {
-      includePixPaymentInstructions: true
+      includePixPaymentInstructions: true,
+      includePaymentProofDetails: true
     });
     this.ordersRealtimeService.emitOrderCreated(serializedOrder);
 
@@ -320,7 +324,8 @@ export class OrdersService {
     }
 
     return this.paginateOrders(where, query, {
-      includePixPaymentInstructions: true
+      includePixPaymentInstructions: true,
+      includePaymentProofDetails: true
     });
   }
 
@@ -340,7 +345,8 @@ export class OrdersService {
     }
 
     return this.paginateOrders(where, query, {
-      includePixPaymentInstructions: true
+      includePixPaymentInstructions: true,
+      includePaymentProofDetails: true
     });
   }
 
@@ -668,7 +674,8 @@ export class OrdersService {
     });
 
     const serializedOrder = this.serializeOrder(updatedOrder, {
-      includePixPaymentInstructions: true
+      includePixPaymentInstructions: true,
+      includePaymentProofDetails: true
     });
     this.ordersRealtimeService.emitOrderStatusUpdated(serializedOrder);
 
@@ -756,7 +763,300 @@ export class OrdersService {
     });
 
     const serializedOrder = this.serializeOrder(updatedOrder, {
-      includePixPaymentInstructions: true
+      includePixPaymentInstructions: true,
+      includePaymentProofDetails: true
+    });
+    this.ordersRealtimeService.emitOrderStatusUpdated(serializedOrder);
+
+    return serializedOrder;
+  }
+
+  async submitPaymentProof(
+    orderId: string,
+    clientUserId: string,
+    role: UserRole,
+    dto: SubmitPaymentProofDto
+  ) {
+    this.ensureClient(role);
+
+    const payerName = dto.payerName?.trim() || null;
+    const reference = dto.reference?.trim() || null;
+    const notes = dto.notes?.trim() || null;
+
+    if (!payerName && !reference) {
+      throw new BadRequestException(
+        "Informe o nome de quem pagou ou a referencia do pagamento"
+      );
+    }
+
+    const updatedOrder = await this.prisma.$transaction(async (transaction) => {
+      const order = await transaction.order.findUnique({
+        where: { id: orderId },
+        include: {
+          items: true,
+          store: true,
+          courier: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true
+            }
+          }
+        }
+      });
+
+      if (!order || order.clientId !== clientUserId) {
+        throw new NotFoundException("Pedido nao encontrado para o cliente autenticado");
+      }
+
+      if (order.paymentMethod !== OrderPaymentMethod.PIX_MANUAL) {
+        throw new BadRequestException(
+          "Comprovante manual so pode ser enviado para pedidos com Pix manual"
+        );
+      }
+
+      if (order.paymentStatus === OrderPaymentStatus.PAID) {
+        throw new BadRequestException("Pagamento deste pedido ja foi marcado como pago");
+      }
+
+      if (order.status === PrismaOrderStatus.CANCELLED) {
+        throw new BadRequestException("Pedido cancelado nao aceita comprovante");
+      }
+
+      const updated = await transaction.order.update({
+        where: { id: orderId },
+        data: {
+          paymentProofStatus: OrderPaymentProofStatus.SUBMITTED,
+          paymentProofSubmittedAt: new Date(),
+          paymentProofPayerName: payerName,
+          paymentProofAmount:
+            dto.amount !== undefined ? new Prisma.Decimal(dto.amount) : null,
+          paymentProofReference: reference,
+          paymentProofNotes: notes
+        },
+        include: {
+          items: true,
+          store: true,
+          courier: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true
+            }
+          }
+        }
+      });
+
+      await transaction.orderEvent.create({
+        data: {
+          orderId,
+          type: OrderEventType.PAYMENT_PROOF_SUBMITTED,
+          actorUserId: clientUserId,
+          actorRole: PrismaUserRole.CLIENT,
+          metadata: {
+            payerName,
+            reference,
+            amount: dto.amount ?? null
+          }
+        }
+      });
+
+      return updated;
+    });
+
+    const serializedOrder = this.serializeOrder(updatedOrder, {
+      includePixPaymentInstructions: true,
+      includePaymentProofDetails: true
+    });
+    this.ordersRealtimeService.emitOrderStatusUpdated(serializedOrder);
+
+    return serializedOrder;
+  }
+
+  async approvePaymentProof(
+    orderId: string,
+    ownerUserId: string,
+    role: UserRole,
+    dto: ReviewPaymentProofDto
+  ) {
+    const store = await this.storesService.getStoreByOwner(ownerUserId, role);
+
+    const updatedOrder = await this.prisma.$transaction(async (transaction) => {
+      const order = await transaction.order.findUnique({
+        where: { id: orderId },
+        include: {
+          items: true,
+          store: true,
+          courier: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true
+            }
+          }
+        }
+      });
+
+      if (!order || order.storeId !== store.id) {
+        throw new NotFoundException("Pedido nao encontrado para a loja autenticada");
+      }
+
+      if (order.paymentMethod !== OrderPaymentMethod.PIX_MANUAL) {
+        throw new BadRequestException(
+          "Aprovacao de comprovante so vale para pedidos com Pix manual"
+        );
+      }
+
+      if (order.paymentProofStatus !== OrderPaymentProofStatus.SUBMITTED) {
+        throw new BadRequestException("Nenhum comprovante pendente para aprovar");
+      }
+
+      const updated = await transaction.order.update({
+        where: { id: orderId },
+        data: {
+          paymentProofStatus: OrderPaymentProofStatus.APPROVED,
+          paymentStatus: OrderPaymentStatus.PAID,
+          paymentProvider: OrderPaymentProvider.MANUAL,
+          paidAt: new Date()
+        },
+        include: {
+          items: true,
+          store: true,
+          courier: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true
+            }
+          }
+        }
+      });
+
+      await transaction.orderEvent.create({
+        data: {
+          orderId,
+          type: OrderEventType.PAYMENT_PROOF_APPROVED,
+          actorUserId: ownerUserId,
+          actorRole: PrismaUserRole.STORE_ADMIN,
+          metadata: dto.reason?.trim()
+            ? {
+                reason: dto.reason.trim()
+              }
+            : undefined
+        }
+      });
+
+      await transaction.orderEvent.create({
+        data: {
+          orderId,
+          type: OrderEventType.PAYMENT_PAID,
+          actorUserId: ownerUserId,
+          actorRole: PrismaUserRole.STORE_ADMIN,
+          metadata: {
+            paymentMethod: order.paymentMethod,
+            source: "payment_proof_approval"
+          }
+        }
+      });
+
+      return updated;
+    });
+
+    const serializedOrder = this.serializeOrder(updatedOrder, {
+      includePixPaymentInstructions: true,
+      includePaymentProofDetails: true
+    });
+    this.ordersRealtimeService.emitOrderStatusUpdated(serializedOrder);
+
+    return serializedOrder;
+  }
+
+  async rejectPaymentProof(
+    orderId: string,
+    ownerUserId: string,
+    role: UserRole,
+    dto: ReviewPaymentProofDto
+  ) {
+    const store = await this.storesService.getStoreByOwner(ownerUserId, role);
+
+    const updatedOrder = await this.prisma.$transaction(async (transaction) => {
+      const order = await transaction.order.findUnique({
+        where: { id: orderId },
+        include: {
+          items: true,
+          store: true,
+          courier: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true
+            }
+          }
+        }
+      });
+
+      if (!order || order.storeId !== store.id) {
+        throw new NotFoundException("Pedido nao encontrado para a loja autenticada");
+      }
+
+      if (order.paymentMethod !== OrderPaymentMethod.PIX_MANUAL) {
+        throw new BadRequestException(
+          "Rejeicao de comprovante so vale para pedidos com Pix manual"
+        );
+      }
+
+      if (order.paymentProofStatus !== OrderPaymentProofStatus.SUBMITTED) {
+        throw new BadRequestException("Nenhum comprovante pendente para rejeitar");
+      }
+
+      const reason = dto.reason?.trim();
+      const updated = await transaction.order.update({
+        where: { id: orderId },
+        data: {
+          paymentProofStatus: OrderPaymentProofStatus.REJECTED,
+          paymentProofNotes: reason
+            ? `${order.paymentProofNotes ?? ""}\nRecusa da loja: ${reason}`.trim()
+            : order.paymentProofNotes
+        },
+        include: {
+          items: true,
+          store: true,
+          courier: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true
+            }
+          }
+        }
+      });
+
+      await transaction.orderEvent.create({
+        data: {
+          orderId,
+          type: OrderEventType.PAYMENT_PROOF_REJECTED,
+          actorUserId: ownerUserId,
+          actorRole: PrismaUserRole.STORE_ADMIN,
+          metadata: reason
+            ? {
+                reason
+              }
+            : undefined
+        }
+      });
+
+      return updated;
+    });
+
+    const serializedOrder = this.serializeOrder(updatedOrder, {
+      includePixPaymentInstructions: true,
+      includePaymentProofDetails: true
     });
     this.ordersRealtimeService.emitOrderStatusUpdated(serializedOrder);
 
@@ -831,7 +1131,8 @@ export class OrdersService {
     });
 
     const serializedOrder = this.serializeOrder(updatedOrder, {
-      includePixPaymentInstructions: true
+      includePixPaymentInstructions: true,
+      includePaymentProofDetails: true
     });
     this.ordersRealtimeService.emitOrderCancelled(serializedOrder);
 
@@ -969,7 +1270,10 @@ export class OrdersService {
   private async paginateOrders(
     where: Prisma.OrderWhereInput,
     query: ListOrdersQueryDto,
-    options?: { includePixPaymentInstructions?: boolean }
+    options?: {
+      includePixPaymentInstructions?: boolean;
+      includePaymentProofDetails?: boolean;
+    }
   ) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
@@ -1025,8 +1329,13 @@ export class OrdersService {
       };
       courier?: { id: string; name: string; email: string; phone: string } | null;
     },
-    options?: { includePixPaymentInstructions?: boolean }
+    options?: {
+      includePixPaymentInstructions?: boolean;
+      includePaymentProofDetails?: boolean;
+    }
   ) {
+    const includePaymentProofDetails = Boolean(options?.includePaymentProofDetails);
+
     return {
       ...order,
       store: order.store
@@ -1045,6 +1354,25 @@ export class OrdersService {
       pixPaymentInstructions: options?.includePixPaymentInstructions
         ? this.buildPixPaymentInstructions(order)
         : null,
+      paymentProofStatus: includePaymentProofDetails
+        ? order.paymentProofStatus
+        : undefined,
+      paymentProofSubmittedAt: includePaymentProofDetails
+        ? order.paymentProofSubmittedAt
+        : undefined,
+      paymentProofPayerName: includePaymentProofDetails
+        ? order.paymentProofPayerName
+        : undefined,
+      paymentProofAmount:
+        includePaymentProofDetails && order.paymentProofAmount
+          ? Number(order.paymentProofAmount)
+          : undefined,
+      paymentProofReference: includePaymentProofDetails
+        ? order.paymentProofReference
+        : undefined,
+      paymentProofNotes: includePaymentProofDetails
+        ? order.paymentProofNotes
+        : undefined,
       statusLabel: this.serializeOrderStatus(order),
       items: order.items.map((item) => ({
         ...item,

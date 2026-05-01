@@ -20,6 +20,8 @@ import { ConfirmOrderDto } from "./dto/confirm-order.dto";
 import { CreateClientOrderDto } from "./dto/create-client-order.dto";
 import { CreateOrderDto } from "./dto/create-order.dto";
 import { ListOrdersQueryDto } from "./dto/list-orders-query.dto";
+import { ReviewPaymentProofDto } from "./dto/review-payment-proof.dto";
+import { SubmitPaymentProofDto } from "./dto/submit-payment-proof.dto";
 import { UpdateCourierOrderStatusDto } from "./dto/update-courier-order-status.dto";
 import { OrdersService } from "./orders.service";
 
@@ -86,6 +88,39 @@ export class OrdersController {
     @Param("orderId") orderId: string
   ) {
     return this.ordersService.getHistory(orderId, user.sub, user.role);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.STORE_ADMIN)
+  @Patch(":orderId/payment-proof/approve")
+  approvePaymentProof(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("orderId") orderId: string,
+    @Body() dto: ReviewPaymentProofDto
+  ) {
+    return this.ordersService.approvePaymentProof(orderId, user.sub, user.role, dto);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.STORE_ADMIN)
+  @Patch(":orderId/payment-proof/reject")
+  rejectPaymentProof(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("orderId") orderId: string,
+    @Body() dto: ReviewPaymentProofDto
+  ) {
+    return this.ordersService.rejectPaymentProof(orderId, user.sub, user.role, dto);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.CLIENT)
+  @Patch(":orderId/payment-proof")
+  submitPaymentProof(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("orderId") orderId: string,
+    @Body() dto: SubmitPaymentProofDto
+  ) {
+    return this.ordersService.submitPaymentProof(orderId, user.sub, user.role, dto);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

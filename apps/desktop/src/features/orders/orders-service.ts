@@ -26,6 +26,10 @@ export interface ConfirmOrderInput {
   deliveryFee?: number;
 }
 
+export interface ReviewPaymentProofInput {
+  reason?: string;
+}
+
 export const ordersService = {
   list(
     token: string,
@@ -85,6 +89,20 @@ export const ordersService = {
     return http<Order>(`/orders/${orderId}/payment/paid`, {
       method: "PATCH",
       token
+    });
+  },
+  approvePaymentProof(token: string, orderId: string, input: ReviewPaymentProofInput) {
+    return http<Order>(`/orders/${orderId}/payment-proof/approve`, {
+      method: "PATCH",
+      token,
+      body: JSON.stringify(input)
+    });
+  },
+  rejectPaymentProof(token: string, orderId: string, input: ReviewPaymentProofInput) {
+    return http<Order>(`/orders/${orderId}/payment-proof/reject`, {
+      method: "PATCH",
+      token,
+      body: JSON.stringify(input)
     });
   }
 };

@@ -149,6 +149,12 @@ export type OrderPaymentStatus =
 
 export type OrderPaymentProvider = "MANUAL" | "FUTURE_GATEWAY";
 
+export type OrderPaymentProofStatus =
+  | "NOT_SUBMITTED"
+  | "SUBMITTED"
+  | "APPROVED"
+  | "REJECTED";
+
 export interface OrderCourier {
   id: string;
   name: string;
@@ -186,6 +192,12 @@ export interface Order {
   paymentStatus: OrderPaymentStatus;
   paymentProvider?: OrderPaymentProvider | null;
   paidAt?: string | null;
+  paymentProofStatus?: OrderPaymentProofStatus;
+  paymentProofSubmittedAt?: string | null;
+  paymentProofPayerName?: string | null;
+  paymentProofAmount?: number | null;
+  paymentProofReference?: string | null;
+  paymentProofNotes?: string | null;
   pixPaymentInstructions?: OrderPixPaymentInstructions | null;
   status: string;
   statusLabel?: string;

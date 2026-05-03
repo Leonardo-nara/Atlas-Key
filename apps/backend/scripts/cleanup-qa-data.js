@@ -3,7 +3,7 @@ const { PrismaClient } = require("@prisma/client");
 
 if (!process.env.DATABASE_URL) {
   console.error(
-    "DATABASE_URL não encontrada. Execute no ambiente correto ou carregue a URL do banco antes de rodar a limpeza QA."
+    "DATABASE_URL nao encontrada. Execute no ambiente correto ou carregue a URL do banco antes de rodar a limpeza QA."
   );
   process.exit(1);
 }
@@ -18,7 +18,7 @@ function isApplyMode() {
 }
 
 function isQaStoreName(name) {
-  return /^QA\s+/i.test(name.trim());
+  return /^qa[\s_-]/i.test(name.trim());
 }
 
 function isQaEmail(email) {
@@ -42,7 +42,14 @@ function uniq(values) {
 async function collectQaData() {
   const stores = await prisma.store.findMany({
     where: {
-      OR: [{ name: { startsWith: "QA " } }, { name: { startsWith: "qa " } }]
+      OR: [
+        { name: { startsWith: "QA " } },
+        { name: { startsWith: "qa " } },
+        { name: { startsWith: "QA-" } },
+        { name: { startsWith: "qa-" } },
+        { name: { startsWith: "QA_" } },
+        { name: { startsWith: "qa_" } }
+      ]
     },
     select: {
       id: true,
@@ -99,6 +106,19 @@ async function collectQaData() {
   });
   const blockedOwnerIds = new Set(blockingStores.map((store) => store.ownerUserId));
   const userIds = candidateUserIds.filter((userId) => !blockedOwnerIds.has(userId));
+  const removableUsers = userIds.length
+    ? await prisma.user.findMany({
+        where: { id: { in: userIds } },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true
+        },
+        orderBy: { createdAt: "asc" }
+      })
+    : [];
+  const blockedUsers = safeUsers.filter((user) => blockedOwnerIds.has(user.id));
 
   const orders = await prisma.order.findMany({
     where: {
@@ -155,7 +175,8 @@ async function collectQaData() {
 
   return {
     stores: safeStores,
-    users: safeUsers,
+    users: removableUsers,
+    blockedUsers,
     storeIds,
     userIds,
     orders,
@@ -168,20 +189,20 @@ async function collectQaData() {
 }
 
 function printSummary(data, applyMode) {
-  console.log(applyMode ? "Modo: EXECUÇÃO REAL" : "Modo: DRY-RUN");
+  console.log(applyMode ? "Modo: EXECUCAO REAL" : "Modo: DRY-RUN");
   console.log("");
   console.log("Candidatos QA encontrados:");
   console.log(`- lojas QA: ${data.stores.length}`);
-  console.log(`- usuários QA/teste: ${data.users.length}`);
+  console.log(`- usuarios que serao removidos: ${data.users.length}`);
   console.log(`- pedidos relacionados: ${data.orders.length}`);
   console.log(`- produtos relacionados: ${data.products.length}`);
-  console.log(`- vínculos relacionados: ${data.courierLinks.length}`);
+  console.log(`- vinculos relacionados: ${data.courierLinks.length}`);
   console.log(`- taxas por bairro relacionadas: ${data.deliveryZones.length}`);
-  console.log(`- lojas reais bloqueando exclusão de usuários: ${data.blockingStores.length}`);
+  console.log(`- lojas bloqueadas para revisao manual: ${data.blockingStores.length}`);
   console.log("");
 
   if (data.stores.length) {
-    console.log("Lojas QA:");
+    console.log("Lojas que serao removidas:");
     data.stores.forEach((store) => {
       console.log(`- ${store.id} | ${store.name}`);
     });
@@ -189,7 +210,7 @@ function printSummary(data, applyMode) {
   }
 
   if (data.users.length) {
-    console.log("Usuários QA/teste:");
+    console.log("Usuarios que serao removidos:");
     data.users.forEach((user) => {
       console.log(`- ${user.id} | ${user.role} | ${user.email} | ${user.name}`);
     });
@@ -197,15 +218,25 @@ function printSummary(data, applyMode) {
   }
 
   if (data.blockingStores.length) {
-    console.log("Atenção: os usuários abaixo possuem loja fora do padrão QA e não serão removidos automaticamente:");
+    console.log("Lojas bloqueadas para revisao manual:");
     data.blockingStores.forEach((store) => {
       console.log(`- loja ${store.id} | ${store.name} | ownerUserId=${store.ownerUserId}`);
     });
     console.log("");
   }
 
+  if (data.blockedUsers.length) {
+    console.log("Usuarios QA/teste bloqueados por possuirem loja fora do padrao QA:");
+    data.blockedUsers.forEach((user) => {
+      console.log(`- ${user.id} | ${user.role} | ${user.email} | ${user.name}`);
+    });
+    console.log("");
+  }
+
   if (!applyMode) {
-    console.log("Nenhum dado foi removido. Use --apply com CLEAN_QA_CONFIRM=DELETE_QA_DATA para executar.");
+    console.log(
+      "Nenhum dado foi removido. Use --apply com CLEAN_QA_CONFIRM=DELETE_QA_DATA para executar."
+    );
   }
 }
 
@@ -279,19 +310,19 @@ async function main() {
 
   if (process.env.CLEAN_QA_CONFIRM !== CONFIRM_ENV_VALUE) {
     throw new Error(
-      `Confirmação ausente. Defina CLEAN_QA_CONFIRM=${CONFIRM_ENV_VALUE} para executar a limpeza real.`
+      `Confirmacao ausente. Defina CLEAN_QA_CONFIRM=${CONFIRM_ENV_VALUE} para executar a limpeza real.`
     );
   }
 
   if (data.blockingStores.length) {
     throw new Error(
-      "Limpeza interrompida: há usuários candidatos QA que possuem loja fora do padrão QA. Revise o dry-run antes de executar."
+      "Limpeza interrompida: ha lojas bloqueadas para revisao manual. Revise o dry-run antes de executar."
     );
   }
 
   await deleteQaData(data);
   console.log("");
-  console.log("Limpeza QA concluída.");
+  console.log("Limpeza QA concluida.");
 }
 
 main()

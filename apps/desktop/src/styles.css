@@ -363,7 +363,7 @@ p {
 }
 
 .orders-grid {
-  grid-template-columns: minmax(340px, 420px) minmax(0, 1fr);
+  grid-template-columns: minmax(420px, 500px) minmax(0, 1fr);
   align-items: start;
 }
 
@@ -578,22 +578,67 @@ p {
   align-items: end;
 }
 
+.order-form {
+  gap: 20px;
+}
+
+.order-items-editor {
+  gap: 14px;
+}
+
+.order-form-item {
+  grid-template-columns: minmax(190px, 1fr) 96px auto;
+  gap: 14px;
+  align-items: end;
+  padding: 16px;
+}
+
+.order-form-item .field-small {
+  max-width: none;
+}
+
+.order-form-item-remove {
+  min-height: 47px;
+  justify-content: center;
+  white-space: nowrap;
+}
+
 .field-small {
   max-width: 120px;
+}
+
+.order-form-footer {
+  display: grid;
+  gap: 14px;
+  padding-top: 4px;
+}
+
+.order-form-submit {
+  width: 100%;
+  min-height: 48px;
+  justify-content: center;
 }
 
 .order-summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  padding: 16px;
-  border-radius: 18px;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 20px;
   background: rgba(62, 162, 255, 0.08);
+  border: 1px solid rgba(23, 119, 217, 0.08);
 }
 
 .order-summary div,
 .order-totals {
   color: var(--rp-text-muted);
+}
+
+.order-summary div {
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.62);
 }
 
 .order-summary strong,
@@ -844,5 +889,13 @@ p {
   .delivery-zone-card,
   .courier-card-grid {
     grid-template-columns: 1fr;
+  }
+
+  .order-form-item {
+    gap: 12px;
+  }
+
+  .order-form-item-remove {
+    width: 100%;
   }
 }

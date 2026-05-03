@@ -118,7 +118,7 @@ export function OrderForm({
   }
 
   return (
-    <form className="panel form-grid" onSubmit={handleSubmit}>
+    <form className="panel form-grid order-form" onSubmit={handleSubmit}>
       <div className="panel-heading">
         <h3>Novo pedido</h3>
         <button
@@ -166,9 +166,9 @@ export function OrderForm({
         />
       </label>
 
-      <div className="stack-list">
+      <div className="stack-list order-items-editor">
         {items.map((item, index) => (
-          <div className="inline-card" key={`${index}-${item.productId}`}>
+          <div className="inline-card order-form-item" key={`${index}-${item.productId}`}>
             <label className="field">
               <span>Produto</span>
               <select
@@ -201,7 +201,7 @@ export function OrderForm({
             </label>
 
             <button
-              className="ghost-button"
+              className="ghost-button order-form-item-remove"
               disabled={items.length === 1}
               onClick={() => removeItem(index)}
               type="button"
@@ -259,32 +259,34 @@ export function OrderForm({
         />
       </label>
 
-      <div className="order-summary">
-        <div>
-          <span>Subtotal</span>
-          <strong>R$ {subtotal.toFixed(2)}</strong>
+      <div className="order-form-footer">
+        <div className="order-summary">
+          <div>
+            <span>Subtotal</span>
+            <strong>R$ {subtotal.toFixed(2)}</strong>
+          </div>
+          <div>
+            <span>Entrega</span>
+            <strong>R$ {deliveryFee.toFixed(2)}</strong>
+          </div>
+          <div>
+            <span>Total estimado</span>
+            <strong>R$ {total.toFixed(2)}</strong>
+          </div>
         </div>
-        <div>
-          <span>Entrega</span>
-          <strong>R$ {deliveryFee.toFixed(2)}</strong>
-        </div>
-        <div>
-          <span>Total estimado</span>
-          <strong>R$ {total.toFixed(2)}</strong>
-        </div>
+
+        {localError || error ? (
+          <div className="feedback feedback-error">{localError ?? error}</div>
+        ) : null}
+
+        <button
+          className="primary-button order-form-submit"
+          disabled={submitting || products.length === 0}
+          type="submit"
+        >
+          {submitting ? "Enviando..." : "Criar pedido"}
+        </button>
       </div>
-
-      {localError || error ? (
-        <div className="feedback feedback-error">{localError ?? error}</div>
-      ) : null}
-
-      <button
-        className="primary-button"
-        disabled={submitting || products.length === 0}
-        type="submit"
-      >
-        {submitting ? "Enviando..." : "Criar pedido"}
-      </button>
     </form>
   );
 }

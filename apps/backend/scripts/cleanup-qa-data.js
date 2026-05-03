@@ -241,21 +241,38 @@ function printSummary(data, applyMode) {
 }
 
 async function deleteQaData(data) {
+  const removedCounts = {
+    orderEvents: 0,
+    orderItems: 0,
+    orders: 0,
+    courierLinks: 0,
+    deliveryZones: 0,
+    products: 0,
+    stores: 0,
+    clientAddresses: 0,
+    courierProfiles: 0,
+    authSessions: 0,
+    users: 0
+  };
+
   await prisma.$transaction(async (transaction) => {
     if (data.orderIds.length) {
-      await transaction.orderEvent.deleteMany({
+      const orderEvents = await transaction.orderEvent.deleteMany({
         where: { orderId: { in: data.orderIds } }
       });
-      await transaction.orderItem.deleteMany({
+      const orderItems = await transaction.orderItem.deleteMany({
         where: { orderId: { in: data.orderIds } }
       });
-      await transaction.order.deleteMany({
+      const orders = await transaction.order.deleteMany({
         where: { id: { in: data.orderIds } }
       });
+      removedCounts.orderEvents += orderEvents.count;
+      removedCounts.orderItems += orderItems.count;
+      removedCounts.orders += orders.count;
     }
 
     if (data.storeIds.length || data.userIds.length) {
-      await transaction.storeCourierLink.deleteMany({
+      const courierLinks = await transaction.storeCourierLink.deleteMany({
         where: {
           OR: [
             { storeId: { in: data.storeIds } },
@@ -263,18 +280,22 @@ async function deleteQaData(data) {
           ]
         }
       });
+      removedCounts.courierLinks += courierLinks.count;
     }
 
     if (data.storeIds.length) {
-      await transaction.storeDeliveryZone.deleteMany({
+      const deliveryZones = await transaction.storeDeliveryZone.deleteMany({
         where: { storeId: { in: data.storeIds } }
       });
-      await transaction.product.deleteMany({
+      const products = await transaction.product.deleteMany({
         where: { storeId: { in: data.storeIds } }
       });
-      await transaction.store.deleteMany({
+      const stores = await transaction.store.deleteMany({
         where: { id: { in: data.storeIds } }
       });
+      removedCounts.deliveryZones += deliveryZones.count;
+      removedCounts.products += products.count;
+      removedCounts.stores += stores.count;
     }
 
     if (data.userIds.length) {
@@ -282,20 +303,51 @@ async function deleteQaData(data) {
         where: { actorUserId: { in: data.userIds } },
         data: { actorUserId: null }
       });
-      await transaction.clientAddress.deleteMany({
+      const clientAddresses = await transaction.clientAddress.deleteMany({
         where: { userId: { in: data.userIds } }
       });
-      await transaction.courierProfile.deleteMany({
+      const courierProfiles = await transaction.courierProfile.deleteMany({
         where: { userId: { in: data.userIds } }
       });
-      await transaction.authSession.deleteMany({
+      const authSessions = await transaction.authSession.deleteMany({
         where: { userId: { in: data.userIds } }
       });
-      await transaction.user.deleteMany({
+      const users = await transaction.user.deleteMany({
         where: { id: { in: data.userIds } }
       });
+      removedCounts.clientAddresses += clientAddresses.count;
+      removedCounts.courierProfiles += courierProfiles.count;
+      removedCounts.authSessions += authSessions.count;
+      removedCounts.users += users.count;
     }
   });
+
+  return removedCounts;
+}
+
+function printApplyResult(data, removedCounts) {
+  console.log("");
+  console.log("Limpeza QA concluida.");
+  console.log("Dados removidos:");
+  console.log(`- lojas: ${removedCounts.stores}`);
+  console.log(`- usuarios: ${removedCounts.users}`);
+  console.log(`- pedidos: ${removedCounts.orders}`);
+  console.log(`- itens de pedido: ${removedCounts.orderItems}`);
+  console.log(`- eventos de pedido: ${removedCounts.orderEvents}`);
+  console.log(`- produtos: ${removedCounts.products}`);
+  console.log(`- vinculos: ${removedCounts.courierLinks}`);
+  console.log(`- taxas por bairro: ${removedCounts.deliveryZones}`);
+  console.log(`- enderecos de cliente: ${removedCounts.clientAddresses}`);
+  console.log(`- perfis de motoboy: ${removedCounts.courierProfiles}`);
+  console.log(`- sessoes: ${removedCounts.authSessions}`);
+
+  if (data.blockingStores.length) {
+    console.log("");
+    console.log("Lojas que permaneceram bloqueadas para revisao manual:");
+    data.blockingStores.forEach((store) => {
+      console.log(`- loja ${store.id} | ${store.name} | ownerUserId=${store.ownerUserId}`);
+    });
+  }
 }
 
 async function main() {
@@ -314,15 +366,8 @@ async function main() {
     );
   }
 
-  if (data.blockingStores.length) {
-    throw new Error(
-      "Limpeza interrompida: ha lojas bloqueadas para revisao manual. Revise o dry-run antes de executar."
-    );
-  }
-
-  await deleteQaData(data);
-  console.log("");
-  console.log("Limpeza QA concluida.");
+  const removedCounts = await deleteQaData(data);
+  printApplyResult(data, removedCounts);
 }
 
 main()

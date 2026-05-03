@@ -1,20 +1,28 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import {
   Animated,
-  SafeAreaView,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
-  View
+  View,
+  type StyleProp,
+  type ViewStyle
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { mobileShadow, mobileTheme } from "../theme";
 
 export function ScreenContainer({
   children,
-  scrollable = false
+  scrollable = false,
+  contentStyle,
+  cardStyle
 }: {
   children: ReactNode;
   scrollable?: boolean;
+  contentStyle?: StyleProp<ViewStyle>;
+  cardStyle?: StyleProp<ViewStyle>;
 }) {
   const entrance = useRef(new Animated.Value(0)).current;
 
@@ -40,26 +48,33 @@ export function ScreenContainer({
 
   const content = scrollable ? (
     <ScrollView
-      contentContainerStyle={styles.scrollContent}
+      contentContainerStyle={[styles.scrollContent, contentStyle]}
+      keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
-      <Animated.View style={[styles.innerCard, animatedStyle]}>
+      <Animated.View style={[styles.innerCard, cardStyle, animatedStyle]}>
         {children}
       </Animated.View>
     </ScrollView>
   ) : (
-    <View style={styles.content}>
-      <Animated.View style={[styles.innerCard, animatedStyle]}>
+    <View style={[styles.content, contentStyle]}>
+      <Animated.View style={[styles.innerCard, cardStyle, animatedStyle]}>
         {children}
       </Animated.View>
     </View>
   );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={["top", "bottom"]} style={styles.safeArea}>
       <View pointerEvents="none" style={styles.backgroundOrbTop} />
       <View pointerEvents="none" style={styles.backgroundOrbBottom} />
-      {content}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
+        style={styles.keyboardArea}
+      >
+        {content}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -68,6 +83,9 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: mobileTheme.colors.background
+  },
+  keyboardArea: {
+    flex: 1
   },
   backgroundOrbTop: {
     position: "absolute",
@@ -93,7 +111,9 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    padding: mobileTheme.spacing.lg
+    paddingHorizontal: mobileTheme.spacing.lg,
+    paddingTop: mobileTheme.spacing.md,
+    paddingBottom: mobileTheme.spacing.xl
   },
   innerCard: {
     gap: mobileTheme.spacing.lg,

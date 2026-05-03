@@ -46,7 +46,11 @@ export function LoginScreen() {
   }
 
   return (
-    <ScreenContainer scrollable>
+    <ScreenContainer
+      cardStyle={styles.screenCard}
+      contentStyle={styles.screenContent}
+      scrollable
+    >
       <View style={styles.container}>
         <SectionHeader
           title={mode === "courier" ? "App do motoboy" : "Area do cliente"}
@@ -166,11 +170,28 @@ export function LoginScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    gap: 24
+    gap: 18,
+    width: "100%"
+  },
+  screenContent: {
+    justifyContent: "center",
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 28
+  },
+  screenCard: {
+    gap: 18,
+    padding: 18,
+    width: "100%",
+    maxWidth: 520,
+    alignSelf: "center",
+    backgroundColor: mobileTheme.colors.surface,
+    borderColor: mobileTheme.colors.border
   },
   modeToggle: {
     flexDirection: "row",
-    gap: 10
+    gap: 10,
+    width: "100%"
   },
   modeChip: {
     flex: 1,
@@ -180,7 +201,9 @@ const styles = StyleSheet.create({
     backgroundColor: mobileTheme.colors.surfaceMuted,
     borderWidth: 1,
     borderColor: mobileTheme.colors.borderStrong,
-    alignItems: "center"
+    alignItems: "center",
+    minHeight: 50,
+    justifyContent: "center"
   },
   modeChipActive: {
     backgroundColor: mobileTheme.colors.primaryStrong,
@@ -189,14 +212,16 @@ const styles = StyleSheet.create({
   modeChipText: {
     color: mobileTheme.colors.textMuted,
     fontWeight: "800",
-    fontSize: 13
+    fontSize: 13,
+    textAlign: "center",
+    lineHeight: 17
   },
   modeChipTextActive: {
     color: "#ffffff"
   },
   heroStrip: {
     gap: 10,
-    padding: 18,
+    padding: 16,
     borderRadius: mobileTheme.radii.md,
     backgroundColor: mobileTheme.colors.primarySoft,
     borderWidth: 1,
@@ -217,13 +242,14 @@ const styles = StyleSheet.create({
   },
   heroText: {
     color: mobileTheme.colors.text,
+    fontSize: 14,
     lineHeight: 21
   },
   card: {
     backgroundColor: mobileTheme.colors.surface,
     borderRadius: mobileTheme.radii.lg,
-    padding: 20,
-    gap: 16,
+    padding: 18,
+    gap: 14,
     borderWidth: 1,
     borderColor: mobileTheme.colors.border,
     ...mobileShadow
@@ -241,8 +267,10 @@ const styles = StyleSheet.create({
     borderRadius: mobileTheme.radii.sm,
     paddingHorizontal: 14,
     paddingVertical: 12,
+    minHeight: 48,
     backgroundColor: mobileTheme.colors.surfaceMuted,
-    color: mobileTheme.colors.text
+    color: mobileTheme.colors.text,
+    fontSize: 15
   },
   errorBox: {
     padding: 12,
@@ -256,7 +284,9 @@ const styles = StyleSheet.create({
     backgroundColor: mobileTheme.colors.primaryStrong,
     paddingVertical: 14,
     borderRadius: mobileTheme.radii.sm,
-    alignItems: "center"
+    alignItems: "center",
+    minHeight: 50,
+    justifyContent: "center"
   },
   buttonPressed: {
     opacity: 0.92,
@@ -271,7 +301,9 @@ const styles = StyleSheet.create({
     borderRadius: mobileTheme.radii.sm,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: mobileTheme.colors.borderStrong
+    borderColor: mobileTheme.colors.borderStrong,
+    minHeight: 50,
+    justifyContent: "center"
   },
   secondaryText: {
     color: mobileTheme.colors.primaryStrong,

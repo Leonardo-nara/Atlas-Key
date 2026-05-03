@@ -93,7 +93,7 @@ async function sendRequest(
     });
   } catch {
     throw new ApiError(
-      "Nao foi possivel conectar ao backend. Confira o IP ou dominio configurado no app.",
+      "Não foi possível conectar ao backend. Confira o IP ou domínio configurado no app.",
       0
     );
   }

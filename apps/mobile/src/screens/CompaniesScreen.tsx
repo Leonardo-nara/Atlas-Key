@@ -35,7 +35,7 @@ function formatStatus(status: StoreCourierLink["status"]) {
 function buildActionLabel(store: StoreDiscoveryItem) {
   switch (store.link?.status) {
     case "PENDING":
-      return "Solicitacao pendente";
+      return "Solicitação pendente";
     case "APPROVED":
       return "Ja vinculado";
     case "BLOCKED":
@@ -83,7 +83,7 @@ export function CompaniesScreen() {
       setError(
         loadError instanceof ApiError
           ? loadError.message
-          : "Nao foi possivel carregar as empresas disponiveis."
+          : "Não foi possível carregar as empresas disponíveis."
       );
     } finally {
       setLoading(false);
@@ -117,13 +117,13 @@ export function CompaniesScreen() {
 
     try {
       await companyLinksService.requestJoin(token, storeId);
-      setSuccessMessage("Solicitacao enviada para a empresa.");
+      setSuccessMessage("Solicitação enviada para a empresa.");
       await loadData();
     } catch (requestError) {
       setError(
         requestError instanceof ApiError
           ? requestError.message
-          : "Nao foi possivel enviar sua solicitacao."
+          : "Não foi possível enviar sua solicitação."
       );
     } finally {
       setActingStoreId(null);
@@ -134,7 +134,7 @@ export function CompaniesScreen() {
     <ScreenContainer>
       <SectionHeader
         title="Empresas"
-        description="Solicite participacao, acompanhe analises e veja onde voce ja pode operar."
+        description="Solicite participação, acompanhe análises e veja onde você já pode operar."
       />
 
       {loading ? (
@@ -215,13 +215,13 @@ export function CompaniesScreen() {
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Minhas solicitacoes e vinculos</Text>
             <Text style={styles.cardDescription}>
-              Acompanhe o que esta pendente e quais empresas ja aprovaram seu cadastro.
+              Acompanhe o que está pendente e quais empresas já aprovaram seu cadastro.
             </Text>
 
             {sortedLinks.length === 0 ? (
               <View style={styles.emptyBox}>
                 <Text style={styles.emptyText}>
-                  Voce ainda nao possui solicitacoes nem vinculos registrados.
+                  Você ainda não possui solicitações nem vínculos registrados.
                 </Text>
               </View>
             ) : (

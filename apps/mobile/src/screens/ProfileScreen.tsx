@@ -23,7 +23,7 @@ export function ProfileScreen() {
     <ScreenContainer scrollable>
       <SectionHeader
         title="Perfil"
-        description="Dados da conta autenticada e utilitarios do app. Aqui voce acompanha o perfil operacional e controla a sessao."
+        description="Dados da conta autenticada e utilitários do app. Aqui você acompanha o perfil operacional e controla a sessão."
       />
 
       <View style={styles.card}>
@@ -46,16 +46,16 @@ export function ProfileScreen() {
         <Text style={styles.value}>{roleLabel}</Text>
 
         <Text style={styles.label}>Cidade</Text>
-        <Text style={styles.value}>{user?.courierProfile?.city ?? "Nao informada"}</Text>
+        <Text style={styles.value}>{user?.courierProfile?.city ?? "Não informada"}</Text>
 
-        <Text style={styles.label}>Tipo de veiculo</Text>
-        <Text style={styles.value}>{user?.courierProfile?.vehicleType ?? "Nao informado"}</Text>
+        <Text style={styles.label}>Tipo de veículo</Text>
+        <Text style={styles.value}>{user?.courierProfile?.vehicleType ?? "Não informado"}</Text>
 
-        <Text style={styles.label}>Modelo do veiculo</Text>
-        <Text style={styles.value}>{user?.courierProfile?.vehicleModel ?? "Nao informado"}</Text>
+        <Text style={styles.label}>Modelo do veículo</Text>
+        <Text style={styles.value}>{user?.courierProfile?.vehicleModel ?? "Não informado"}</Text>
 
         <Text style={styles.label}>Placa</Text>
-        <Text style={styles.value}>{user?.courierProfile?.plate ?? "Nao informada"}</Text>
+        <Text style={styles.value}>{user?.courierProfile?.plate ?? "Não informada"}</Text>
 
         <Text style={styles.label}>Perfil operacional</Text>
         <Text style={styles.value}>
@@ -74,7 +74,7 @@ export function ProfileScreen() {
 
         {user?.courierProfile?.vehiclePhotoUrl ? (
           <>
-            <Text style={styles.label}>Foto do veiculo</Text>
+            <Text style={styles.label}>Foto do veículo</Text>
             <Image
               source={{ uri: user.courierProfile.vehiclePhotoUrl }}
               style={styles.imagePreview}

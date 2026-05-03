@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuthSessionListeners({
       onExpired: async () => {
         await clearSession();
-        setLoginError("Sua sessao expirou. Entre novamente para continuar.");
+        setLoginError("Sua sessão expirou. Entre novamente para continuar.");
       },
       onRefresh: (tokens) => {
         setToken(tokens.accessToken);
@@ -119,7 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error instanceof ApiError) {
         setLoginError(error.message);
       } else {
-        setLoginError("Nao foi possivel restaurar a sessao.");
+        setLoginError("Não foi possível restaurar a sessão.");
       }
     }
   }
@@ -145,7 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error instanceof ApiError) {
         setLoginError(error.message);
       } else {
-        setLoginError("Nao foi possivel fazer login.");
+        setLoginError("Não foi possível fazer login.");
       }
       throw error;
     } finally {
@@ -180,7 +180,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error instanceof ApiError) {
         setLoginError(error.message);
       } else {
-        setLoginError("Nao foi possivel concluir seu cadastro.");
+        setLoginError("Não foi possível concluir seu cadastro.");
       }
       throw error;
     } finally {
@@ -215,7 +215,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error instanceof ApiError) {
         setLoginError(error.message);
       } else {
-        setLoginError("Nao foi possivel concluir seu cadastro.");
+        setLoginError("Não foi possível concluir seu cadastro.");
       }
       throw error;
     } finally {
@@ -227,11 +227,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     input: Parameters<typeof courierService.updateMe>[1]
   ) {
     if (!token) {
-      throw new ApiError("Sessao do motoboy nao encontrada.", 401);
+      throw new ApiError("Sessão do motoboy não encontrada.", 401);
     }
 
     if (user?.role !== "COURIER") {
-      throw new ApiError("Este perfil nao pertence a um motoboy.", 403);
+      throw new ApiError("Este perfil não pertence a um motoboy.", 403);
     }
 
     const nextUser = await courierService.updateMe(token, input);

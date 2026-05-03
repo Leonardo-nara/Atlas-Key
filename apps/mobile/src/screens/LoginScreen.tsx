@@ -39,8 +39,8 @@ export function LoginScreen() {
     } catch {
       setLocalError(
         mode === "courier"
-          ? "Nao foi possivel entrar agora. Verifique a conta do motoboy e a conexao com o backend."
-          : "Nao foi possivel entrar agora. Verifique a conta do cliente e a conexao com o backend."
+          ? "Não foi possível entrar agora. Verifique a conta do motoboy e a conexão com o backend."
+          : "Não foi possível entrar agora. Verifique a conta do cliente e a conexão com o backend."
       );
     }
   }
@@ -101,7 +101,7 @@ export function LoginScreen() {
             <Text style={styles.heroChipText}>Operacao em movimento</Text>
           </View>
           <Text style={styles.heroText}>
-            Sessao segura, pedidos em tempo real e uma interface mais clara para o
+            Sessão segura, pedidos em tempo real e uma interface mais clara para o
             uso diario na rua.
           </Text>
         </View>

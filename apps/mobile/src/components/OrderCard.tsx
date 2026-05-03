@@ -38,7 +38,7 @@ function getStatusVariant(label: string) {
 
 function formatPaymentMethod(method?: Order["paymentMethod"]) {
   if (method === "CARD_ON_DELIVERY") {
-    return "Cartao na entrega";
+    return "Cartão na entrega";
   }
 
   if (method === "PIX_MANUAL") {
@@ -110,7 +110,7 @@ export function OrderCard({
 
       <View style={styles.storeBlock}>
         <Text style={styles.store}>
-          Empresa: {order.store?.name ?? "Empresa nao informada"}
+          Empresa: {order.store?.name ?? "Empresa não informada"}
         </Text>
         {order.store?.address ? (
           <Text style={styles.meta}>Origem: {order.store.address}</Text>

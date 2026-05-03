@@ -44,15 +44,15 @@ export function validateCourierProfileForm(values: CourierProfileFormValues) {
   }
 
   if (!values.city.trim()) {
-    return "Informe a cidade onde voce opera.";
+    return "Informe a cidade onde você opera.";
   }
 
   if (!values.vehicleType) {
-    return "Selecione o tipo de veiculo.";
+    return "Selecione o tipo de veículo.";
   }
 
   if (!values.vehicleModel.trim()) {
-    return "Informe o modelo do veiculo.";
+    return "Informe o modelo do veículo.";
   }
 
   if (!values.plate.trim()) {

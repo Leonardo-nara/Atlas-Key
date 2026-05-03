@@ -39,14 +39,14 @@ export function RegisterScreen() {
     }
 
     if (password !== confirmPassword) {
-      setLocalError("A confirmacao de senha nao confere.");
+      setLocalError("A confirmação de senha não confere.");
       return;
     }
 
     try {
       await registerCourier(name.trim(), email.trim(), phone.trim(), password);
     } catch {
-      setLocalError("Nao foi possivel concluir o cadastro agora.");
+      setLocalError("Não foi possível concluir o cadastro agora.");
     }
   }
 
@@ -61,7 +61,7 @@ export function RegisterScreen() {
         <View style={styles.tipBox}>
           <Text style={styles.tipTitle}>Cadastro em poucos passos</Text>
           <Text style={styles.tipText}>
-            Depois desta etapa, voce ainda completa cidade, veiculo e dados de
+            Depois desta etapa, você ainda completa cidade, veículo e dados de
             apoio para ficar pronto para operar.
           </Text>
         </View>

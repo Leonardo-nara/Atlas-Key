@@ -43,7 +43,7 @@ export function ClientStoreProductsScreen() {
       setError(
         loadError instanceof ApiError
           ? loadError.message
-          : "Nao foi possivel carregar os produtos desta empresa."
+          : "Não foi possível carregar os produtos desta empresa."
       );
     } finally {
       setLoading(false);
@@ -54,14 +54,14 @@ export function ClientStoreProductsScreen() {
     <ScreenContainer scrollable>
       <SectionHeader
         title={route.params.storeName}
-        description="Pesquise e veja os produtos disponiveis nesta empresa."
+        description="Pesquise e veja os produtos disponíveis nesta empresa."
       />
 
       {store ? (
         <View style={styles.storeCard}>
           <Text style={styles.storeName}>{store.name}</Text>
           <Text style={styles.storeAddress}>
-            {store.address || "Endereco ainda nao informado pela empresa"}
+            {store.address || "Endereço ainda não informado pela empresa"}
           </Text>
         </View>
       ) : null}
@@ -94,7 +94,7 @@ export function ClientStoreProductsScreen() {
       ) : products.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyStateText}>
-            Nenhum produto disponivel nesta empresa com esse filtro.
+            Nenhum produto disponível nesta empresa com esse filtro.
           </Text>
         </View>
       ) : (

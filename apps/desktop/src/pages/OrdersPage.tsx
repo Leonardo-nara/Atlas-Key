@@ -296,9 +296,15 @@ function canConfirmOrder(order: Order) {
 }
 
 function parseMoneyDraft(value: string) {
-  const parsed = Number(value.replace(",", ".") || "0");
+  const trimmedValue = value.trim();
 
-  return Number.isFinite(parsed) ? parsed : 0;
+  if (!trimmedValue) {
+    return 0;
+  }
+
+  const parsed = Number(trimmedValue.replace(",", "."));
+
+  return Number.isFinite(parsed) ? parsed : Number.NaN;
 }
 
 export function OrdersPage() {

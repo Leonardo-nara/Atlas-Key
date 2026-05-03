@@ -47,7 +47,7 @@ const paymentMethodOptions: Array<{
 
 function formatPixKeyType(type: StorePixKeyType) {
   if (type === "RANDOM_KEY") {
-    return "Chave aleatoria";
+    return "Chave aleatória";
   }
 
   if (type === "PHONE") {
@@ -150,7 +150,7 @@ export function ClientCartScreen() {
     setPixOrders([]);
 
     if (!token) {
-      setError("Sessao nao encontrada. Entre novamente para finalizar o pedido.");
+      setError("Sessão não encontrada. Entre novamente para finalizar o pedido.");
       return;
     }
 
@@ -163,7 +163,7 @@ export function ClientCartScreen() {
       fulfillmentType === "DELIVERY" &&
       (!street.trim() || !number.trim() || !district.trim() || !city.trim())
     ) {
-      setError("Informe rua, numero, bairro e cidade para entrega.");
+      setError("Informe rua, número, bairro e cidade para entrega.");
       return;
     }
 
@@ -230,7 +230,7 @@ export function ClientCartScreen() {
       setError(
         checkoutError instanceof ApiError
           ? checkoutError.message
-          : "Nao foi possivel finalizar o pedido."
+          : "Não foi possível finalizar o pedido."
       );
     } finally {
       setSubmitting(false);
@@ -258,7 +258,7 @@ export function ClientCartScreen() {
         {groups.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyStateText}>
-              Seu carrinho esta vazio. Escolha uma empresa e adicione produtos.
+              Seu carrinho está vazio. Escolha uma empresa e adicione produtos.
             </Text>
           </View>
         ) : (
@@ -341,7 +341,7 @@ export function ClientCartScreen() {
           {fulfillmentType === "DELIVERY" ? (
             <View style={styles.addressGrid}>
               <View style={styles.addressChoiceCard}>
-                <Text style={styles.addressChoiceTitle}>Endereco de entrega</Text>
+                <Text style={styles.addressChoiceTitle}>Endereço de entrega</Text>
                 {savedAddress ? (
                   <Pressable
                     onPress={() => {
@@ -354,7 +354,7 @@ export function ClientCartScreen() {
                     ]}
                   >
                     <Text style={styles.addressChoiceText}>
-                      Usar endereco salvo
+                      Usar endereço salvo
                     </Text>
                     <Text style={styles.addressChoiceMeta}>
                       {savedAddress.street}, {savedAddress.number} - {savedAddress.district}
@@ -362,7 +362,7 @@ export function ClientCartScreen() {
                   </Pressable>
                 ) : (
                   <Text style={styles.feeText}>
-                    Voce ainda nao tem endereco salvo. Preencha abaixo e salve para proximas compras.
+                    Você ainda não tem endereço salvo. Preencha abaixo e salve para próximas compras.
                   </Text>
                 )}
                 <Pressable
@@ -375,7 +375,7 @@ export function ClientCartScreen() {
                     addressMode === "other" ? styles.addressChoiceActive : undefined
                   ]}
                 >
-                  <Text style={styles.addressChoiceText}>Entregar em outro endereco</Text>
+                  <Text style={styles.addressChoiceText}>Entregar em outro endereço</Text>
                   <Text style={styles.addressChoiceMeta}>
                     Preencha ou edite os campos antes de finalizar.
                   </Text>
@@ -392,7 +392,7 @@ export function ClientCartScreen() {
               <TextInput
                 keyboardType="number-pad"
                 onChangeText={setNumber}
-                placeholder="Numero"
+                placeholder="Número"
                 placeholderTextColor={mobileTheme.colors.textSoft}
                 style={styles.input}
                 value={number}
@@ -420,7 +420,7 @@ export function ClientCartScreen() {
               />
               <TextInput
                 onChangeText={setReference}
-                placeholder="Referencia"
+                placeholder="Referência"
                 placeholderTextColor={mobileTheme.colors.textSoft}
                 style={styles.input}
                 value={reference}
@@ -433,14 +433,14 @@ export function ClientCartScreen() {
                   {saveAddress ? <Text style={styles.checkboxMark}>OK</Text> : null}
                 </View>
                 <Text style={styles.checkboxText}>
-                  Salvar este endereco para proximas compras
+                  Salvar este endereço para próximas compras
                 </Text>
               </Pressable>
             </View>
           ) : (
             <View style={styles.pickupBox}>
               <Text style={styles.pickupText}>
-                A empresa prepara o pedido para retirada. Nao ha taxa de entrega.
+                A empresa prepara o pedido para retirada. Não há taxa de entrega.
               </Text>
             </View>
           )}
@@ -482,7 +482,7 @@ export function ClientCartScreen() {
             </View>
           ) : null}
 
-          <Text style={styles.label}>Observacoes</Text>
+          <Text style={styles.label}>Observações</Text>
           <TextInput
             multiline
             onChangeText={setNotes}
@@ -505,7 +505,7 @@ export function ClientCartScreen() {
           <Text style={styles.feeText}>
             {fulfillmentType === "DELIVERY"
               ? "A loja confirma o pedido e informa a taxa antes de seguir para entrega."
-              : "Retirada na loja nao cobra taxa de entrega."}
+              : "Retirada na loja não cobra taxa de entrega."}
           </Text>
 
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -531,7 +531,7 @@ export function ClientCartScreen() {
                 ) : (
                   <View key={order.id} style={styles.pixResultItem}>
                     <Text style={styles.pixResultText}>
-                      {order.store?.name ?? "Empresa"} ainda nao informou uma chave Pix ativa.
+                      {order.store?.name ?? "Empresa"} ainda não informou uma chave Pix ativa.
                     </Text>
                     <Text style={styles.pixResultMeta}>
                       Aguarde a loja orientar o pagamento manualmente.

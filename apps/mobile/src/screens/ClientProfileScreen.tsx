@@ -13,7 +13,7 @@ export function ClientProfileScreen() {
     <ScreenContainer scrollable>
       <SectionHeader
         title="Minha conta"
-        description="Dados basicos do cliente autenticado e controle da sessao."
+        description="Dados básicos do cliente autenticado e controle da sessão."
       />
 
       <View style={styles.card}>

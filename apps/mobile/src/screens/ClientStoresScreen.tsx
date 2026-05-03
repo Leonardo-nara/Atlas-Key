@@ -38,7 +38,7 @@ export function ClientStoresScreen() {
       setError(
         loadError instanceof ApiError
           ? loadError.message
-          : "Nao foi possivel carregar as empresas agora."
+          : "Não foi possível carregar as empresas agora."
       );
     } finally {
       setLoading(false);
@@ -100,7 +100,7 @@ export function ClientStoresScreen() {
           >
             <Text style={styles.storeName}>{store.name}</Text>
             <Text style={styles.storeAddress}>
-              {store.address || "Endereco ainda nao informado pela empresa"}
+              {store.address || "Endereço ainda não informado pela empresa"}
             </Text>
           </Pressable>
         ))

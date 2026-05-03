@@ -22,12 +22,12 @@ export function getOrderStatusText(order: Order, audience: OrderTimelineAudience
 
   if (status === "awaiting_store_confirmation") {
     return audience === "store"
-      ? "Aguardando confirmacao"
-      : "Aguardando confirmacao da loja";
+      ? "Aguardando confirmação"
+      : "Aguardando confirmação da loja";
   }
 
   if (status === "confirmed" || status === "pending") {
-    return audience === "courier" ? "Disponivel" : "Confirmado pela loja";
+    return audience === "courier" ? "Disponível" : "Confirmado pela loja";
   }
 
   if (status === "accepted") {
@@ -117,14 +117,14 @@ function buildTimelineSteps(order: Order, audience: OrderTimelineAudience) {
       {
         key: "available",
         rank: 2,
-        title: "Disponivel",
+        title: "Disponível",
         description: "Pedido liberado pela loja para motoboys aprovados."
       },
       {
         key: "accepted",
         rank: 3,
         title: "Aceito",
-        description: "Voce assumiu esta entrega."
+        description: "Você assumiu esta entrega."
       },
       {
         key: "picked_up",
@@ -173,19 +173,19 @@ function buildTimelineSteps(order: Order, audience: OrderTimelineAudience) {
         key: "picked_up",
         rank: 4,
         title: isPickup ? "Retirado" : "Em entrega",
-        description: "Pedido saiu da loja para finalizacao."
+        description: "Pedido saiu da loja para finalização."
       },
       {
         key: "delivered",
         rank: 5,
         title: "Entregue",
-        description: "Pedido concluido."
+        description: "Pedido concluído."
       },
       {
         key: "cancelled",
         rank: 6,
         title: "Cancelado",
-        description: "Pedido cancelado com registro no historico."
+        description: "Pedido cancelado com registro no histórico."
       }
     ];
   }
@@ -215,7 +215,7 @@ function buildTimelineSteps(order: Order, audience: OrderTimelineAudience) {
       key: "picked_up",
       rank: 4,
       title: isPickup ? "Retirado" : "Saiu para entrega",
-      description: "Pedido em deslocamento para finalizacao."
+      description: "Pedido em deslocamento para finalização."
     },
     {
       key: "delivered",

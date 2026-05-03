@@ -31,7 +31,7 @@ const MAX_PROOF_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 
 function formatPixKeyType(type: StorePixKeyType) {
   if (type === "RANDOM_KEY") {
-    return "Chave aleatoria";
+    return "Chave aleatória";
   }
 
   if (type === "PHONE") {
@@ -63,7 +63,7 @@ function formatPaymentProofStatus(status?: Order["paymentProofStatus"]) {
 
 function formatFileSize(size?: number | null) {
   if (!size) {
-    return "tamanho nao informado";
+    return "tamanho não informado";
   }
 
   if (size < 1024 * 1024) {
@@ -108,7 +108,7 @@ export function ClientOrdersScreen() {
       setError(
         loadError instanceof ApiError
           ? loadError.message
-          : "Nao foi possivel carregar seus pedidos."
+          : "Não foi possível carregar seus pedidos."
       );
     } finally {
       setLoading(false);
@@ -212,7 +212,7 @@ export function ClientOrdersScreen() {
       setProofError(
         submitError instanceof ApiError
           ? submitError.message
-          : "Nao foi possivel enviar o comprovante."
+          : "Não foi possível enviar o comprovante."
       );
     } finally {
       setProofSubmittingOrderId(null);
@@ -239,7 +239,7 @@ export function ClientOrdersScreen() {
     const asset = result.assets[0];
 
     if (asset.fileSize && asset.fileSize > MAX_PROOF_FILE_SIZE_BYTES) {
-      setProofError("O arquivo precisa ter no maximo 5 MB.");
+      setProofError("O arquivo precisa ter no máximo 5 MB.");
       return;
     }
 
@@ -267,7 +267,7 @@ export function ClientOrdersScreen() {
     const asset = result.assets[0];
 
     if (asset.size && asset.size > MAX_PROOF_FILE_SIZE_BYTES) {
-      setProofError("O arquivo precisa ter no maximo 5 MB.");
+      setProofError("O arquivo precisa ter no máximo 5 MB.");
       return;
     }
 
@@ -315,7 +315,7 @@ export function ClientOrdersScreen() {
           {!error && orders.length === 0 ? (
             <View style={styles.emptyBox}>
               <Text style={styles.emptyText}>
-                Voce ainda nao fez pedidos. Escolha uma empresa e adicione produtos ao carrinho.
+                Você ainda não fez pedidos. Escolha uma empresa e adicione produtos ao carrinho.
               </Text>
             </View>
           ) : null}
@@ -347,7 +347,7 @@ export function ClientOrdersScreen() {
                     </>
                   ) : (
                     <Text style={styles.pixMeta}>
-                      A loja ainda nao informou uma chave Pix ativa. Aguarde a orientacao
+                      A loja ainda não informou uma chave Pix ativa. Aguarde a orientação
                       da empresa.
                     </Text>
                   )}
@@ -487,7 +487,7 @@ export function ClientOrdersScreen() {
                 <Text style={styles.pageButtonText}>Anterior</Text>
               </Pressable>
               <Text style={styles.pageText}>
-                Pagina {page} de {totalPages}
+                Página {page} de {totalPages}
               </Text>
               <Pressable
                 disabled={page >= totalPages}
@@ -498,7 +498,7 @@ export function ClientOrdersScreen() {
                 }
                 style={styles.pageButton}
               >
-                <Text style={styles.pageButtonText}>Proxima</Text>
+                <Text style={styles.pageButtonText}>Próxima</Text>
               </Pressable>
             </View>
           ) : null}

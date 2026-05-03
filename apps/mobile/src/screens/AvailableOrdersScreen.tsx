@@ -46,7 +46,7 @@ export function AvailableOrdersScreen() {
       if (loadError instanceof ApiError && loadError.status === 401) {
         setOrders([]);
         setTotalPages(1);
-        setError("Sua sessao expirou. Entre novamente para ver os pedidos disponiveis.");
+        setError("Sua sessão expirou. Entre novamente para ver os pedidos disponíveis.");
         await logout();
         return;
       }
@@ -54,7 +54,7 @@ export function AvailableOrdersScreen() {
       setError(
         loadError instanceof ApiError
           ? loadError.message
-          : "Nao foi possivel carregar os pedidos disponiveis."
+          : "Não foi possível carregar os pedidos disponíveis."
       );
     } finally {
       setLoading(false);
@@ -102,7 +102,7 @@ export function AvailableOrdersScreen() {
       await loadOrders();
     } catch (acceptError) {
       if (acceptError instanceof ApiError && acceptError.status === 401) {
-        setError("Sua sessao expirou. Entre novamente para continuar.");
+        setError("Sua sessão expirou. Entre novamente para continuar.");
         await logout();
         return;
       }
@@ -110,7 +110,7 @@ export function AvailableOrdersScreen() {
       setError(
         acceptError instanceof ApiError
           ? acceptError.message
-          : "Nao foi possivel aceitar o pedido."
+          : "Não foi possível aceitar o pedido."
       );
     } finally {
       setActingOrderId(null);
@@ -152,8 +152,8 @@ export function AvailableOrdersScreen() {
             </Text>
             <Text style={styles.connectionText}>
               {isConnected
-                ? "Novos pedidos e mudancas entram automaticamente na lista."
-                : "Puxe para atualizar enquanto a conexao em tempo real estiver indisponivel."}
+                ? "Novos pedidos e mudanças entram automaticamente na lista."
+                : "Puxe para atualizar enquanto a conexão em tempo real estiver indisponível."}
             </Text>
           </View>
 
@@ -163,7 +163,7 @@ export function AvailableOrdersScreen() {
           {!error && orders.length === 0 ? (
             <View style={styles.emptyBox}>
               <Text style={styles.emptyText}>
-                Nenhum pedido disponivel no momento para as empresas em que voce foi aprovado.
+                Nenhum pedido disponível no momento para as empresas em que você foi aprovado.
               </Text>
             </View>
           ) : null}
@@ -192,7 +192,7 @@ export function AvailableOrdersScreen() {
                   <Text style={styles.pageButtonText}>Anterior</Text>
                 </Pressable>
                 <Text style={styles.pageText}>
-                  Pagina {page} de {totalPages}
+                  Página {page} de {totalPages}
                 </Text>
                 <Pressable
                   disabled={page >= totalPages}
@@ -203,7 +203,7 @@ export function AvailableOrdersScreen() {
                   }
                   style={styles.pageButton}
                 >
-                  <Text style={styles.pageButtonText}>Proxima</Text>
+                  <Text style={styles.pageButtonText}>Próxima</Text>
                 </Pressable>
               </View>
             </>

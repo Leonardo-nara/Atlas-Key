@@ -77,7 +77,7 @@ export function CompleteProfileScreen() {
         navigation.goBack();
       }
     } catch {
-      setError("Nao foi possivel salvar seu perfil agora.");
+      setError("Não foi possível salvar seu perfil agora.");
     } finally {
       setIsSaving(false);
     }
@@ -100,7 +100,7 @@ export function CompleteProfileScreen() {
       if (pickError instanceof Error) {
         setError(pickError.message);
       } else {
-        setError(`Nao foi possivel carregar a imagem de ${label}.`);
+        setError(`Não foi possível carregar a imagem de ${label}.`);
       }
     }
   }
@@ -127,13 +127,13 @@ export function CompleteProfileScreen() {
           onChangeText={(value) => setField("plate", value.toUpperCase())}
         />
         <Field
-          label="Modelo do veiculo"
+          label="Modelo do veículo"
           value={form.vehicleModel}
           onChangeText={(value) => setField("vehicleModel", value)}
         />
 
         <View style={styles.field}>
-          <Text style={styles.label}>Tipo de veiculo</Text>
+          <Text style={styles.label}>Tipo de veículo</Text>
           <View style={styles.optionsRow}>
             {courierVehicleOptions.map((option) => {
               const selected = form.vehicleType === option.value;
@@ -170,13 +170,13 @@ export function CompleteProfileScreen() {
 
         <Field
           autoCapitalize="none"
-          label="URL da foto do veiculo (opcional)"
+          label="URL da foto do veículo (opcional)"
           value={form.vehiclePhotoUrl}
           onChangeText={(value) => setField("vehiclePhotoUrl", value)}
         />
         <ImageUploadActions
           hasImage={Boolean(form.vehiclePhotoUrl)}
-          onPick={() => void handlePickImage("vehiclePhotoUrl", "veiculo")}
+          onPick={() => void handlePickImage("vehiclePhotoUrl", "veículo")}
           onRemove={() => setField("vehiclePhotoUrl", "")}
         />
         {form.vehiclePhotoUrl ? (

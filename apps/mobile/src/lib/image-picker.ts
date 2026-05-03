@@ -9,13 +9,13 @@ const ACCEPTED_MOBILE_IMAGE_MIME_TYPES = [
 ];
 
 const IMAGE_PICKING_ERROR =
-  "Nao foi possivel usar a imagem agora. Tente novamente com PNG, JPG, WEBP ou GIF.";
+  "Não foi possível usar a imagem agora. Tente novamente com PNG, JPG, WEBP ou GIF.";
 
 export async function pickImageFromLibrary() {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
   if (!permission.granted) {
-    throw new Error("Permita o acesso a galeria para escolher uma imagem.");
+    throw new Error("Permita o acesso à galeria para escolher uma imagem.");
   }
 
   const result = await ImagePicker.launchImageLibraryAsync({

@@ -39,14 +39,14 @@ export function ClientRegisterScreen() {
     }
 
     if (password !== confirmPassword) {
-      setLocalError("A confirmacao de senha nao confere.");
+      setLocalError("A confirmação de senha não confere.");
       return;
     }
 
     try {
       await registerClient(name.trim(), email.trim(), phone.trim(), password);
     } catch {
-      setLocalError("Nao foi possivel concluir o cadastro agora.");
+      setLocalError("Não foi possível concluir o cadastro agora.");
     }
   }
 

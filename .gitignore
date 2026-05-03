@@ -6,6 +6,8 @@ node_modules
 # Build e artefatos
 dist
 **/dist
+dist-test
+**/dist-test
 dist-electron
 **/dist-electron
 build

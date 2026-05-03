@@ -12,6 +12,8 @@
     "prisma:seed:prod": "node prisma/seed.js",
     "build": "nest build",
     "build:prod": "pnpm prisma:generate:prod && pnpm build",
+    "build:test": "tsc -p tsconfig.test.json",
+    "test": "pnpm build:test && node --test --test-isolation=none dist-test/tests/security-smoke.e2e-spec.js",
     "start": "node dist/main.js",
     "start:prod": "pnpm prisma:deploy:prod && node dist/main.js",
     "start:local": "dotenv -e ../../.env -- node dist/main.js",

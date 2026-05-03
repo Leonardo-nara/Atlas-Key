@@ -10,6 +10,8 @@
     "prisma:deploy:prod": "prisma migrate deploy",
     "prisma:seed": "dotenv -e ../../.env -- node prisma/seed.js",
     "prisma:seed:prod": "node prisma/seed.js",
+    "qa:cleanup": "dotenv -e ../../.env -- node scripts/cleanup-qa-data.js",
+    "qa:cleanup:prod": "node scripts/cleanup-qa-data.js",
     "build": "nest build",
     "build:prod": "pnpm prisma:generate:prod && pnpm build",
     "build:test": "tsc -p tsconfig.test.json",

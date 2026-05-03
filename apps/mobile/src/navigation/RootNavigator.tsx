@@ -1,6 +1,7 @@
 import { ActivityIndicator, View } from "react-native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "../features/auth/auth-context";
 import { useCart } from "../features/cart/cart-context";
@@ -24,6 +25,9 @@ const Tab = createBottomTabNavigator();
 const ClientStack = createNativeStackNavigator();
 
 function CourierTabs() {
+  const insets = useSafeAreaInsets();
+  const bottomPadding = Math.max(insets.bottom, 10);
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -39,9 +43,9 @@ function CourierTabs() {
         tabBarActiveTintColor: mobileTheme.colors.primaryStrong,
         tabBarInactiveTintColor: mobileTheme.colors.textSoft,
         tabBarStyle: {
-          height: 72,
+          height: 62 + bottomPadding,
           paddingTop: 8,
-          paddingBottom: 10,
+          paddingBottom: bottomPadding,
           backgroundColor: "rgba(255,255,255,0.96)",
           borderTopWidth: 1,
           borderTopColor: mobileTheme.colors.border
@@ -113,6 +117,8 @@ function ClientHomeStack() {
 
 function ClientTabs() {
   const { itemCount } = useCart();
+  const insets = useSafeAreaInsets();
+  const bottomPadding = Math.max(insets.bottom, 10);
 
   return (
     <Tab.Navigator
@@ -129,9 +135,9 @@ function ClientTabs() {
         tabBarActiveTintColor: mobileTheme.colors.primaryStrong,
         tabBarInactiveTintColor: mobileTheme.colors.textSoft,
         tabBarStyle: {
-          height: 72,
+          height: 62 + bottomPadding,
           paddingTop: 8,
-          paddingBottom: 10,
+          paddingBottom: bottomPadding,
           backgroundColor: "rgba(255,255,255,0.96)",
           borderTopWidth: 1,
           borderTopColor: mobileTheme.colors.border

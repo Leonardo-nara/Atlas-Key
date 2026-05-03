@@ -38,6 +38,7 @@ export class RegisterDto {
   @IsString()
   @MinLength(8)
   @MaxLength(20)
+  @Transform(normalizeString)
   phone!: string;
 
   @IsEnum(UserRole)

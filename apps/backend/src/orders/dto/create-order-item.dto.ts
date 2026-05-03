@@ -9,17 +9,21 @@ import {
   MinLength,
   ValidateIf
 } from "class-validator";
+import { Transform } from "class-transformer";
 
 import { MAX_MONEY_AMOUNT } from "../../common/validation/money";
+import { trimOptionalString } from "../../common/validation/text";
 
 export class CreateOrderItemDto {
   @IsOptional()
+  @Transform(trimOptionalString)
   @IsString()
   @MinLength(10)
   @MaxLength(40)
   productId?: string;
 
   @ValidateIf((dto: CreateOrderItemDto) => !dto.productId)
+  @Transform(trimOptionalString)
   @IsString()
   @MinLength(2)
   @MaxLength(160)

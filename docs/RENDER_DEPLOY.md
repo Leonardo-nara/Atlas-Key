@@ -39,7 +39,8 @@ pnpm --filter @deliveries/backend start:prod
 - `API_PREFIX=api`
 - `DATABASE_URL=<url-do-postgres-de-producao>`
 - `JWT_SECRET=<segredo-forte-e-longo>`
-- `JWT_EXPIRES_IN=7d`
+- `JWT_ACCESS_EXPIRES_IN=15m`
+- `JWT_REFRESH_EXPIRES_DAYS=30`
 - `CORS_ALLOWED_ORIGINS=https://painel.rotapronta.com,https://app.rotapronta.com`
 - `PAYMENT_PROOF_STORAGE_DRIVER=s3`
 - `PAYMENT_PROOF_S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com`

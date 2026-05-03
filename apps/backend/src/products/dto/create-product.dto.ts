@@ -3,11 +3,13 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Max,
   MaxLength,
   Min,
   MinLength,
   Validate
 } from "class-validator";
+import { MAX_MONEY_AMOUNT } from "../../common/validation/money";
 import { ImageReferenceConstraint } from "../../common/validation/image-reference.validator";
 
 export class CreateProductDto {
@@ -23,6 +25,7 @@ export class CreateProductDto {
 
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
+  @Max(MAX_MONEY_AMOUNT)
   price!: number;
 
   @IsString()

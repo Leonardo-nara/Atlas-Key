@@ -25,6 +25,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { OrdersRealtimeService } from "../realtime/orders-realtime.service";
 import { StoreCourierLinkStatus } from "../store-courier-links/enums/store-courier-link-status.enum";
 import { StoresService } from "../stores/stores.service";
+import { MAX_MONEY_AMOUNT } from "../common/validation/money";
 import { CancelOrderDto } from "./dto/cancel-order.dto";
 import { ConfirmOrderDto } from "./dto/confirm-order.dto";
 import { CreateClientOrderDto } from "./dto/create-client-order.dto";
@@ -1449,9 +1450,19 @@ export class OrdersService {
       return null;
     }
 
-    const parsedAmount = Number(amount.trim().replace(",", "."));
+    const normalizedAmount = amount.trim().replace(",", ".");
 
-    if (!Number.isFinite(parsedAmount) || parsedAmount < 0) {
+    if (!/^\d+(\.\d{1,2})?$/.test(normalizedAmount)) {
+      throw new BadRequestException("Informe um valor pago valido.");
+    }
+
+    const parsedAmount = Number(normalizedAmount);
+
+    if (
+      !Number.isFinite(parsedAmount) ||
+      parsedAmount < 0 ||
+      parsedAmount > MAX_MONEY_AMOUNT
+    ) {
       throw new BadRequestException("Informe um valor pago valido.");
     }
 

@@ -10,6 +10,8 @@ import {
   ValidateIf
 } from "class-validator";
 
+import { MAX_MONEY_AMOUNT } from "../../common/validation/money";
+
 export class CreateOrderItemDto {
   @IsOptional()
   @IsString()
@@ -31,5 +33,6 @@ export class CreateOrderItemDto {
   @ValidateIf((dto: CreateOrderItemDto) => !dto.productId)
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
+  @Max(MAX_MONEY_AMOUNT)
   unitPrice?: number;
 }

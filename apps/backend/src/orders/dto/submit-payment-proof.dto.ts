@@ -2,9 +2,12 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Max,
   MaxLength,
   Min
 } from "class-validator";
+
+import { MAX_MONEY_AMOUNT } from "../../common/validation/money";
 
 export class SubmitPaymentProofDto {
   @IsOptional()
@@ -15,6 +18,7 @@ export class SubmitPaymentProofDto {
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
+  @Max(MAX_MONEY_AMOUNT)
   amount?: number;
 
   @IsOptional()

@@ -1,5 +1,7 @@
 import { Transform } from "class-transformer";
-import { IsBoolean, IsNumber, IsOptional, IsString, MaxLength, Min, MinLength } from "class-validator";
+import { IsBoolean, IsNumber, IsOptional, IsString, Max, MaxLength, Min, MinLength } from "class-validator";
+
+import { MAX_MONEY_AMOUNT } from "../../common/validation/money";
 
 function normalizeString({ value }: { value: unknown }) {
   return typeof value === "string" ? value.trim() : value;
@@ -20,6 +22,7 @@ export class CreateDeliveryZoneDto {
 
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
+  @Max(MAX_MONEY_AMOUNT)
   fee!: number;
 
   @IsOptional()

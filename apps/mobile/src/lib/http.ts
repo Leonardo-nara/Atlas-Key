@@ -42,7 +42,7 @@ export async function http<T>(
   { token, headers, ...init }: RequestOptions = {}
 ): Promise<T> {
   const requestHeaders = {
-    "Content-Type": "application/json",
+    ...(init.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...headers
   };

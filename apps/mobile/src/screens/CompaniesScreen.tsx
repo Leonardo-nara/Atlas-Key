@@ -1,6 +1,7 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -14,6 +15,7 @@ import { SectionHeader } from "../components/SectionHeader";
 import { useAuth } from "../features/auth/auth-context";
 import { companyLinksService } from "../features/company-links/company-links-service";
 import { ApiError } from "../lib/http";
+import { toMediaUrl } from "../lib/media-url";
 import { useTabContentBottomPadding } from "../navigation/useTabContentBottomPadding";
 import { mobileShadow, mobileTheme } from "../theme";
 import type { StoreCourierLink, StoreDiscoveryItem } from "../types/api";
@@ -182,6 +184,12 @@ export function CompaniesScreen() {
 
                 return (
                   <View key={store.id} style={styles.storeCard}>
+                    {store.imageUrl ? (
+                      <Image
+                        source={{ uri: toMediaUrl(store.imageUrl) ?? undefined }}
+                        style={styles.storeImage}
+                      />
+                    ) : null}
                     <View style={styles.storeHeader}>
                       <View style={styles.storeHeaderText}>
                         <Text style={styles.storeName}>{store.name}</Text>
@@ -296,6 +304,12 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: mobileTheme.radii.md,
     backgroundColor: mobileTheme.colors.surfaceMuted
+  },
+  storeImage: {
+    width: "100%",
+    height: 118,
+    borderRadius: mobileTheme.radii.md,
+    backgroundColor: mobileTheme.colors.surfaceStrong
   },
   linkCard: {
     gap: 8,

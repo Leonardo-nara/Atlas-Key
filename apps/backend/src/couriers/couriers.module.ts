@@ -1,10 +1,10 @@
 import { Module } from "@nestjs/common";
 
-import { CouriersController } from "./couriers.controller";
+import { CourierMediaController, CouriersController } from "./couriers.controller";
 import { CouriersService } from "./couriers.service";
 
 @Module({
-  controllers: [CouriersController],
+  controllers: [CouriersController, CourierMediaController],
   providers: [CouriersService],
   exports: [CouriersService]
 })

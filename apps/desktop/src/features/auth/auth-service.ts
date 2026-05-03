@@ -67,5 +67,21 @@ export const authService = {
     return http<Store>("/stores/me", {
       token
     });
+  },
+  uploadStoreImage(token: string, file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    return http<Store>("/stores/me/image", {
+      method: "PATCH",
+      token,
+      body: formData
+    });
+  },
+  removeStoreImage(token: string) {
+    return http<{ message: string }>("/stores/me/image", {
+      method: "DELETE",
+      token
+    });
   }
 };

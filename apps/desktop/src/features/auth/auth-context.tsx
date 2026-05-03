@@ -40,6 +40,8 @@ interface AuthContextValue {
   logout: () => Promise<void>;
   logoutAll: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  uploadStoreImage: (file: File) => Promise<void>;
+  removeStoreImage: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -246,6 +248,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await loadProfile(token, refreshToken);
   }
 
+  async function uploadStoreImage(file: File) {
+    if (!token) {
+      return;
+    }
+
+    const nextStore = await authService.uploadStoreImage(token, file);
+    setStore(nextStore);
+  }
+
+  async function removeStoreImage() {
+    if (!token) {
+      return;
+    }
+
+    await authService.removeStoreImage(token);
+    await refreshProfile();
+  }
+
   const value = useMemo<AuthContextValue>(
     () => ({
       token,
@@ -260,7 +280,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       registerStoreQuick,
       logout,
       logoutAll,
-      refreshProfile
+      refreshProfile,
+      uploadStoreImage,
+      removeStoreImage
     }),
     [token, user, store, isBootstrapping, isLoggingIn, isRegistering, loginError]
   );

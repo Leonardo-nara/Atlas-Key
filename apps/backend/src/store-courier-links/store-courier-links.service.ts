@@ -58,6 +58,7 @@ export class StoreCourierLinksService {
       name: store.name,
       address: store.address,
       active: store.active,
+      imageUrl: store.profileImageKey ? `/media/stores/${store.id}/image` : null,
       createdAt: store.createdAt,
       updatedAt: store.updatedAt,
       link: store.courierLinks[0]
@@ -324,6 +325,9 @@ export class StoreCourierLinksService {
         name: link.store.name,
         address: link.store.address,
         active: link.store.active,
+        imageUrl: link.store.profileImageKey
+          ? `/media/stores/${link.store.id}/image`
+          : null,
         createdAt: link.store.createdAt,
         updatedAt: link.store.updatedAt
       },
@@ -339,7 +343,13 @@ export class StoreCourierLinksService {
         courierProfile: link.courier.courierProfile
           ? {
               id: link.courier.courierProfile.id,
-              profilePhotoUrl: link.courier.courierProfile.profilePhotoUrl,
+              profilePhotoUrl: link.courier.courierProfile.profileImageKey
+                ? `/media/couriers/${link.courier.id}/profile-image`
+                : link.courier.courierProfile.profilePhotoUrl,
+              profileImageFileName: link.courier.courierProfile.profileImageFileName,
+              profileImageMimeType: link.courier.courierProfile.profileImageMimeType,
+              profileImageSize: link.courier.courierProfile.profileImageSize,
+              profileImageUpdatedAt: link.courier.courierProfile.profileImageUpdatedAt,
               vehiclePhotoUrl: link.courier.courierProfile.vehiclePhotoUrl,
               vehicleType: link.courier.courierProfile.vehicleType,
               vehicleModel: link.courier.courierProfile.vehicleModel,

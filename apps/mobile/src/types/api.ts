@@ -29,6 +29,10 @@ export type CourierVehicleType = "MOTO" | "SCOOTER" | "BICICLETA" | "CARRO";
 export interface CourierProfile {
   id: string;
   profilePhotoUrl?: string | null;
+  profileImageFileName?: string | null;
+  profileImageMimeType?: string | null;
+  profileImageSize?: number | null;
+  profileImageUpdatedAt?: string | null;
   vehiclePhotoUrl?: string | null;
   vehicleType?: CourierVehicleType | null;
   vehicleModel?: string | null;
@@ -43,6 +47,11 @@ export interface Store {
   name: string;
   address: string;
   active: boolean;
+  imageUrl?: string | null;
+  profileImageFileName?: string | null;
+  profileImageMimeType?: string | null;
+  profileImageSize?: number | null;
+  profileImageUpdatedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -59,6 +68,10 @@ export interface Product {
   price: number;
   category: string;
   imageUrl?: string | null;
+  imageFileName?: string | null;
+  imageMimeType?: string | null;
+  imageSize?: number | null;
+  imageUpdatedAt?: string | null;
   available: boolean;
   createdAt: string;
   updatedAt: string;

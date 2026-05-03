@@ -7,6 +7,7 @@ import {
   type ProductInput
 } from "../features/products/products-service";
 import { ApiError } from "../lib/http";
+import { toMediaUrl } from "../lib/media-url";
 import { PageHeader } from "../shared/ui/PageHeader";
 import type { Product } from "../types/api";
 
@@ -77,9 +78,17 @@ export function ProductsPage() {
     try {
       if (editingProduct) {
         await productsService.update(token, editingProduct.id, input);
+        if (input.imageFile) {
+          await productsService.uploadImage(token, editingProduct.id, input.imageFile);
+        } else if (input.removeImage) {
+          await productsService.removeImage(token, editingProduct.id);
+        }
         setSuccessMessage("Produto atualizado com sucesso.");
       } else {
-        await productsService.create(token, input);
+        const createdProduct = await productsService.create(token, input);
+        if (input.imageFile) {
+          await productsService.uploadImage(token, createdProduct.id, input.imageFile);
+        }
         setSuccessMessage("Produto criado com sucesso.");
       }
 
@@ -184,9 +193,22 @@ export function ProductsPage() {
           ) : (
             products.map((product) => (
               <div className="table-row" key={product.id}>
-                <div>
+                <div className="product-table-name">
+                  {product.imageUrl ? (
+                    <img
+                      alt={`Imagem de ${product.name}`}
+                      className="product-table-image"
+                      src={toMediaUrl(product.imageUrl) ?? undefined}
+                    />
+                  ) : (
+                    <div className="product-table-placeholder">
+                      {product.name.slice(0, 1).toUpperCase()}
+                    </div>
+                  )}
+                  <div>
                   <strong>{product.name}</strong>
                   <p>{product.description || "Sem descrição"}</p>
+                  </div>
                 </div>
                 <span>{product.category}</span>
                 <span>R$ {product.price.toFixed(2)}</span>

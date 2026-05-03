@@ -1,15 +1,14 @@
 import { useEffect, useState } from "react";
 
 import type { Product } from "../../types/api";
+import { toMediaUrl } from "../../lib/media-url";
 import type { ProductInput } from "./products-service";
 
-const MAX_PRODUCT_IMAGE_FILE_SIZE = 1_500_000;
+const MAX_PRODUCT_IMAGE_FILE_SIZE = 3 * 1024 * 1024;
 const ACCEPTED_PRODUCT_IMAGE_TYPES = [
   "image/png",
   "image/jpeg",
-  "image/jpg",
-  "image/webp",
-  "image/gif"
+  "image/webp"
 ];
 
 interface ProductFormProps {
@@ -38,11 +37,17 @@ export function ProductForm({
 }: ProductFormProps) {
   const [form, setForm] = useState<ProductInput>(emptyForm);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
+  const [removeExistingImage, setRemoveExistingImage] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!initialValue) {
       setForm(emptyForm);
       setLocalError(null);
+      setSelectedImageFile(null);
+      setRemoveExistingImage(false);
+      setPreviewUrl(null);
       return;
     }
 
@@ -55,7 +60,23 @@ export function ProductForm({
       available: initialValue.available
     });
     setLocalError(null);
+    setSelectedImageFile(null);
+    setRemoveExistingImage(false);
+    setPreviewUrl(toMediaUrl(initialValue.imageUrl));
   }, [initialValue]);
+
+  useEffect(() => {
+    if (!selectedImageFile) {
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(selectedImageFile);
+    setPreviewUrl(objectUrl);
+
+    return () => {
+      URL.revokeObjectURL(objectUrl);
+    };
+  }, [selectedImageFile]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -63,7 +84,9 @@ export function ProductForm({
     await onSubmit({
       ...form,
       description: form.description?.trim() || undefined,
-      imageUrl: form.imageUrl?.trim() || undefined
+      imageUrl: form.imageUrl?.trim() || undefined,
+      imageFile: selectedImageFile,
+      removeImage: removeExistingImage
     });
   }
 
@@ -76,25 +99,22 @@ export function ProductForm({
     }
 
     if (!ACCEPTED_PRODUCT_IMAGE_TYPES.includes(file.type)) {
-      setLocalError("Use uma imagem PNG, JPG, WEBP ou GIF.");
+      setLocalError("Use uma imagem PNG, JPG ou WEBP.");
       return;
     }
 
     if (file.size > MAX_PRODUCT_IMAGE_FILE_SIZE) {
-      setLocalError("A imagem deve ter no maximo 1,5 MB.");
+      setLocalError("A imagem deve ter no maximo 3 MB.");
       return;
     }
 
-    try {
-      const nextImageUrl = await readFileAsDataUrl(file);
-      setForm((current) => ({ ...current, imageUrl: nextImageUrl }));
-      setLocalError(null);
-    } catch {
-      setLocalError("Nao foi possivel ler a imagem selecionada.");
-    }
+    setSelectedImageFile(file);
+    setRemoveExistingImage(false);
+    setForm((current) => ({ ...current, imageUrl: "" }));
+    setLocalError(null);
   }
 
-  const hasImage = Boolean(form.imageUrl?.trim());
+  const hasImage = Boolean(previewUrl || form.imageUrl?.trim());
 
   return (
     <form className="panel form-grid" onSubmit={handleSubmit}>
@@ -161,14 +181,14 @@ export function ProductForm({
         <div className="product-image-upload-copy">
           <strong>Imagem do produto</strong>
           <p className="muted-text">
-            Voce pode usar uma URL externa ou escolher uma imagem do computador.
+            Escolha uma imagem do computador. O backend salva no storage configurado.
           </p>
         </div>
         <div className="product-image-upload-actions">
           <label className="secondary-button file-upload-button">
             Escolher imagem
             <input
-              accept=".png,.jpg,.jpeg,.webp,.gif,image/png,image/jpeg,image/webp,image/gif"
+              accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
               className="file-upload-input"
               onChange={handleImageFileChange}
               type="file"
@@ -179,6 +199,9 @@ export function ProductForm({
               className="ghost-button"
               onClick={() => {
                 setForm((current) => ({ ...current, imageUrl: "" }));
+                setSelectedImageFile(null);
+                setPreviewUrl(null);
+                setRemoveExistingImage(true);
                 setLocalError(null);
               }}
               type="button"
@@ -191,7 +214,10 @@ export function ProductForm({
 
       {hasImage ? (
         <div className="product-image-preview">
-          <img alt={`Preview de ${form.name || "produto"}`} src={form.imageUrl} />
+          <img
+            alt={`Preview de ${form.name || "produto"}`}
+            src={previewUrl ?? form.imageUrl}
+          />
         </div>
       ) : null}
 
@@ -226,25 +252,4 @@ export function ProductForm({
       </button>
     </form>
   );
-}
-
-function readFileAsDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        resolve(reader.result);
-        return;
-      }
-
-      reject(new Error("Nao foi possivel ler a imagem."));
-    };
-
-    reader.onerror = () => {
-      reject(new Error("Nao foi possivel ler a imagem."));
-    };
-
-    reader.readAsDataURL(file);
-  });
 }

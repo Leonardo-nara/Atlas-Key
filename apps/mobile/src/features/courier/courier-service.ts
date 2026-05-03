@@ -1,4 +1,5 @@
 import { http } from "../../lib/http";
+import type { PickedImageFile } from "../../lib/image-picker";
 import type { AuthResponse, AuthUser, CourierVehicleType } from "../../types/api";
 
 export interface RegisterCourierInput {
@@ -45,6 +46,26 @@ export const courierService = {
         profilePhotoUrl: input.profilePhotoUrl || undefined,
         vehiclePhotoUrl: input.vehiclePhotoUrl || undefined
       })
+    });
+  },
+  uploadProfileImage(token: string, file: PickedImageFile) {
+    const formData = new FormData();
+    formData.append("file", {
+      uri: file.uri,
+      name: file.name,
+      type: file.type
+    } as unknown as Blob);
+
+    return http<AuthUser>("/couriers/me/profile-image", {
+      method: "PATCH",
+      token,
+      body: formData
+    });
+  },
+  removeProfileImage(token: string) {
+    return http<AuthUser>("/couriers/me/profile-image", {
+      method: "DELETE",
+      token
     });
   }
 };

@@ -8,6 +8,7 @@ import { SectionHeader } from "../components/SectionHeader";
 import { useCart } from "../features/cart/cart-context";
 import { catalogService } from "../features/catalog/catalog-service";
 import { ApiError } from "../lib/http";
+import { toMediaUrl } from "../lib/media-url";
 import { useTabContentBottomPadding } from "../navigation/useTabContentBottomPadding";
 import { mobileShadow, mobileTheme } from "../theme";
 import type { Product, Store } from "../types/api";
@@ -61,6 +62,12 @@ export function ClientStoreProductsScreen() {
 
       {store ? (
         <View style={styles.storeCard}>
+          {store.imageUrl ? (
+            <Image
+              source={{ uri: toMediaUrl(store.imageUrl) ?? undefined }}
+              style={styles.storeImage}
+            />
+          ) : null}
           <Text style={styles.storeName}>{store.name}</Text>
           <Text style={styles.storeAddress}>
             {store.address || "Endereço ainda não informado pela empresa"}
@@ -103,8 +110,17 @@ export function ClientStoreProductsScreen() {
         products.map((product) => (
           <View key={product.id} style={styles.productCard}>
             {product.imageUrl ? (
-              <Image source={{ uri: product.imageUrl }} style={styles.productImage} />
-            ) : null}
+              <Image
+                source={{ uri: toMediaUrl(product.imageUrl) ?? undefined }}
+                style={styles.productImage}
+              />
+            ) : (
+              <View style={styles.productImagePlaceholder}>
+                <Text style={styles.productImagePlaceholderText}>
+                  {product.name.slice(0, 1).toUpperCase()}
+                </Text>
+              </View>
+            )}
             <View style={styles.productBody}>
               <Text style={styles.productCategory}>{product.category}</Text>
               <Text style={styles.productName}>{product.name}</Text>
@@ -149,6 +165,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: mobileTheme.colors.border,
     ...mobileShadow
+  },
+  storeImage: {
+    width: "100%",
+    height: 150,
+    borderRadius: mobileTheme.radii.md,
+    backgroundColor: mobileTheme.colors.surfaceStrong,
+    marginBottom: 4
   },
   storeName: {
     color: mobileTheme.colors.text,
@@ -195,6 +218,18 @@ const styles = StyleSheet.create({
     width: "100%",
     height: 180,
     backgroundColor: mobileTheme.colors.surfaceStrong
+  },
+  productImagePlaceholder: {
+    width: "100%",
+    height: 180,
+    backgroundColor: mobileTheme.colors.primarySoft,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  productImagePlaceholderText: {
+    color: mobileTheme.colors.primaryStrong,
+    fontSize: 42,
+    fontWeight: "900"
   },
   productBody: {
     padding: 18,

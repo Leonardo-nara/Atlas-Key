@@ -9,6 +9,7 @@ import {
 
 import { courierService } from "../courier/courier-service";
 import { ApiError, setAuthSessionListeners } from "../../lib/http";
+import type { PickedImageFile } from "../../lib/image-picker";
 import {
   clearStoredTokens,
   getStoredAccessToken,
@@ -45,6 +46,8 @@ interface AuthContextValue {
   updateCourierProfile: (
     input: Parameters<typeof courierService.updateMe>[1]
   ) => Promise<void>;
+  uploadCourierProfileImage: (file: PickedImageFile) => Promise<void>;
+  removeCourierProfileImage: () => Promise<void>;
   logout: () => Promise<void>;
   logoutAll: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -238,6 +241,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(nextUser);
   }
 
+  async function uploadCourierProfileImage(file: PickedImageFile) {
+    if (!token) {
+      throw new ApiError("Sessão do motoboy não encontrada.", 401);
+    }
+
+    const nextUser = await courierService.uploadProfileImage(token, file);
+    setUser(nextUser);
+  }
+
+  async function removeCourierProfileImage() {
+    if (!token) {
+      throw new ApiError("Sessão do motoboy não encontrada.", 401);
+    }
+
+    const nextUser = await courierService.removeProfileImage(token);
+    setUser(nextUser);
+  }
+
   async function logout() {
     const tokenToRevoke = refreshToken ?? (await getStoredRefreshToken());
 
@@ -325,6 +346,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       registerClient,
       registerCourier,
       updateCourierProfile,
+      uploadCourierProfileImage,
+      removeCourierProfileImage,
       logout,
       logoutAll,
       refreshProfile

@@ -10,6 +10,7 @@ import { CouriersModule } from "./couriers/couriers.module";
 import { HealthController } from "./health.controller";
 import { InternalMetricsController } from "./common/observability/internal-metrics.controller";
 import { InternalSentryTestController } from "./common/observability/internal-sentry-test.controller";
+import { StorageModule } from "./common/storage/storage.module";
 import { OrdersModule } from "./orders/orders.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { ProductsModule } from "./products/products.module";
@@ -36,6 +37,7 @@ import { UsersModule } from "./users/users.module";
       ]
     }),
     PrismaModule,
+    StorageModule,
     CatalogModule,
     CouriersModule,
     AuthModule,

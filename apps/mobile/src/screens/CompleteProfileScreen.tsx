@@ -21,6 +21,7 @@ import {
   validateCourierProfileForm
 } from "../features/courier/courier-profile";
 import { pickImageFromLibrary } from "../lib/image-picker";
+import { toMediaUrl } from "../lib/media-url";
 import { mobileShadow, mobileTheme } from "../theme";
 
 type AppStackParamList = {
@@ -32,12 +33,20 @@ export function CompleteProfileScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const route = useRoute<RouteProp<AppStackParamList, "CompleteProfile">>();
-  const { updateCourierProfile, user } = useAuth();
+  const {
+    updateCourierProfile,
+    uploadCourierProfileImage,
+    removeCourierProfileImage,
+    token,
+    user
+  } = useAuth();
   const [form, setForm] = useState<CourierProfileFormValues>(() =>
     buildCourierProfileForm(user)
   );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedProfileImage, setSelectedProfileImage] =
+    useState<Awaited<ReturnType<typeof pickImageFromLibrary>>>(null);
   const forceCompletion = route.params?.forceCompletion ?? false;
 
   useEffect(() => {
@@ -66,7 +75,17 @@ export function CompleteProfileScreen() {
     setError(null);
 
     try {
-      await updateCourierProfile(form);
+      await updateCourierProfile({
+        ...form,
+        profilePhotoUrl: selectedProfileImage
+          ? user?.courierProfile?.profilePhotoUrl ?? ""
+          : form.profilePhotoUrl
+      });
+
+      if (selectedProfileImage) {
+        await uploadCourierProfileImage(selectedProfileImage);
+        setSelectedProfileImage(null);
+      }
 
       if (forceCompletion) {
         navigation.reset({
@@ -94,7 +113,12 @@ export function CompleteProfileScreen() {
         return;
       }
 
-      setField(field, imageDataUrl);
+      if (field === "profilePhotoUrl") {
+        setSelectedProfileImage(imageDataUrl);
+        setField(field, imageDataUrl.uri);
+      } else {
+        setField(field, imageDataUrl.dataUrl ?? imageDataUrl.uri);
+      }
       setError(null);
     } catch (pickError) {
       if (pickError instanceof Error) {
@@ -162,10 +186,25 @@ export function CompleteProfileScreen() {
         <ImageUploadActions
           hasImage={Boolean(form.profilePhotoUrl)}
           onPick={() => void handlePickImage("profilePhotoUrl", "perfil")}
-          onRemove={() => setField("profilePhotoUrl", "")}
+          onRemove={() => {
+            setSelectedProfileImage(null);
+            setField("profilePhotoUrl", "");
+            void removeCourierProfileImage();
+          }}
         />
         {form.profilePhotoUrl ? (
-          <Image source={{ uri: form.profilePhotoUrl }} style={styles.previewImage} />
+          <Image
+            source={{
+              uri: selectedProfileImage
+                ? selectedProfileImage.uri
+                : toMediaUrl(form.profilePhotoUrl) ?? form.profilePhotoUrl,
+              headers:
+                !selectedProfileImage && token
+                  ? { Authorization: `Bearer ${token}` }
+                  : undefined
+            }}
+            style={styles.previewImage}
+          />
         ) : null}
 
         <Field

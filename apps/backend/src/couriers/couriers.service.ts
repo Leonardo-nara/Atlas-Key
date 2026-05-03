@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException
 } from "@nestjs/common";
@@ -12,6 +13,8 @@ import {
 } from "@prisma/client";
 
 import { PrismaService } from "../prisma/prisma.service";
+import { ImageStorageService } from "../common/storage/image-storage.service";
+import type { UploadedFile } from "../common/storage/uploaded-file.interface";
 import { RegisterCourierDto } from "./dto/register-courier.dto";
 import { UpdateCourierProfileDto } from "./dto/update-courier-profile.dto";
 
@@ -21,7 +24,10 @@ type CourierUserWithProfile = User & {
 
 @Injectable()
 export class CouriersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly imageStorageService: ImageStorageService
+  ) {}
 
   async createPublicCourier(dto: RegisterCourierDto, passwordHash: string) {
     const normalizedEmail = dto.email.trim().toLowerCase();
@@ -138,6 +144,121 @@ export class CouriersService {
     return this.serializeCourierUser(updated);
   }
 
+  async uploadProfileImage(userId: string, file: UploadedFile) {
+    const profile = await this.ensureCourierProfile(userId);
+    const storedImage = await this.imageStorageService.saveImage(
+      `couriers/${userId}/profile`,
+      file
+    );
+
+    const updatedUser = await this.prisma.$transaction(async (tx) => {
+      await tx.courierProfile.update({
+        where: { userId },
+        data: {
+          profileImageKey: storedImage.storageKey,
+          profileImageFileName: storedImage.originalFileName,
+          profileImageMimeType: storedImage.mimeType,
+          profileImageSize: storedImage.size,
+          profileImageUpdatedAt: new Date(),
+          profilePhotoUrl: null
+        }
+      });
+
+      return tx.user.findUniqueOrThrow({
+        where: { id: userId },
+        include: {
+          courierProfile: true
+        }
+      });
+    });
+
+    await this.imageStorageService.deleteImage(profile.profileImageKey);
+
+    return this.serializeCourierUser(updatedUser);
+  }
+
+  async removeProfileImage(userId: string) {
+    const profile = await this.ensureCourierProfile(userId);
+
+    const updatedUser = await this.prisma.$transaction(async (tx) => {
+      await tx.courierProfile.update({
+        where: { userId },
+        data: {
+          profileImageKey: null,
+          profileImageFileName: null,
+          profileImageMimeType: null,
+          profileImageSize: null,
+          profileImageUpdatedAt: null,
+          profilePhotoUrl: null
+        }
+      });
+
+      return tx.user.findUniqueOrThrow({
+        where: { id: userId },
+        include: {
+          courierProfile: true
+        }
+      });
+    });
+
+    await this.imageStorageService.deleteImage(profile.profileImageKey);
+
+    return this.serializeCourierUser(updatedUser);
+  }
+
+  async getProfileImage(
+    requesterUserId: string,
+    requesterRole: UserRole,
+    courierId: string
+  ) {
+    if (requesterRole === UserRole.COURIER && requesterUserId !== courierId) {
+      throw new ForbiddenException("Motoboy nao pode acessar foto de outro motoboy");
+    }
+
+    if (requesterRole === UserRole.STORE_ADMIN) {
+      const allowedLink = await this.prisma.storeCourierLink.findFirst({
+        where: {
+          courierId,
+          store: {
+            ownerUserId: requesterUserId
+          }
+        },
+        select: { id: true }
+      });
+
+      if (!allowedLink) {
+        throw new ForbiddenException("Motoboy nao vinculado a loja autenticada");
+      }
+    }
+
+    if (
+      requesterRole !== UserRole.COURIER &&
+      requesterRole !== UserRole.STORE_ADMIN
+    ) {
+      throw new ForbiddenException("Perfil sem acesso a foto do motoboy");
+    }
+
+    const profile = await this.prisma.courierProfile.findUnique({
+      where: { userId: courierId },
+      select: {
+        profileImageKey: true,
+        profileImageFileName: true,
+        profileImageMimeType: true,
+        profileImageSize: true
+      }
+    });
+
+    if (!profile?.profileImageKey || !profile.profileImageFileName || !profile.profileImageMimeType || !profile.profileImageSize) {
+      throw new NotFoundException("Foto do motoboy nao encontrada");
+    }
+
+    return this.imageStorageService.readImage(profile.profileImageKey, {
+      fileName: profile.profileImageFileName,
+      mimeType: profile.profileImageMimeType,
+      size: profile.profileImageSize
+    });
+  }
+
   private buildProfileCreateData(
     dto: Pick<
       RegisterCourierDto | UpdateCourierProfileDto,
@@ -196,7 +317,13 @@ export class CouriersService {
       courierProfile: profile
         ? {
             id: profile.id,
-            profilePhotoUrl: profile.profilePhotoUrl,
+            profilePhotoUrl: profile.profileImageKey
+              ? `/media/couriers/${user.id}/profile-image`
+              : profile.profilePhotoUrl,
+            profileImageFileName: profile.profileImageFileName,
+            profileImageMimeType: profile.profileImageMimeType,
+            profileImageSize: profile.profileImageSize,
+            profileImageUpdatedAt: profile.profileImageUpdatedAt,
             vehiclePhotoUrl: profile.vehiclePhotoUrl,
             vehicleType: profile.vehicleType,
             vehicleModel: profile.vehicleModel,

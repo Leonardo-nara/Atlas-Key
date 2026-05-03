@@ -3,15 +3,22 @@ import * as ImagePicker from "expo-image-picker";
 const ACCEPTED_MOBILE_IMAGE_MIME_TYPES = [
   "image/png",
   "image/jpeg",
-  "image/jpg",
-  "image/webp",
-  "image/gif"
+  "image/webp"
 ];
 
-const IMAGE_PICKING_ERROR =
-  "Não foi possível usar a imagem agora. Tente novamente com PNG, JPG, WEBP ou GIF.";
+const MAX_PROFILE_IMAGE_SIZE_BYTES = 3 * 1024 * 1024;
 
-export async function pickImageFromLibrary() {
+const IMAGE_PICKING_ERROR =
+  "Não foi possível usar a imagem agora. Tente novamente com PNG, JPG ou WEBP.";
+
+export interface PickedImageFile {
+  uri: string;
+  name: string;
+  type: string;
+  dataUrl?: string;
+}
+
+export async function pickImageFromLibrary(): Promise<PickedImageFile | null> {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
   if (!permission.granted) {
@@ -23,7 +30,7 @@ export async function pickImageFromLibrary() {
     aspect: [1, 1],
     base64: true,
     mediaTypes: ImagePicker.MediaTypeOptions.Images,
-    quality: 0.75
+    quality: 0.82
   });
 
   if (result.canceled) {
@@ -33,9 +40,18 @@ export async function pickImageFromLibrary() {
   const asset = result.assets[0];
   const mimeType = asset.mimeType?.toLowerCase();
 
-  if (!asset.base64 || !mimeType || !ACCEPTED_MOBILE_IMAGE_MIME_TYPES.includes(mimeType)) {
+  if (!asset.uri || !mimeType || !ACCEPTED_MOBILE_IMAGE_MIME_TYPES.includes(mimeType)) {
     throw new Error(IMAGE_PICKING_ERROR);
   }
 
-  return `data:${mimeType};base64,${asset.base64}`;
+  if (asset.fileSize && asset.fileSize > MAX_PROFILE_IMAGE_SIZE_BYTES) {
+    throw new Error("A imagem deve ter no máximo 3 MB.");
+  }
+
+  return {
+    uri: asset.uri,
+    name: asset.fileName ?? "foto-perfil.jpg",
+    type: mimeType,
+    dataUrl: asset.base64 ? `data:${mimeType};base64,${asset.base64}` : undefined
+  };
 }

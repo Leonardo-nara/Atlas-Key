@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
@@ -7,6 +7,7 @@ import { ScreenContainer } from "../components/ScreenContainer";
 import { SectionHeader } from "../components/SectionHeader";
 import { catalogService } from "../features/catalog/catalog-service";
 import { ApiError } from "../lib/http";
+import { toMediaUrl } from "../lib/media-url";
 import { useTabContentBottomPadding } from "../navigation/useTabContentBottomPadding";
 import { mobileShadow, mobileTheme } from "../theme";
 import type { ClientCatalogStore } from "../types/api";
@@ -100,6 +101,18 @@ export function ClientStoresScreen() {
               pressed ? styles.storeCardPressed : undefined
             ]}
           >
+            {store.imageUrl ? (
+              <Image
+                source={{ uri: toMediaUrl(store.imageUrl) ?? undefined }}
+                style={styles.storeImage}
+              />
+            ) : (
+              <View style={styles.storeImagePlaceholder}>
+                <Text style={styles.storeImagePlaceholderText}>
+                  {store.name.slice(0, 1).toUpperCase()}
+                </Text>
+              </View>
+            )}
             <Text style={styles.storeName}>{store.name}</Text>
             <Text style={styles.storeAddress}>
               {store.address || "Endereço ainda não informado pela empresa"}
@@ -152,6 +165,24 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: mobileTheme.colors.border,
     ...mobileShadow
+  },
+  storeImage: {
+    width: "100%",
+    height: 138,
+    borderRadius: mobileTheme.radii.md,
+    backgroundColor: mobileTheme.colors.surfaceStrong
+  },
+  storeImagePlaceholder: {
+    height: 138,
+    borderRadius: mobileTheme.radii.md,
+    backgroundColor: mobileTheme.colors.primarySoft,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  storeImagePlaceholderText: {
+    color: mobileTheme.colors.primaryStrong,
+    fontWeight: "900",
+    fontSize: 36
   },
   storeCardPressed: {
     opacity: 0.94,

@@ -27,10 +27,15 @@ export class CatalogService {
         name: true,
         address: true,
         active: true,
+        profileImageKey: true,
+        profileImageFileName: true,
+        profileImageMimeType: true,
+        profileImageSize: true,
+        profileImageUpdatedAt: true,
         createdAt: true,
         updatedAt: true
       }
-    });
+    }).then((stores) => stores.map((store) => this.serializeStore(store)));
   }
 
   async listProductsByStore(storeId: string, search?: string) {
@@ -44,6 +49,11 @@ export class CatalogService {
         name: true,
         address: true,
         active: true,
+        profileImageKey: true,
+        profileImageFileName: true,
+        profileImageMimeType: true,
+        profileImageSize: true,
+        profileImageUpdatedAt: true,
         createdAt: true,
         updatedAt: true
       }
@@ -72,11 +82,35 @@ export class CatalogService {
     });
 
     return {
-      store,
+      store: this.serializeStore(store),
       products: products.map((product) => ({
         ...product,
+        imageKey: undefined,
+        imageUrl: product.imageKey
+          ? `/media/products/${product.id}/image`
+          : product.imageUrl,
         price: Number(product.price)
       }))
+    };
+  }
+
+  private serializeStore(store: {
+    id: string;
+    name: string;
+    address: string;
+    active: boolean;
+    profileImageKey?: string | null;
+    profileImageFileName?: string | null;
+    profileImageMimeType?: string | null;
+    profileImageSize?: number | null;
+    profileImageUpdatedAt?: Date | null;
+    createdAt: Date;
+    updatedAt: Date;
+  }) {
+    return {
+      ...store,
+      profileImageKey: undefined,
+      imageUrl: store.profileImageKey ? `/media/stores/${store.id}/image` : null
     };
   }
 }

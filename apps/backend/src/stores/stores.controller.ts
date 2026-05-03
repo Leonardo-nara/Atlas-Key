@@ -1,4 +1,17 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Res,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors
+} from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
 
 import type { AuthenticatedUser } from "../common/authenticated-user.interface";
 import { CurrentUser } from "../common/decorators/current-user.decorator";
@@ -6,6 +19,11 @@ import { Roles } from "../common/decorators/roles.decorator";
 import { UserRole } from "../common/enums/user-role.enum";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { RolesGuard } from "../common/guards/roles.guard";
+import { IMAGE_MAX_FILE_SIZE_BYTES } from "../common/storage/image-storage.service";
+import type {
+  StreamResponse,
+  UploadedFile as UploadedStorageFile
+} from "../common/storage/uploaded-file.interface";
 import { CreateDeliveryZoneDto } from "./dto/create-delivery-zone.dto";
 import { UpdateDeliveryZoneDto } from "./dto/update-delivery-zone.dto";
 import { UpdateStorePixSettingsDto } from "./dto/update-store-pix-settings.dto";
@@ -19,7 +37,27 @@ export class StoresController {
 
   @Get("me")
   getMyStore(@CurrentUser() user: AuthenticatedUser) {
-    return this.storesService.getStoreByOwner(user.sub, user.role);
+    return this.storesService.getStoreProfile(user.sub, user.role);
+  }
+
+  @Patch("me/image")
+  @UseInterceptors(
+    FileInterceptor("file", {
+      limits: {
+        fileSize: IMAGE_MAX_FILE_SIZE_BYTES
+      }
+    })
+  )
+  uploadMyStoreImage(
+    @CurrentUser() user: AuthenticatedUser,
+    @UploadedFile() file: UploadedStorageFile
+  ) {
+    return this.storesService.uploadStoreImage(user.sub, user.role, file);
+  }
+
+  @Delete("me/image")
+  removeMyStoreImage(@CurrentUser() user: AuthenticatedUser) {
+    return this.storesService.removeStoreImage(user.sub, user.role);
   }
 
   @Get("me/delivery-zones")
@@ -63,5 +101,27 @@ export class StoresController {
     @Param("zoneId") zoneId: string
   ) {
     return this.storesService.deactivateDeliveryZone(user.sub, user.role, zoneId);
+  }
+}
+
+@Controller("media/stores")
+export class StoreMediaController {
+  constructor(private readonly storesService: StoresService) {}
+
+  @Get(":storeId/image")
+  async getStoreImage(
+    @Param("storeId") storeId: string,
+    @Res() response: StreamResponse & NodeJS.WritableStream
+  ) {
+    const file = await this.storesService.getStoreImage(storeId);
+
+    response.setHeader("Content-Type", file.mimeType);
+    response.setHeader("Content-Length", file.size.toString());
+    response.setHeader(
+      "Content-Disposition",
+      `inline; filename="${encodeURIComponent(file.fileName)}"`
+    );
+
+    file.stream.pipe(response);
   }
 }

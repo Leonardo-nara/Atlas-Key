@@ -6,6 +6,7 @@ import { ScreenContainer } from "../components/ScreenContainer";
 import { SectionHeader } from "../components/SectionHeader";
 import { mobileEnv } from "../env";
 import { useAuth } from "../features/auth/auth-context";
+import { toMediaUrl } from "../lib/media-url";
 import { useTabContentBottomPadding } from "../navigation/useTabContentBottomPadding";
 import { mobileShadow, mobileTheme } from "../theme";
 
@@ -15,7 +16,7 @@ type AppStackParamList = {
 };
 
 export function ProfileScreen() {
-  const { logout, logoutAll, refreshProfile, user } = useAuth();
+  const { logout, logoutAll, refreshProfile, token, user } = useAuth();
   const navigation =
     useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const bottomPadding = useTabContentBottomPadding();
@@ -68,7 +69,10 @@ export function ProfileScreen() {
           <>
             <Text style={styles.label}>Foto de perfil</Text>
             <Image
-              source={{ uri: user.courierProfile.profilePhotoUrl }}
+              source={{
+                uri: toMediaUrl(user.courierProfile.profilePhotoUrl) ?? "",
+                headers: token ? { Authorization: `Bearer ${token}` } : undefined
+              }}
               style={styles.imagePreview}
             />
           </>

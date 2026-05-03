@@ -8,6 +8,8 @@ import {
 import { Prisma, StorePixKeyType } from "@prisma/client";
 
 import { UserRole } from "../common/enums/user-role.enum";
+import { ImageStorageService } from "../common/storage/image-storage.service";
+import type { UploadedFile } from "../common/storage/uploaded-file.interface";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateDeliveryZoneDto } from "./dto/create-delivery-zone.dto";
 import { UpdateDeliveryZoneDto } from "./dto/update-delivery-zone.dto";
@@ -15,7 +17,10 @@ import { UpdateStorePixSettingsDto } from "./dto/update-store-pix-settings.dto";
 
 @Injectable()
 export class StoresService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly imageStorageService: ImageStorageService
+  ) {}
 
   async getStoreByOwner(ownerUserId: string, role: UserRole) {
     if (role !== UserRole.STORE_ADMIN) {
@@ -31,6 +36,82 @@ export class StoresService {
     }
 
     return store;
+  }
+
+  async getStoreProfile(ownerUserId: string, role: UserRole) {
+    const store = await this.getStoreByOwner(ownerUserId, role);
+
+    return this.serializeStore(store);
+  }
+
+  async uploadStoreImage(
+    ownerUserId: string,
+    role: UserRole,
+    file: UploadedFile
+  ) {
+    const store = await this.getStoreByOwner(ownerUserId, role);
+    const storedImage = await this.imageStorageService.saveImage(
+      `stores/${store.id}`,
+      file
+    );
+
+    const updatedStore = await this.prisma.store.update({
+      where: { id: store.id },
+      data: {
+        profileImageKey: storedImage.storageKey,
+        profileImageFileName: storedImage.originalFileName,
+        profileImageMimeType: storedImage.mimeType,
+        profileImageSize: storedImage.size,
+        profileImageUpdatedAt: new Date()
+      }
+    });
+
+    await this.imageStorageService.deleteImage(store.profileImageKey);
+
+    return this.serializeStore(updatedStore);
+  }
+
+  async removeStoreImage(ownerUserId: string, role: UserRole) {
+    const store = await this.getStoreByOwner(ownerUserId, role);
+
+    await this.prisma.store.update({
+      where: { id: store.id },
+      data: {
+        profileImageKey: null,
+        profileImageFileName: null,
+        profileImageMimeType: null,
+        profileImageSize: null,
+        profileImageUpdatedAt: null
+      }
+    });
+
+    await this.imageStorageService.deleteImage(store.profileImageKey);
+
+    return {
+      message: "Imagem da loja removida com sucesso"
+    };
+  }
+
+  async getStoreImage(storeId: string) {
+    const store = await this.prisma.store.findFirst({
+      where: { id: storeId, active: true },
+      select: {
+        profileImageKey: true,
+        profileImageFileName: true,
+        profileImageMimeType: true,
+        profileImageSize: true
+      }
+    });
+
+    if (!store?.profileImageKey || !store.profileImageFileName || !store.profileImageMimeType || !store.profileImageSize) {
+      throw new NotFoundException("Imagem da loja nao encontrada");
+    }
+
+    return this.imageStorageService.readImage(store.profileImageKey, {
+      fileName: store.profileImageFileName,
+      mimeType: store.profileImageMimeType,
+      size: store.profileImageSize
+    });
   }
 
   async listDeliveryZones(ownerUserId: string, role: UserRole) {
@@ -210,6 +291,27 @@ export class StoresService {
       isActive: zone.isActive,
       createdAt: zone.createdAt,
       updatedAt: zone.updatedAt
+    };
+  }
+
+  serializeStore(store: {
+    id: string;
+    name: string;
+    address: string;
+    ownerUserId?: string;
+    active: boolean;
+    profileImageKey?: string | null;
+    profileImageFileName?: string | null;
+    profileImageMimeType?: string | null;
+    profileImageSize?: number | null;
+    profileImageUpdatedAt?: Date | null;
+    createdAt: Date;
+    updatedAt: Date;
+  }) {
+    return {
+      ...store,
+      profileImageKey: undefined,
+      imageUrl: store.profileImageKey ? `/media/stores/${store.id}/image` : null
     };
   }
 

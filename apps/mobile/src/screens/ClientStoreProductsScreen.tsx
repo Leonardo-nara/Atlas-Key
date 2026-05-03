@@ -8,6 +8,7 @@ import { SectionHeader } from "../components/SectionHeader";
 import { useCart } from "../features/cart/cart-context";
 import { catalogService } from "../features/catalog/catalog-service";
 import { ApiError } from "../lib/http";
+import { useTabContentBottomPadding } from "../navigation/useTabContentBottomPadding";
 import { mobileShadow, mobileTheme } from "../theme";
 import type { Product, Store } from "../types/api";
 
@@ -18,6 +19,7 @@ type ClientStackParamList = {
 export function ClientStoreProductsScreen() {
   const route = useRoute<RouteProp<ClientStackParamList, "ClientStoreProducts">>();
   const { addItem, items } = useCart();
+  const bottomPadding = useTabContentBottomPadding();
   const [store, setStore] = useState<Store | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
@@ -51,7 +53,7 @@ export function ClientStoreProductsScreen() {
   }
 
   return (
-    <ScreenContainer scrollable>
+    <ScreenContainer contentStyle={{ paddingBottom: bottomPadding }} scrollable>
       <SectionHeader
         title={route.params.storeName}
         description="Pesquise e veja os produtos disponíveis nesta empresa."

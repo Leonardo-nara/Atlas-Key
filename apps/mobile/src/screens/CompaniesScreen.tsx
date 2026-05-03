@@ -14,6 +14,7 @@ import { SectionHeader } from "../components/SectionHeader";
 import { useAuth } from "../features/auth/auth-context";
 import { companyLinksService } from "../features/company-links/company-links-service";
 import { ApiError } from "../lib/http";
+import { useTabContentBottomPadding } from "../navigation/useTabContentBottomPadding";
 import { mobileShadow, mobileTheme } from "../theme";
 import type { StoreCourierLink, StoreDiscoveryItem } from "../types/api";
 
@@ -49,6 +50,7 @@ function buildActionLabel(store: StoreDiscoveryItem) {
 
 export function CompaniesScreen() {
   const { token } = useAuth();
+  const bottomPadding = useTabContentBottomPadding();
   const [stores, setStores] = useState<StoreDiscoveryItem[]>([]);
   const [links, setLinks] = useState<StoreCourierLink[]>([]);
   const [loading, setLoading] = useState(true);
@@ -152,7 +154,7 @@ export function CompaniesScreen() {
               refreshing={refreshing}
             />
           }
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
           showsVerticalScrollIndicator={false}
         >
           {successMessage ? <Text style={styles.successText}>{successMessage}</Text> : null}

@@ -4,13 +4,15 @@ import { ScreenContainer } from "../components/ScreenContainer";
 import { SectionHeader } from "../components/SectionHeader";
 import { mobileEnv } from "../env";
 import { useAuth } from "../features/auth/auth-context";
+import { useTabContentBottomPadding } from "../navigation/useTabContentBottomPadding";
 import { mobileShadow, mobileTheme } from "../theme";
 
 export function ClientProfileScreen() {
   const { logout, logoutAll, refreshProfile, user } = useAuth();
+  const bottomPadding = useTabContentBottomPadding();
 
   return (
-    <ScreenContainer scrollable>
+    <ScreenContainer contentStyle={{ paddingBottom: bottomPadding }} scrollable>
       <SectionHeader
         title="Minha conta"
         description="Dados básicos do cliente autenticado e controle da sessão."

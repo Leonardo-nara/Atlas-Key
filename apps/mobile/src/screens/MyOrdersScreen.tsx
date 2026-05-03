@@ -17,6 +17,7 @@ import { useAuth } from "../features/auth/auth-context";
 import { ordersService } from "../features/orders/orders-service";
 import { useRealtime } from "../features/realtime/realtime-context";
 import { ApiError } from "../lib/http";
+import { useTabContentBottomPadding } from "../navigation/useTabContentBottomPadding";
 import { mobileTheme } from "../theme";
 import type { Order } from "../types/api";
 
@@ -37,6 +38,7 @@ function nextAction(order: Order) {
 export function MyOrdersScreen() {
   const { token } = useAuth();
   const { isConnected, subscribeToOrderEvents } = useRealtime();
+  const bottomPadding = useTabContentBottomPadding();
   const [orders, setOrders] = useState<Order[]>([]);
   const [scope, setScope] = useState<"active" | "completed">("active");
   const [page, setPage] = useState(1);
@@ -189,7 +191,7 @@ export function MyOrdersScreen() {
               refreshing={refreshing}
             />
           }
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
           showsVerticalScrollIndicator={false}
         >
           {successMessage ? <Text style={styles.successText}>{successMessage}</Text> : null}

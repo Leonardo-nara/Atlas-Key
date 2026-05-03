@@ -7,6 +7,7 @@ import { ScreenContainer } from "../components/ScreenContainer";
 import { SectionHeader } from "../components/SectionHeader";
 import { catalogService } from "../features/catalog/catalog-service";
 import { ApiError } from "../lib/http";
+import { useTabContentBottomPadding } from "../navigation/useTabContentBottomPadding";
 import { mobileShadow, mobileTheme } from "../theme";
 import type { ClientCatalogStore } from "../types/api";
 
@@ -18,6 +19,7 @@ type ClientStackParamList = {
 export function ClientStoresScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<ClientStackParamList>>();
+  const bottomPadding = useTabContentBottomPadding();
   const [stores, setStores] = useState<ClientCatalogStore[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -46,7 +48,7 @@ export function ClientStoresScreen() {
   }
 
   return (
-    <ScreenContainer scrollable>
+    <ScreenContainer contentStyle={{ paddingBottom: bottomPadding }} scrollable>
       <SectionHeader
         title="Empresas"
         description="Escolha uma empresa para ver os produtos disponiveis no catalogo."

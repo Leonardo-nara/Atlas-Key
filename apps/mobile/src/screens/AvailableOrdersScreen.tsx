@@ -17,12 +17,14 @@ import { useAuth } from "../features/auth/auth-context";
 import { ordersService } from "../features/orders/orders-service";
 import { useRealtime } from "../features/realtime/realtime-context";
 import { ApiError } from "../lib/http";
+import { useTabContentBottomPadding } from "../navigation/useTabContentBottomPadding";
 import { mobileTheme } from "../theme";
 import type { Order } from "../types/api";
 
 export function AvailableOrdersScreen() {
   const { logout, token } = useAuth();
   const { isConnected, subscribeToOrderEvents } = useRealtime();
+  const bottomPadding = useTabContentBottomPadding();
   const [orders, setOrders] = useState<Order[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -143,7 +145,7 @@ export function AvailableOrdersScreen() {
               refreshing={refreshing}
             />
           }
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.connectionCard}>

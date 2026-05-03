@@ -15,6 +15,7 @@ import { authService } from "../features/auth/auth-service";
 import { useCart } from "../features/cart/cart-context";
 import { ordersService } from "../features/orders/orders-service";
 import { ApiError } from "../lib/http";
+import { useTabContentBottomPadding } from "../navigation/useTabContentBottomPadding";
 import { mobileShadow, mobileTheme } from "../theme";
 import type {
   ClientAddress,
@@ -63,6 +64,7 @@ function formatPixKeyType(type: StorePixKeyType) {
 
 export function ClientCartScreen() {
   const { token, user } = useAuth();
+  const bottomPadding = useTabContentBottomPadding();
   const {
     groups,
     itemCount,
@@ -244,7 +246,10 @@ export function ClientCartScreen() {
         description="Revise os produtos e envie o pedido para as empresas."
       />
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
+        showsVerticalScrollIndicator={false}
+      >
         {user ? (
           <View style={styles.summaryCard}>
             <Text style={styles.summaryTitle}>{user.name}</Text>

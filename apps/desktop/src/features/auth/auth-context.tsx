@@ -18,6 +18,7 @@ import {
   getStoredRefreshToken,
   setStoredTokens
 } from "../../lib/storage";
+import { env } from "../../lib/env";
 import type { AuthUser, Store } from "../../types/api";
 import { authService } from "./auth-service";
 
@@ -105,6 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const nextStore = await loadStoreForUser(nextUser, authToken);
       setUser(nextUser);
       setStore(nextStore);
+      logAuthDebug(nextUser, resolveRouteForUser(nextUser));
       setLoginError(null);
     } catch (error) {
       if (fallbackRefreshToken && error instanceof ApiError && error.status === 401) {
@@ -136,6 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setRefreshToken(response.refreshToken);
       setUser(response.user);
       setStore(nextStore);
+      logAuthDebug(response.user, resolveRouteForUser(response.user));
     } catch (error) {
       if (error instanceof ApiError) {
         setLoginError(error.message);
@@ -170,6 +173,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setRefreshToken(response.refreshToken);
       setUser(response.user);
       setStore(nextStore);
+      logAuthDebug(response.user, resolveRouteForUser(response.user));
     } catch (error) {
       if (error instanceof ApiError) {
         setLoginError(error.message);
@@ -230,6 +234,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setRefreshToken(response.refreshToken);
       setUser(response.user);
       setStore(nextStore);
+      logAuthDebug(response.user, resolveRouteForUser(response.user));
       setLoginError(null);
       return true;
     } catch {
@@ -256,6 +261,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     return authService.myStore(authToken);
+  }
+
+  function resolveRouteForUser(nextUser: AuthUser) {
+    if (nextUser.role === "PLATFORM_ADMIN") {
+      return "/admin/stores";
+    }
+
+    if (nextUser.role === "STORE_ADMIN") {
+      return "/";
+    }
+
+    return "bloqueado-no-desktop";
+  }
+
+  function logAuthDebug(nextUser: AuthUser, redirectRoute: string) {
+    if (!import.meta.env.DEV) {
+      return;
+    }
+
+    console.info("[RotaPronta desktop auth]", {
+      apiUrl: env.apiUrl,
+      email: nextUser.email,
+      role: nextUser.role,
+      redirectRoute
+    });
   }
 
   async function uploadStoreImage(file: File) {

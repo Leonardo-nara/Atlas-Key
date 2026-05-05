@@ -14,6 +14,8 @@
     "qa:cleanup:prod": "node scripts/cleanup-qa-data.js",
     "admin:create": "dotenv -e ../../.env -- node scripts/create-platform-admin.js",
     "admin:create:prod": "node scripts/create-platform-admin.js",
+    "admin:reset-password": "dotenv -e ../../.env -- node scripts/reset-platform-admin-password.js",
+    "admin:reset-password:prod": "node scripts/reset-platform-admin-password.js",
     "build": "nest build",
     "build:prod": "pnpm prisma:generate:prod && pnpm build",
     "build:test": "tsc -p tsconfig.test.json",

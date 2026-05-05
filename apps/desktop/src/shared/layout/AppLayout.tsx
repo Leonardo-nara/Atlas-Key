@@ -26,7 +26,12 @@ export function AppLayout() {
     useAuth();
   const [storeImageError, setStoreImageError] = useState<string | null>(null);
   const isPlatformAdmin = user?.role === "PLATFORM_ADMIN";
-  const activeNavigationItems = isPlatformAdmin ? adminNavigationItems : navigationItems;
+  const isStoreAdmin = user?.role === "STORE_ADMIN";
+  const activeNavigationItems = isPlatformAdmin
+    ? adminNavigationItems
+    : isStoreAdmin
+      ? navigationItems
+      : [];
 
   async function handleStoreImageChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -78,8 +83,8 @@ export function AppLayout() {
               ? "Gerencie empresas, usuarios e motoboys com acesso restrito."
               : store?.address || "Complete o endereco da loja quando quiser."}
           </p>
-          {!isPlatformAdmin ? (
-          <div className="store-image-actions">
+          {isStoreAdmin ? (
+            <div className="store-image-actions">
             <label className="sidebar-upload-button">
               Alterar foto
               <input
@@ -97,7 +102,7 @@ export function AppLayout() {
                 Remover
               </button>
             ) : null}
-          </div>
+            </div>
           ) : null}
           {storeImageError ? (
             <p className="sidebar-error-text">{storeImageError}</p>
@@ -116,7 +121,7 @@ export function AppLayout() {
         </div>
 
         <nav className="sidebar-nav">
-          {activeNavigationItems.map((item) => (
+          {activeNavigationItems.length > 0 ? activeNavigationItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -127,7 +132,9 @@ export function AppLayout() {
             >
               {item.label}
             </NavLink>
-          ))}
+          )) : (
+            <span className="nav-item">Acesso indisponivel</span>
+          )}
         </nav>
 
         <div className="sidebar-footer">

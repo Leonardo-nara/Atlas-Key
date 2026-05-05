@@ -130,11 +130,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const response = await authService.login({ email, password });
+      const nextStore = await loadStoreForUser(response.user, response.accessToken);
       setStoredTokens(response.accessToken, response.refreshToken);
       setToken(response.accessToken);
       setRefreshToken(response.refreshToken);
       setUser(response.user);
-      const nextStore = await authService.myStore(response.accessToken);
       setStore(nextStore);
     } catch (error) {
       if (error instanceof ApiError) {
@@ -164,11 +164,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email,
         password
       });
+      const nextStore = await loadStoreForUser(response.user, response.accessToken);
       setStoredTokens(response.accessToken, response.refreshToken);
       setToken(response.accessToken);
       setRefreshToken(response.refreshToken);
       setUser(response.user);
-      const nextStore = await loadStoreForUser(response.user, response.accessToken);
       setStore(nextStore);
     } catch (error) {
       if (error instanceof ApiError) {
@@ -247,8 +247,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function loadStoreForUser(nextUser: AuthUser, authToken: string) {
-    if (nextUser.role !== "STORE_ADMIN") {
+    if (nextUser.role === "PLATFORM_ADMIN") {
       return null;
+    }
+
+    if (nextUser.role !== "STORE_ADMIN") {
+      throw new ApiError("Este perfil nao tem acesso ao desktop.", 403);
     }
 
     return authService.myStore(authToken);

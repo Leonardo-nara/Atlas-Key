@@ -22,6 +22,7 @@ async function main() {
   const password = requiredEnv("PLATFORM_ADMIN_PASSWORD");
   const name = requiredEnv("PLATFORM_ADMIN_NAME");
   const phone = process.env.PLATFORM_ADMIN_PHONE?.trim() ?? "";
+  const allowPromote = process.env.PLATFORM_ADMIN_ALLOW_PROMOTE === "true";
 
   if (!validateEmail(email)) {
     throw new Error("PLATFORM_ADMIN_EMAIL invalido");
@@ -48,8 +49,25 @@ async function main() {
 
   if (existingUser) {
     if (existingUser.role !== "PLATFORM_ADMIN") {
+      if (allowPromote) {
+        const passwordHash = await bcrypt.hash(password, 10);
+        await prisma.user.update({
+          where: { id: existingUser.id },
+          data: {
+            name,
+            passwordHash,
+            phone,
+            role: "PLATFORM_ADMIN",
+            status: "ACTIVE",
+            active: true
+          }
+        });
+        console.log(`Usuario promovido para PLATFORM_ADMIN: ${email}`);
+        return;
+      }
+
       throw new Error(
-        `Ja existe um usuario com o email ${email}, mas ele nao e PLATFORM_ADMIN`
+        `Ja existe um usuario com o email ${email}, mas ele nao e PLATFORM_ADMIN. Para promover explicitamente, defina PLATFORM_ADMIN_ALLOW_PROMOTE=true.`
       );
     }
 

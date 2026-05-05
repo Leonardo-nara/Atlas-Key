@@ -30,7 +30,7 @@ export const appRouter = createHashRouter([
     children: [
       {
         index: true,
-        element: <DashboardPage />
+        element: <HomeRoute />
       },
       {
         path: "products",
@@ -118,4 +118,24 @@ function RoleRoute({
   }
 
   return children;
+}
+
+function HomeRoute() {
+  const { user } = useAuth();
+
+  if (user?.role === "PLATFORM_ADMIN") {
+    return <Navigate to="/admin/stores" replace />;
+  }
+
+  if (user?.role === "STORE_ADMIN") {
+    return <DashboardPage />;
+  }
+
+  return (
+    <section className="page-section">
+      <div className="screen-state">
+        Este perfil nao tem acesso ao desktop administrativo.
+      </div>
+    </section>
+  );
 }

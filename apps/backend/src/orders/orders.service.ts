@@ -16,6 +16,7 @@ import {
   OrderPaymentStatus,
   OrderStatus as PrismaOrderStatus,
   Prisma,
+  StoreStatus,
   UserRole as PrismaUserRole
 } from "@prisma/client";
 
@@ -163,7 +164,8 @@ export class OrdersService {
       where: {
         id: clientUserId,
         role: PrismaUserRole.CLIENT,
-        active: true
+        active: true,
+        status: "ACTIVE"
       },
       select: {
         id: true,
@@ -179,7 +181,8 @@ export class OrdersService {
     const store = await this.prisma.store.findFirst({
       where: {
         id: dto.storeId,
-        active: true
+        active: true,
+        status: StoreStatus.ACTIVE
       },
       select: {
         id: true
@@ -1350,7 +1353,11 @@ export class OrdersService {
     const links = await this.prisma.storeCourierLink.findMany({
       where: {
         courierId: courierUserId,
-        status: StoreCourierLinkStatus.APPROVED
+        status: StoreCourierLinkStatus.APPROVED,
+        store: {
+          active: true,
+          status: StoreStatus.ACTIVE
+        }
       },
       select: {
         storeId: true

@@ -4,6 +4,7 @@ import { APP_GUARD } from "@nestjs/core";
 import { SentryModule } from "@sentry/nestjs/setup";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 
+import { AdminModule } from "./admin/admin.module";
 import { AuthModule } from "./auth/auth.module";
 import { CatalogModule } from "./catalog/catalog.module";
 import { CouriersModule } from "./couriers/couriers.module";
@@ -37,6 +38,7 @@ import { UsersModule } from "./users/users.module";
       ]
     }),
     PrismaModule,
+    AdminModule,
     StorageModule,
     CatalogModule,
     CouriersModule,

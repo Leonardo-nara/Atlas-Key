@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
+import { StoreStatus } from "@prisma/client";
 
 import { PrismaService } from "../prisma/prisma.service";
 
@@ -12,6 +13,7 @@ export class CatalogService {
     return this.prisma.store.findMany({
       where: {
         active: true,
+        status: StoreStatus.ACTIVE,
         ...(normalizedSearch
           ? {
               OR: [
@@ -42,7 +44,8 @@ export class CatalogService {
     const store = await this.prisma.store.findFirst({
       where: {
         id: storeId,
-        active: true
+        active: true,
+        status: StoreStatus.ACTIVE
       },
       select: {
         id: true,

@@ -1,5 +1,10 @@
 import { createHashRouter, Navigate } from "react-router-dom";
+import type { ReactElement } from "react";
 
+import { useAuth } from "./features/auth/auth-context";
+import { AdminCouriersPage } from "./pages/AdminCouriersPage";
+import { AdminStoresPage } from "./pages/AdminStoresPage";
+import { AdminUsersPage } from "./pages/AdminUsersPage";
 import { CouriersPage } from "./pages/CouriersPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { DeliveryZonesPage } from "./pages/DeliveryZonesPage";
@@ -29,23 +34,67 @@ export const appRouter = createHashRouter([
       },
       {
         path: "products",
-        element: <ProductsPage />
+        element: (
+          <RoleRoute role="STORE_ADMIN">
+            <ProductsPage />
+          </RoleRoute>
+        )
       },
       {
         path: "orders",
-        element: <OrdersPage />
+        element: (
+          <RoleRoute role="STORE_ADMIN">
+            <OrdersPage />
+          </RoleRoute>
+        )
       },
       {
         path: "couriers",
-        element: <CouriersPage />
+        element: (
+          <RoleRoute role="STORE_ADMIN">
+            <CouriersPage />
+          </RoleRoute>
+        )
       },
       {
         path: "delivery-zones",
-        element: <DeliveryZonesPage />
+        element: (
+          <RoleRoute role="STORE_ADMIN">
+            <DeliveryZonesPage />
+          </RoleRoute>
+        )
       },
       {
         path: "pix-settings",
-        element: <PixSettingsPage />
+        element: (
+          <RoleRoute role="STORE_ADMIN">
+            <PixSettingsPage />
+          </RoleRoute>
+        )
+      },
+      {
+        path: "admin/stores",
+        element: (
+          <RoleRoute role="PLATFORM_ADMIN">
+            <AdminStoresPage />
+          </RoleRoute>
+        )
+      },
+      {
+        path: "admin/users",
+        element: (
+          <RoleRoute role="PLATFORM_ADMIN">
+            <AdminUsersPage />
+          </RoleRoute>
+        )
+      },
+      {
+        path: "admin/couriers",
+        element: (
+          <RoleRoute role="PLATFORM_ADMIN">
+            <AdminCouriersPage />
+          </RoleRoute>
+        )
       }
     ]
   },
@@ -54,3 +103,19 @@ export const appRouter = createHashRouter([
     element: <Navigate to="/" replace />
   }
 ]);
+
+function RoleRoute({
+  role,
+  children
+}: {
+  role: "PLATFORM_ADMIN" | "STORE_ADMIN";
+  children: ReactElement;
+}) {
+  const { user } = useAuth();
+
+  if (user?.role !== role) {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+}

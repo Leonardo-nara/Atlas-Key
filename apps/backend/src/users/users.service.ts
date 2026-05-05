@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
-import { UserRole } from "@prisma/client";
+import { UserRole, UserStatus } from "@prisma/client";
 
 import { PrismaService } from "../prisma/prisma.service";
 import { CouriersService } from "../couriers/couriers.service";
@@ -21,7 +21,7 @@ export class UsersService {
       }
     });
 
-    if (!user) {
+    if (!user || !user.active || user.status !== UserStatus.ACTIVE) {
       throw new NotFoundException("Usuario nao encontrado");
     }
 
@@ -35,6 +35,7 @@ export class UsersService {
       email: user.email,
       phone: user.phone,
       role: user.role,
+      status: user.status,
       active: user.active,
       clientAddress: user.clientAddress
         ? this.serializeClientAddress(user.clientAddress)
@@ -84,10 +85,10 @@ export class UsersService {
   private async ensureClient(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, role: true, active: true }
+      select: { id: true, role: true, active: true, status: true }
     });
 
-    if (!user || !user.active) {
+    if (!user || !user.active || user.status !== UserStatus.ACTIVE) {
       throw new NotFoundException("Usuario nao encontrado");
     }
 

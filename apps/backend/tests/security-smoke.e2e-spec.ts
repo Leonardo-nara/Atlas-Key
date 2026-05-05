@@ -15,6 +15,8 @@ import { PassportModule } from "@nestjs/passport";
 import { PassportStrategy } from "@nestjs/passport";
 import { ExtractJwt, Strategy } from "passport-jwt";
 
+import { AdminController } from "../src/admin/admin.controller";
+import { AdminService } from "../src/admin/admin.service";
 import { UserRole } from "../src/common/enums/user-role.enum";
 import { JwtAuthGuard } from "../src/common/guards/jwt-auth.guard";
 import { RolesGuard } from "../src/common/guards/roles.guard";
@@ -40,6 +42,11 @@ const actorByName: Record<string, { sub: string; email: string; role: UserRole }
     sub: "store-user",
     email: "store@example.com",
     role: UserRole.STORE_ADMIN
+  },
+  platform: {
+    sub: "platform-user",
+    email: "platform@example.com",
+    role: UserRole.PLATFORM_ADMIN
   }
 };
 
@@ -99,6 +106,42 @@ const storesServiceMock = {
   deactivateDeliveryZone: () => ({ id: "zone-deactivated" })
 };
 
+const adminServiceMock = {
+  listStores: () => [
+    {
+      id: "store-1",
+      name: "Loja",
+      owner: {
+        id: "owner-1",
+        name: "Dono",
+        email: "owner@example.com",
+        role: "STORE_ADMIN",
+        status: "ACTIVE",
+        active: true
+      }
+    }
+  ],
+  getStore: () => ({ id: "store-1" }),
+  createStore: () => ({ id: "store-created" }),
+  updateStoreStatus: () => ({ id: "store-1", status: "SUSPENDED" }),
+  listUsers: () => [
+    {
+      id: "user-1",
+      name: "Usuario",
+      email: "user@example.com",
+      role: "CLIENT",
+      status: "ACTIVE",
+      active: true
+    }
+  ],
+  getUser: () => ({ id: "user-1" }),
+  createUser: () => ({ id: "user-created" }),
+  updateUserStatus: () => ({ id: "user-1", status: "INACTIVE" }),
+  listCouriers: () => [],
+  updateCourierStatus: () => ({ id: "courier-1", status: "SUSPENDED" }),
+  blockCourierLink: () => ({ id: "link-1", status: "BLOCKED" })
+};
+
 @Module({
   imports: [
     PassportModule,
@@ -107,10 +150,11 @@ const storesServiceMock = {
       signOptions: { expiresIn: "5m" }
     })
   ],
-  controllers: [OrdersController, StoresController],
+  controllers: [OrdersController, StoresController, AdminController],
   providers: [
     SmokeJwtStrategy,
     RolesGuard,
+    { provide: AdminService, useValue: adminServiceMock },
     { provide: OrdersService, useValue: ordersServiceMock },
     { provide: StoresService, useValue: storesServiceMock }
   ]
@@ -138,7 +182,8 @@ describe("backend smoke/security routes", () => {
     tokens = {
       courier: await jwtService.signAsync(actorByName.courier),
       client: await jwtService.signAsync(actorByName.client),
-      store: await jwtService.signAsync(actorByName.store)
+      store: await jwtService.signAsync(actorByName.store),
+      platform: await jwtService.signAsync(actorByName.platform)
     };
 
     const address = app.getHttpServer().address() as { port: number };
@@ -186,6 +231,9 @@ describe("backend smoke/security routes", () => {
     await expectStatus("/orders/order-1/payment/paid", 401, { method: "PATCH" });
     await expectStatus("/orders/order-1/payment-proof/approve", 401, { method: "PATCH" });
     await expectStatus("/orders/order-1/payment-proof/reject", 401, { method: "PATCH" });
+    await expectStatus("/admin/stores", 401);
+    await expectStatus("/admin/users", 401);
+    await expectStatus("/admin/couriers", 401);
   });
 
   it("bloqueia motoboy em Pix, comprovante detalhado e gestao de pagamento", async () => {
@@ -254,5 +302,16 @@ describe("backend smoke/security routes", () => {
         reference: "PIX-123"
       })
     });
+  });
+
+  it("protege rotas admin por role e nao expoe hash de senha", async () => {
+    await expectStatus("/admin/stores", 403, { token: "store" });
+    await expectStatus("/admin/stores", 403, { token: "client" });
+    await expectStatus("/admin/stores", 403, { token: "courier" });
+
+    const response = await request("/admin/users", { token: "platform" });
+    assert.equal(response.status, 200);
+    const payload = (await response.json()) as unknown;
+    assert.equal(JSON.stringify(payload).includes("passwordHash"), false);
   });
 });

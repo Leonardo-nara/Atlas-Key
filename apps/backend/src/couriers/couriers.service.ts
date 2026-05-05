@@ -9,7 +9,8 @@ import {
   CourierVehicleType,
   Prisma,
   User,
-  UserRole
+  UserRole,
+  UserStatus
 } from "@prisma/client";
 
 import { PrismaService } from "../prisma/prisma.service";
@@ -48,6 +49,7 @@ export class CouriersService {
           passwordHash,
           phone: dto.phone.trim(),
           role: UserRole.COURIER,
+          status: UserStatus.ACTIVE,
           active: true
         }
       });
@@ -78,7 +80,7 @@ export class CouriersService {
       }
     });
 
-    if (!user) {
+    if (!user || !user.active || user.status !== UserStatus.ACTIVE) {
       throw new NotFoundException("Motoboy nao encontrado");
     }
 

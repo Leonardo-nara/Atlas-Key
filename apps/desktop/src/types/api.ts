@@ -3,7 +3,8 @@ export interface AuthUser {
   name: string;
   email: string;
   phone: string;
-  role: "STORE_ADMIN" | "COURIER";
+  role: "PLATFORM_ADMIN" | "STORE_ADMIN" | "COURIER" | "CLIENT";
+  status?: "ACTIVE" | "SUSPENDED" | "INACTIVE";
   active: boolean;
   createdAt: string;
   updatedAt: string;
@@ -50,6 +51,7 @@ export interface Store {
   address: string;
   ownerUserId?: string;
   active: boolean;
+  status?: "ACTIVE" | "SUSPENDED" | "INACTIVE";
   imageUrl?: string | null;
   profileImageFileName?: string | null;
   profileImageMimeType?: string | null;
@@ -267,3 +269,42 @@ export interface ApiErrorPayload {
   error?: string;
   statusCode?: number;
 }
+
+export type OperationalStatus = "ACTIVE" | "SUSPENDED" | "INACTIVE";
+
+export interface AdminStore extends Store {
+  status: OperationalStatus;
+  owner?: AuthUser;
+  _count?: {
+    products?: number;
+    orders?: number;
+    courierLinks?: number;
+    deliveryZones?: number;
+  };
+}
+
+export interface AdminUser extends AuthUser {
+  status: OperationalStatus;
+  ownedStore?: {
+    id: string;
+    name: string;
+    status: OperationalStatus;
+    active: boolean;
+  } | null;
+  courierProfile?: Partial<CourierProfile> | null;
+  storeLinks?: Array<{
+    id: string;
+    status: StoreCourierLinkStatus;
+    requestedBy: StoreCourierLinkRequestedBy;
+    approvedAt?: string | null;
+    rejectedAt?: string | null;
+    store: {
+      id: string;
+      name: string;
+      status: OperationalStatus;
+      active: boolean;
+    };
+  }>;
+}
+
+export type AdminCourier = AdminUser;

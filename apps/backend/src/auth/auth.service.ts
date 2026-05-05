@@ -49,6 +49,10 @@ export class AuthService {
       throw new BadRequestException("Email ja cadastrado");
     }
 
+    if (dto.role === UserRole.PLATFORM_ADMIN) {
+      throw new BadRequestException("PLATFORM_ADMIN deve ser criado pelo script seguro");
+    }
+
     if (dto.role === UserRole.STORE_ADMIN && (!dto.storeName || !dto.storeAddress)) {
       throw new BadRequestException(
         "STORE_ADMIN precisa informar storeName e storeAddress"
@@ -69,6 +73,7 @@ export class AuthService {
           passwordHash,
           phone: dto.phone,
           role: dto.role,
+          status: "ACTIVE",
           active: true
         }
       });
@@ -79,6 +84,7 @@ export class AuthService {
             name: dto.storeName!,
             address: dto.storeAddress!,
             ownerUserId: createdUser.id,
+            status: "ACTIVE",
             active: true
           }
         });
@@ -121,6 +127,7 @@ export class AuthService {
           passwordHash,
           phone: "",
           role: UserRole.STORE_ADMIN,
+          status: "ACTIVE",
           active: true
         }
       });
@@ -130,6 +137,7 @@ export class AuthService {
           name: dto.storeName,
           address: "",
           ownerUserId: createdUser.id,
+          status: "ACTIVE",
           active: true
         }
       });
@@ -175,6 +183,7 @@ export class AuthService {
         passwordHash,
         phone: dto.phone,
         role: UserRole.CLIENT,
+        status: "ACTIVE",
         active: true
       }
     });
@@ -188,7 +197,7 @@ export class AuthService {
       where: { email: normalizedEmail }
     });
 
-    if (!user || !user.active) {
+    if (!user || !user.active || user.status !== "ACTIVE") {
       await this.auditAuthEvent(AuthAuditEventType.LOGIN_FAILED, {
         email: normalizedEmail,
         context,
@@ -256,7 +265,7 @@ export class AuthService {
       throw new UnauthorizedException("Use o painel da empresa para acessar esta conta.");
     }
 
-    if (user && !user.active) {
+    if (user && (!user.active || user.status !== "ACTIVE")) {
       await this.auditAuthEvent(AuthAuditEventType.LOGIN_FAILED, {
         userId: user.id,
         email: user.email,
@@ -277,6 +286,7 @@ export class AuthService {
             passwordHash,
             phone: "",
             role: UserRole.COURIER,
+            status: "ACTIVE",
             active: true,
             googleSub: googlePayload.sub,
             googleEmailVerified: true
@@ -325,8 +335,18 @@ export class AuthService {
       include: { user: true }
     });
 
-    if (!session || session.revokedAt || session.expiresAt <= new Date() || !session.user.active) {
-      if (session && !session.revokedAt && !session.user.active) {
+    if (
+      !session ||
+      session.revokedAt ||
+      session.expiresAt <= new Date() ||
+      !session.user.active ||
+      session.user.status !== "ACTIVE"
+    ) {
+      if (
+        session &&
+        !session.revokedAt &&
+        (!session.user.active || session.user.status !== "ACTIVE")
+      ) {
         await this.revokeSession(session.id, session.userId, context, "inactive_user");
       }
 
@@ -794,6 +814,7 @@ export class AuthService {
       phone: user.phone,
       role: user.role,
       active: user.active,
+      status: user.status,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt
     };

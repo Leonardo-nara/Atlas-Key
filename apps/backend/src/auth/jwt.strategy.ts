@@ -44,11 +44,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         id: true,
         email: true,
         role: true,
-        active: true
+        active: true,
+        status: true
       }
     });
 
-    if (!user || !user.active) {
+    if (!user || !user.active || user.status !== "ACTIVE") {
       throw new UnauthorizedException("Sessao invalida");
     }
 

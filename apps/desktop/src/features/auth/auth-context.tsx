@@ -101,10 +101,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function loadProfile(authToken: string, fallbackRefreshToken?: string | null) {
     try {
-      const [nextUser, nextStore] = await Promise.all([
-        authService.me(authToken),
-        authService.myStore(authToken)
-      ]);
+      const nextUser = await authService.me(authToken);
+      const nextStore = await loadStoreForUser(nextUser, authToken);
       setUser(nextUser);
       setStore(nextStore);
       setLoginError(null);
@@ -170,7 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(response.accessToken);
       setRefreshToken(response.refreshToken);
       setUser(response.user);
-      const nextStore = await authService.myStore(response.accessToken);
+      const nextStore = await loadStoreForUser(response.user, response.accessToken);
       setStore(nextStore);
     } catch (error) {
       if (error instanceof ApiError) {
@@ -225,7 +223,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const response = await authService.refresh(nextRefreshToken);
-      const nextStore = await authService.myStore(response.accessToken);
+      const nextStore = await loadStoreForUser(response.user, response.accessToken);
 
       setStoredTokens(response.accessToken, response.refreshToken);
       setToken(response.accessToken);
@@ -246,6 +244,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     await loadProfile(token, refreshToken);
+  }
+
+  async function loadStoreForUser(nextUser: AuthUser, authToken: string) {
+    if (nextUser.role !== "STORE_ADMIN") {
+      return null;
+    }
+
+    return authService.myStore(authToken);
   }
 
   async function uploadStoreImage(file: File) {

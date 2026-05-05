@@ -12,6 +12,8 @@
     "prisma:seed:prod": "node prisma/seed.js",
     "qa:cleanup": "dotenv -e ../../.env -- node scripts/cleanup-qa-data.js",
     "qa:cleanup:prod": "node scripts/cleanup-qa-data.js",
+    "admin:create": "dotenv -e ../../.env -- node scripts/create-platform-admin.js",
+    "admin:create:prod": "node scripts/create-platform-admin.js",
     "build": "nest build",
     "build:prod": "pnpm prisma:generate:prod && pnpm build",
     "build:test": "tsc -p tsconfig.test.json",

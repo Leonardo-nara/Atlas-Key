@@ -254,6 +254,28 @@ p {
   font-weight: 700;
 }
 
+.success-text {
+  color: var(--rp-success);
+  font-weight: 700;
+}
+
+.error-text {
+  color: var(--rp-danger);
+  font-weight: 700;
+}
+
+.compact-list {
+  gap: 8px;
+}
+
+.inline-action-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: space-between;
+}
+
 .sidebar-nav {
   display: grid;
   gap: 8px;

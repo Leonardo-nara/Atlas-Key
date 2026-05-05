@@ -8,9 +8,22 @@ datasource db {
 }
 
 enum UserRole {
+  PLATFORM_ADMIN
   STORE_ADMIN
   COURIER
   CLIENT
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  INACTIVE
+}
+
+enum StoreStatus {
+  ACTIVE
+  SUSPENDED
+  INACTIVE
 }
 
 enum CourierVehicleType {
@@ -114,6 +127,7 @@ model User {
   googleSub    String?  @unique
   googleEmailVerified Boolean @default(false)
   role         UserRole
+  status       UserStatus @default(ACTIVE)
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -128,6 +142,7 @@ model User {
   authSessions  AuthSession[]
   authAuditEvents AuthAuditEvent[]
 
+  @@index([status])
   @@map("users")
 }
 
@@ -215,6 +230,7 @@ model Store {
   name        String
   address     String
   ownerUserId String   @unique
+  status      StoreStatus @default(ACTIVE)
   active      Boolean  @default(true)
   profileImageKey String?
   profileImageFileName String?
@@ -235,6 +251,7 @@ model Store {
   courierLinks StoreCourierLink[]
   deliveryZones StoreDeliveryZone[]
 
+  @@index([status])
   @@map("stores")
 }
 

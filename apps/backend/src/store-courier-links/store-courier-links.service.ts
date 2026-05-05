@@ -7,7 +7,9 @@ import {
   CourierProfile,
   Store,
   StoreCourierLink,
-  User
+  StoreStatus,
+  User,
+  UserStatus
 } from "@prisma/client";
 
 import { UserRole } from "../common/enums/user-role.enum";
@@ -35,7 +37,8 @@ export class StoreCourierLinksService {
 
     const stores = await this.prisma.store.findMany({
       where: {
-        active: true
+        active: true,
+        status: StoreStatus.ACTIVE
       },
       orderBy: {
         name: "asc"
@@ -74,7 +77,7 @@ export class StoreCourierLinksService {
       where: { id: storeId }
     });
 
-    if (!store || !store.active) {
+    if (!store || !store.active || store.status !== StoreStatus.ACTIVE) {
       throw new NotFoundException("Empresa nao encontrada");
     }
 
@@ -281,7 +284,7 @@ export class StoreCourierLinksService {
       throw new NotFoundException("Motoboy nao encontrado");
     }
 
-    if (!user.active) {
+    if (!user.active || user.status !== UserStatus.ACTIVE) {
       throw new BadRequestException("Motoboy inativo nao pode solicitar vinculo");
     }
 

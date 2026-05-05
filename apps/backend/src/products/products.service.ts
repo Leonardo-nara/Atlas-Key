@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException
 } from "@nestjs/common";
-import { Prisma } from "@prisma/client";
+import { Prisma, StoreStatus } from "@prisma/client";
 
 import { UserRole } from "../common/enums/user-role.enum";
 import { ImageStorageService } from "../common/storage/image-storage.service";
@@ -159,7 +159,8 @@ export class ProductsService {
         id: productId,
         available: true,
         store: {
-          active: true
+          active: true,
+          status: StoreStatus.ACTIVE
         }
       },
       select: {

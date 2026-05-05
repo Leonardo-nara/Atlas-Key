@@ -14,10 +14,19 @@ const navigationItems = [
   { to: "/pix-settings", label: "Pix manual" }
 ];
 
+const adminNavigationItems = [
+  { to: "/", label: "Visao geral", end: true },
+  { to: "/admin/stores", label: "Empresas" },
+  { to: "/admin/users", label: "Usuarios" },
+  { to: "/admin/couriers", label: "Motoboys" }
+];
+
 export function AppLayout() {
   const { user, store, logout, logoutAll, uploadStoreImage, removeStoreImage } =
     useAuth();
   const [storeImageError, setStoreImageError] = useState<string | null>(null);
+  const isPlatformAdmin = user?.role === "PLATFORM_ADMIN";
+  const activeNavigationItems = isPlatformAdmin ? adminNavigationItems : navigationItems;
 
   async function handleStoreImageChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -49,7 +58,9 @@ export function AppLayout() {
       <aside className="sidebar">
         <div className="sidebar-brand">
           <div className="store-avatar">
-            {store?.imageUrl ? (
+            {isPlatformAdmin ? (
+              <span>A</span>
+            ) : store?.imageUrl ? (
               <img
                 alt={`Imagem de ${store.name}`}
                 src={toMediaUrl(store.imageUrl) ?? undefined}
@@ -58,9 +69,16 @@ export function AppLayout() {
               <span>{store?.name?.slice(0, 1).toUpperCase() ?? "L"}</span>
             )}
           </div>
-          <p className="section-kicker">Painel empresarial</p>
-          <h1>{store?.name ?? "Loja"}</h1>
-          <p>{store?.address || "Complete o endereco da loja quando quiser."}</p>
+          <p className="section-kicker">
+            {isPlatformAdmin ? "Administracao interna" : "Painel empresarial"}
+          </p>
+          <h1>{isPlatformAdmin ? "Plataforma" : store?.name ?? "Loja"}</h1>
+          <p>
+            {isPlatformAdmin
+              ? "Gerencie empresas, usuarios e motoboys com acesso restrito."
+              : store?.address || "Complete o endereco da loja quando quiser."}
+          </p>
+          {!isPlatformAdmin ? (
           <div className="store-image-actions">
             <label className="sidebar-upload-button">
               Alterar foto
@@ -80,21 +98,25 @@ export function AppLayout() {
               </button>
             ) : null}
           </div>
+          ) : null}
           {storeImageError ? (
             <p className="sidebar-error-text">{storeImageError}</p>
           ) : null}
         </div>
 
         <div className="sidebar-section">
-          <span className="user-chip">Operacao da loja</span>
+          <span className="user-chip">
+            {isPlatformAdmin ? "Controle da plataforma" : "Operacao da loja"}
+          </span>
           <p>
-            Acompanhe pedidos, catalogo e vinculos com um painel mais claro para
-            a rotina da empresa.
+            {isPlatformAdmin
+              ? "Acesso administrativo para suporte, bloqueios e cadastro inicial."
+              : "Acompanhe pedidos, catalogo e vinculos com um painel mais claro para a rotina da empresa."}
           </p>
         </div>
 
         <nav className="sidebar-nav">
-          {navigationItems.map((item) => (
+          {activeNavigationItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}

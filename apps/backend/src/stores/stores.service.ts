@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException
 } from "@nestjs/common";
-import { Prisma, StorePixKeyType } from "@prisma/client";
+import { Prisma, StorePixKeyType, StoreStatus } from "@prisma/client";
 
 import { UserRole } from "../common/enums/user-role.enum";
 import { ImageStorageService } from "../common/storage/image-storage.service";
@@ -33,6 +33,10 @@ export class StoresService {
 
     if (!store) {
       throw new NotFoundException("Loja nao encontrada");
+    }
+
+    if (!store.active || store.status !== StoreStatus.ACTIVE) {
+      throw new ForbiddenException("Loja suspensa ou inativa nao pode operar");
     }
 
     return store;
@@ -94,7 +98,7 @@ export class StoresService {
 
   async getStoreImage(storeId: string) {
     const store = await this.prisma.store.findFirst({
-      where: { id: storeId, active: true },
+      where: { id: storeId, active: true, status: StoreStatus.ACTIVE },
       select: {
         profileImageKey: true,
         profileImageFileName: true,
@@ -300,6 +304,7 @@ export class StoresService {
     address: string;
     ownerUserId?: string;
     active: boolean;
+    status?: StoreStatus;
     profileImageKey?: string | null;
     profileImageFileName?: string | null;
     profileImageMimeType?: string | null;

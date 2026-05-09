@@ -1,9 +1,11 @@
 import { http } from "../../lib/http";
 import type {
+  AdminAuditLog,
   AdminCourier,
   AdminStore,
   AdminUser,
-  OperationalStatus
+  OperationalStatus,
+  PaginatedResponse
 } from "../../types/api";
 
 interface CreateAdminStoreInput {
@@ -23,7 +25,40 @@ interface CreateAdminUserInput {
   role: AdminUser["role"];
 }
 
+interface ListAuditLogsInput {
+  page?: number;
+  limit?: number;
+  action?: string;
+  targetType?: string;
+}
+
 export const adminService = {
+  listAuditLogs(token: string, input: ListAuditLogsInput = {}) {
+    const params = new URLSearchParams();
+
+    if (input.page) {
+      params.set("page", String(input.page));
+    }
+
+    if (input.limit) {
+      params.set("limit", String(input.limit));
+    }
+
+    if (input.action?.trim()) {
+      params.set("action", input.action.trim());
+    }
+
+    if (input.targetType?.trim()) {
+      params.set("targetType", input.targetType.trim());
+    }
+
+    const query = params.toString();
+
+    return http<PaginatedResponse<AdminAuditLog>>(
+      `/admin/audit-logs${query ? `?${query}` : ""}`,
+      { token }
+    );
+  },
   listStores(token: string) {
     return http<AdminStore[]>("/admin/stores", { token });
   },

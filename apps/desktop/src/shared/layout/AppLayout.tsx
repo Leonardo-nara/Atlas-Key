@@ -18,7 +18,8 @@ const adminNavigationItems = [
   { to: "/", label: "Visao geral", end: true },
   { to: "/admin/stores", label: "Empresas" },
   { to: "/admin/users", label: "Usuarios" },
-  { to: "/admin/couriers", label: "Motoboys" }
+  { to: "/admin/couriers", label: "Motoboys" },
+  { to: "/admin/audit-logs", label: "Auditoria" }
 ];
 
 export function AppLayout() {

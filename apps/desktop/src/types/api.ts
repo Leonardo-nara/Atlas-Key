@@ -308,3 +308,20 @@ export interface AdminUser extends AuthUser {
 }
 
 export type AdminCourier = AdminUser;
+
+export interface AdminAuditLog {
+  id: string;
+  adminUserId: string;
+  action: string;
+  targetType: string;
+  targetId: string;
+  reason?: string | null;
+  metadataJson?: Record<string, unknown> | null;
+  createdAt: string;
+  adminUser?: {
+    id: string;
+    name: string;
+    email: string;
+    role: AuthUser["role"];
+  };
+}

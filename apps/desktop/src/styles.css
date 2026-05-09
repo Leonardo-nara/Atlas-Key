@@ -276,6 +276,38 @@ p {
   justify-content: space-between;
 }
 
+.audit-filter-panel {
+  align-items: end;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(180px, 1fr)) auto;
+}
+
+.audit-filter-actions,
+.pagination-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.pagination-row {
+  justify-content: flex-end;
+}
+
+.metadata-preview {
+  background: rgba(10, 42, 68, 0.06);
+  border-radius: 10px;
+  color: var(--rp-text);
+  display: inline-block;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  max-width: 360px;
+  padding: 8px 10px;
+  white-space: normal;
+  word-break: break-word;
+}
+
 .sidebar-nav {
   display: grid;
   gap: 8px;
@@ -1052,6 +1084,10 @@ p {
     width: 100%;
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .audit-filter-panel {
+    grid-template-columns: 1fr;
   }
 
   .form-columns,

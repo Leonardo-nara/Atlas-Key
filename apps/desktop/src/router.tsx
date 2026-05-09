@@ -2,6 +2,7 @@ import { createHashRouter, Navigate } from "react-router-dom";
 import type { ReactElement } from "react";
 
 import { useAuth } from "./features/auth/auth-context";
+import { AdminAuditLogsPage } from "./pages/AdminAuditLogsPage";
 import { AdminCouriersPage } from "./pages/AdminCouriersPage";
 import { AdminStoresPage } from "./pages/AdminStoresPage";
 import { AdminUsersPage } from "./pages/AdminUsersPage";
@@ -93,6 +94,14 @@ export const appRouter = createHashRouter([
         element: (
           <RoleRoute role="PLATFORM_ADMIN">
             <AdminCouriersPage />
+          </RoleRoute>
+        )
+      },
+      {
+        path: "admin/audit-logs",
+        element: (
+          <RoleRoute role="PLATFORM_ADMIN">
+            <AdminAuditLogsPage />
           </RoleRoute>
         )
       }

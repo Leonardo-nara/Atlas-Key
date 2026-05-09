@@ -17,12 +17,54 @@ import { UserRole } from "../common/enums/user-role.enum";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateAdminStoreDto } from "./dto/create-admin-store.dto";
 import { CreateAdminUserDto } from "./dto/create-admin-user.dto";
+import { ListAdminAuditLogsQueryDto } from "./dto/list-admin-audit-logs-query.dto";
 import { UpdateAdminStoreStatusDto } from "./dto/update-admin-store-status.dto";
 import { UpdateAdminUserStatusDto } from "./dto/update-admin-user-status.dto";
 
 @Injectable()
 export class AdminService {
   constructor(private readonly prisma: PrismaService) {}
+
+  async listAuditLogs(query: ListAdminAuditLogsQueryDto) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const skip = (page - 1) * limit;
+    const where: Prisma.AdminAuditLogWhereInput = {
+      ...(query.action ? { action: query.action } : {}),
+      ...(query.targetType ? { targetType: query.targetType } : {}),
+      ...(query.adminUserId ? { adminUserId: query.adminUserId } : {})
+    };
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.adminAuditLog.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+        include: {
+          adminUser: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              role: true
+            }
+          }
+        }
+      }),
+      this.prisma.adminAuditLog.count({ where })
+    ]);
+
+    return {
+      items,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / limit))
+      }
+    };
+  }
 
   async listStores() {
     const stores = await this.prisma.store.findMany({
@@ -121,34 +163,56 @@ export class AdminService {
     return this.serializeStore(created);
   }
 
-  async updateStoreStatus(storeId: string, dto: UpdateAdminStoreStatusDto) {
+  async updateStoreStatus(
+    adminUserId: string,
+    storeId: string,
+    dto: UpdateAdminStoreStatusDto
+  ) {
     const store = await this.prisma.store.findUnique({
       where: { id: storeId },
-      select: { id: true }
+      select: { id: true, status: true, active: true }
     });
 
     if (!store) {
       throw new NotFoundException("Empresa nao encontrada");
     }
 
-    const updated = await this.prisma.store.update({
-      where: { id: storeId },
-      data: {
-        status: dto.status,
-        active: dto.status === StoreStatus.ACTIVE
-      },
-      include: {
-        owner: {
-          select: this.safeUserSelect()
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const nextStore = await tx.store.update({
+        where: { id: storeId },
+        data: {
+          status: dto.status,
+          active: dto.status === StoreStatus.ACTIVE
         },
-        _count: {
-          select: {
-            products: true,
-            orders: true,
-            courierLinks: true
+        include: {
+          owner: {
+            select: this.safeUserSelect()
+          },
+          _count: {
+            select: {
+              products: true,
+              orders: true,
+              courierLinks: true
+            }
           }
         }
-      }
+      });
+
+      await this.createAuditLog(tx, {
+        adminUserId,
+        action: this.statusAction("STORE", dto.status),
+        targetType: "STORE",
+        targetId: storeId,
+        reason: dto.reason,
+        metadataJson: {
+          previousStatus: store.status,
+          nextStatus: dto.status,
+          previousActive: store.active,
+          nextActive: dto.status === StoreStatus.ACTIVE
+        }
+      });
+
+      return nextStore;
     });
 
     return this.serializeStore(updated);
@@ -275,10 +339,18 @@ export class AdminService {
     return user;
   }
 
-  async updateUserStatus(userId: string, dto: UpdateAdminUserStatusDto) {
+  async updateUserStatus(
+    adminUserId: string,
+    userId: string,
+    dto: UpdateAdminUserStatusDto,
+    auditTarget: { prefix: "USER" | "COURIER"; type: "USER" | "COURIER" } = {
+      prefix: "USER",
+      type: "USER"
+    }
+  ) {
     const existing = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, role: true }
+      select: { id: true, role: true, status: true, active: true }
     });
 
     if (!existing) {
@@ -307,6 +379,21 @@ export class AdminService {
           }
         });
       }
+
+      await this.createAuditLog(tx, {
+        adminUserId,
+        action: this.statusAction(auditTarget.prefix, dto.status),
+        targetType: auditTarget.type,
+        targetId: userId,
+        reason: dto.reason,
+        metadataJson: {
+          role: existing.role,
+          previousStatus: existing.status,
+          nextStatus: dto.status,
+          previousActive: existing.active,
+          nextActive: active
+        }
+      });
 
       return user;
     });
@@ -365,7 +452,11 @@ export class AdminService {
     }));
   }
 
-  async updateCourierStatus(courierId: string, dto: UpdateAdminUserStatusDto) {
+  async updateCourierStatus(
+    adminUserId: string,
+    courierId: string,
+    dto: UpdateAdminUserStatusDto
+  ) {
     const courier = await this.prisma.user.findFirst({
       where: {
         id: courierId,
@@ -378,45 +469,107 @@ export class AdminService {
       throw new NotFoundException("Motoboy nao encontrado");
     }
 
-    return this.updateUserStatus(courierId, dto);
+    return this.updateUserStatus(adminUserId, courierId, dto, {
+      prefix: "COURIER",
+      type: "COURIER"
+    });
   }
 
-  async blockCourierLink(courierId: string, linkId: string) {
+  async blockCourierLink(
+    adminUserId: string,
+    courierId: string,
+    linkId: string
+  ) {
     const link = await this.prisma.storeCourierLink.findFirst({
       where: {
         id: linkId,
         courierId
       },
-      select: { id: true }
+      select: { id: true, status: true, storeId: true }
     });
 
     if (!link) {
       throw new NotFoundException("Vinculo do motoboy nao encontrado");
     }
 
-    const updated = await this.prisma.storeCourierLink.update({
-      where: { id: linkId },
-      data: {
-        status: StoreCourierLinkStatus.BLOCKED,
-        approvedAt: null,
-        rejectedAt: new Date()
-      },
-      include: {
-        store: {
-          select: {
-            id: true,
-            name: true,
-            status: true,
-            active: true
-          }
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const nextLink = await tx.storeCourierLink.update({
+        where: { id: linkId },
+        data: {
+          status: StoreCourierLinkStatus.BLOCKED,
+          approvedAt: null,
+          rejectedAt: new Date()
         },
-        courier: {
-          select: this.safeUserSelect()
+        include: {
+          store: {
+            select: {
+              id: true,
+              name: true,
+              status: true,
+              active: true
+            }
+          },
+          courier: {
+            select: this.safeUserSelect()
+          }
         }
-      }
+      });
+
+      await this.createAuditLog(tx, {
+        adminUserId,
+        action: "COURIER_LINK_BLOCKED",
+        targetType: "STORE_COURIER_LINK",
+        targetId: linkId,
+        metadataJson: {
+          courierId,
+          storeId: link.storeId,
+          previousStatus: link.status,
+          nextStatus: StoreCourierLinkStatus.BLOCKED
+        }
+      });
+
+      return nextLink;
     });
 
     return updated;
+  }
+
+  private async createAuditLog(
+    tx: Prisma.TransactionClient,
+    input: {
+      adminUserId: string;
+      action: string;
+      targetType: string;
+      targetId: string;
+      reason?: string;
+      metadataJson?: Prisma.InputJsonValue;
+    }
+  ) {
+    await tx.adminAuditLog.create({
+      data: {
+        adminUserId: input.adminUserId,
+        action: input.action,
+        targetType: input.targetType,
+        targetId: input.targetId,
+        reason: input.reason?.trim() || null,
+        metadataJson: input.metadataJson ?? Prisma.JsonNull
+      }
+    });
+  }
+
+  private statusAction(
+    targetPrefix: "STORE" | "USER" | "COURIER",
+    status: StoreStatus | UserStatus
+  ) {
+    if (status === "ACTIVE") {
+      return `${targetPrefix}_ACTIVATED`;
+    }
+
+    if (status === "SUSPENDED") {
+      return `${targetPrefix}_SUSPENDED`;
+    }
+
+    return `${targetPrefix}_INACTIVATED`;
   }
 
   private safeUserSelect() {

@@ -141,6 +141,7 @@ model User {
   orderEvents   OrderEvent[]
   authSessions  AuthSession[]
   authAuditEvents AuthAuditEvent[]
+  adminAuditLogs AdminAuditLog[]
 
   @@index([status])
   @@map("users")
@@ -199,6 +200,24 @@ model AuthAuditEvent {
   @@index([email, createdAt])
   @@index([type, createdAt])
   @@map("auth_audit_events")
+}
+
+model AdminAuditLog {
+  id           String   @id @default(cuid())
+  adminUserId  String
+  action       String
+  targetType   String
+  targetId     String
+  reason       String?
+  metadataJson Json?
+  createdAt    DateTime @default(now())
+
+  adminUser User @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId, createdAt])
+  @@index([action, createdAt])
+  @@index([targetType, createdAt])
+  @@map("admin_audit_logs")
 }
 
 model CourierProfile {

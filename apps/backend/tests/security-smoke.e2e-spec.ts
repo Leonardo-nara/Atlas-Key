@@ -107,6 +107,17 @@ const storesServiceMock = {
 };
 
 const adminServiceMock = {
+  listAuditLogs: () => ({
+    items: [
+      {
+        id: "audit-1",
+        action: "STORE_SUSPENDED",
+        targetType: "STORE",
+        targetId: "store-1"
+      }
+    ],
+    meta: { page: 1, limit: 20, total: 1, totalPages: 1 }
+  }),
   listStores: () => [
     {
       id: "store-1",
@@ -234,6 +245,7 @@ describe("backend smoke/security routes", () => {
     await expectStatus("/admin/stores", 401);
     await expectStatus("/admin/users", 401);
     await expectStatus("/admin/couriers", 401);
+    await expectStatus("/admin/audit-logs", 401);
   });
 
   it("bloqueia motoboy em Pix, comprovante detalhado e gestao de pagamento", async () => {
@@ -308,10 +320,13 @@ describe("backend smoke/security routes", () => {
     await expectStatus("/admin/stores", 403, { token: "store" });
     await expectStatus("/admin/stores", 403, { token: "client" });
     await expectStatus("/admin/stores", 403, { token: "courier" });
+    await expectStatus("/admin/audit-logs", 403, { token: "store" });
 
     const response = await request("/admin/users", { token: "platform" });
     assert.equal(response.status, 200);
     const payload = (await response.json()) as unknown;
     assert.equal(JSON.stringify(payload).includes("passwordHash"), false);
+
+    await expectStatus("/admin/audit-logs", 200, { token: "platform" });
   });
 });

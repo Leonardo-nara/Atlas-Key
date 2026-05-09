@@ -20,6 +20,7 @@
     "build:prod": "pnpm prisma:generate:prod && pnpm build",
     "build:test": "tsc -p tsconfig.test.json",
     "test": "pnpm build:test && node --test --test-isolation=none dist-test/tests/security-smoke.e2e-spec.js",
+    "test:e2e": "node scripts/run-e2e-tests.js",
     "start": "node dist/main.js",
     "start:prod": "pnpm prisma:deploy:prod && node dist/main.js",
     "start:local": "dotenv -e ../../.env -- node dist/main.js",

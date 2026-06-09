@@ -94,8 +94,8 @@ Resumo das URLs:
 
 - Local backend API: `http://localhost:3000/api`
 - Local backend socket: `http://localhost:3000`
-- Producao backend API: `https://rotapronta-api.onrender.com/api`
-- Producao backend socket: `https://rotapronta-api.onrender.com`
+- Producao backend API: `https://<seu-backend>.up.railway.app/api`
+- Producao backend socket: `https://<seu-backend>.up.railway.app`
 
 Importante:
 
@@ -137,7 +137,7 @@ O backend esta pronto para deploy em Railway, Render ou VPS, desde que o ambient
 
 Guia recomendado para esta fase:
 
-- [docs/RENDER_DEPLOY.md](C:\Users\x\OneDrive\Documentos\Playground\docs\RENDER_DEPLOY.md)
+- [docs/RAILWAY_DEPLOY.md](docs/RAILWAY_DEPLOY.md)
 
 ### Checklist de deploy do backend
 
@@ -175,8 +175,9 @@ pnpm --filter @deliveries/backend start:prod
 - O CORS aceita a lista de `CORS_ALLOWED_ORIGINS` separada por virgula.
 - O banco continua sendo Prisma + PostgreSQL, com migrations versionadas no repositorio.
 - O seed de producao usa o `DATABASE_URL` presente no ambiente e pode ser executado com `pnpm --filter @deliveries/backend prisma:seed:prod`.
-- Para Railway/Render, configure o start command como `pnpm --filter @deliveries/backend start:prod`.
-- Para Render, use o checklist em [docs/RENDER_DEPLOY.md](C:\Users\x\OneDrive\Documentos\Playground\docs\RENDER_DEPLOY.md).
+- Para Railway, configure o start command como `pnpm --filter @deliveries/backend start:prod`.
+- Para Railway, use o checklist em [docs/RAILWAY_DEPLOY.md](docs/RAILWAY_DEPLOY.md).
+- O guia antigo de Render fica apenas como referencia historica em [docs/RENDER_DEPLOY.md](docs/RENDER_DEPLOY.md).
 - Para VPS, recomenda-se rodar com PM2, systemd ou Docker.
 
 ## Build do desktop Windows
@@ -211,8 +212,8 @@ Se o renderer nao usar o backend local, gere o build com essas variaveis apontan
 Exemplo no PowerShell:
 
 ```powershell
-$env:VITE_API_URL="https://rotapronta-api.onrender.com/api"
-$env:VITE_SOCKET_URL="https://rotapronta-api.onrender.com"
+$env:VITE_API_URL="https://<seu-backend>.up.railway.app/api"
+$env:VITE_SOCKET_URL="https://<seu-backend>.up.railway.app"
 pnpm build:desktop:win
 ```
 
@@ -260,8 +261,8 @@ Em dispositivo fisico, use um backend acessivel pela internet ou pela rede local
 Exemplo no PowerShell:
 
 ```powershell
-$env:EXPO_PUBLIC_API_URL="https://rotapronta-api.onrender.com/api"
-$env:EXPO_PUBLIC_SOCKET_URL="https://rotapronta-api.onrender.com"
+$env:EXPO_PUBLIC_API_URL="https://<seu-backend>.up.railway.app/api"
+$env:EXPO_PUBLIC_SOCKET_URL="https://<seu-backend>.up.railway.app"
 pnpm build:mobile:android:production
 ```
 
@@ -275,24 +276,24 @@ pnpm build:mobile:android:production
 ### Desktop
 
 - Local: mantenha `VITE_API_URL=http://localhost:3000/api`
-- Producao: defina `VITE_API_URL=https://rotapronta-api.onrender.com/api` e `VITE_SOCKET_URL=https://rotapronta-api.onrender.com` antes do build
+- Producao: defina `VITE_API_URL=https://<seu-backend>.up.railway.app/api` e `VITE_SOCKET_URL=https://<seu-backend>.up.railway.app` antes do build
 - Teste rapido contra producao em desenvolvimento:
 
 ```powershell
-$env:VITE_API_URL="https://rotapronta-api.onrender.com/api"
-$env:VITE_SOCKET_URL="https://rotapronta-api.onrender.com"
+$env:VITE_API_URL="https://<seu-backend>.up.railway.app/api"
+$env:VITE_SOCKET_URL="https://<seu-backend>.up.railway.app"
 pnpm dev:desktop
 ```
 
 ### Mobile
 
 - Local: use `EXPO_PUBLIC_API_URL` e `EXPO_PUBLIC_SOCKET_URL` apontando para o backend local ou para o IP da maquina
-- Producao: defina `EXPO_PUBLIC_API_URL=https://rotapronta-api.onrender.com/api` e `EXPO_PUBLIC_SOCKET_URL=https://rotapronta-api.onrender.com` antes do bundle ou build EAS
+- Producao: defina `EXPO_PUBLIC_API_URL=https://<seu-backend>.up.railway.app/api` e `EXPO_PUBLIC_SOCKET_URL=https://<seu-backend>.up.railway.app` antes do bundle ou build EAS
 - Teste rapido contra producao:
 
 ```powershell
-$env:EXPO_PUBLIC_API_URL="https://rotapronta-api.onrender.com/api"
-$env:EXPO_PUBLIC_SOCKET_URL="https://rotapronta-api.onrender.com"
+$env:EXPO_PUBLIC_API_URL="https://<seu-backend>.up.railway.app/api"
+$env:EXPO_PUBLIC_SOCKET_URL="https://<seu-backend>.up.railway.app"
 pnpm dev:mobile
 ```
 

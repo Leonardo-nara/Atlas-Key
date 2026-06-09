@@ -60,8 +60,8 @@ Consumidas no bundle do Expo:
 
 ### Producao
 
-- Backend API: `https://rotapronta-api.onrender.com/api`
-- Backend Socket: `https://rotapronta-api.onrender.com`
+- Backend API: `https://<seu-backend>.up.railway.app/api`
+- Backend Socket: `https://<seu-backend>.up.railway.app`
 - Desktop build: usa `VITE_API_URL` e `VITE_SOCKET_URL` no momento do build
 - Mobile build: usa `EXPO_PUBLIC_API_URL` e `EXPO_PUBLIC_SOCKET_URL` no momento do build
 - Se `VITE_SOCKET_URL` ou `EXPO_PUBLIC_SOCKET_URL` nao forem informadas, desktop e mobile derivam o socket removendo `/api` da URL da API
@@ -92,7 +92,7 @@ PAYMENT_PROOF_STORAGE_DRIVER=local
 PAYMENT_PROOF_STORAGE_DIR=./storage/payment-proofs
 ```
 
-Em producao no Render, filesystem local pode ser perdido em restart/deploy se nao houver disco persistente. Para producao real, use storage S3-compativel, preferencialmente Cloudflare R2:
+Em producao, filesystem local pode ser perdido em restart/deploy se nao houver disco persistente. Para producao real, use storage S3-compativel, preferencialmente Cloudflare R2:
 
 ```env
 PAYMENT_PROOF_STORAGE_DRIVER=s3
@@ -116,8 +116,8 @@ Antes do build do desktop, defina:
 No PowerShell:
 
 ```powershell
-$env:VITE_API_URL="https://rotapronta-api.onrender.com/api"
-$env:VITE_SOCKET_URL="https://rotapronta-api.onrender.com"
+$env:VITE_API_URL="https://<seu-backend>.up.railway.app/api"
+$env:VITE_SOCKET_URL="https://<seu-backend>.up.railway.app"
 pnpm build:desktop:win
 ```
 
@@ -135,8 +135,8 @@ Antes do build do mobile, defina:
 No PowerShell:
 
 ```powershell
-$env:EXPO_PUBLIC_API_URL="https://rotapronta-api.onrender.com/api"
-$env:EXPO_PUBLIC_SOCKET_URL="https://rotapronta-api.onrender.com"
+$env:EXPO_PUBLIC_API_URL="https://<seu-backend>.up.railway.app/api"
+$env:EXPO_PUBLIC_SOCKET_URL="https://<seu-backend>.up.railway.app"
 pnpm build:mobile:android:production
 ```
 

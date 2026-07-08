@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import {
-  ActivityIndicator,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -16,6 +15,7 @@ import { OrderCard } from "../components/OrderCard";
 import { OrderTimeline } from "../components/OrderTimeline";
 import { ScreenContainer } from "../components/ScreenContainer";
 import { SectionHeader } from "../components/SectionHeader";
+import { StateCard } from "../components/StateCard";
 import { useAuth } from "../features/auth/auth-context";
 import { getFulfillmentText, getOrderStatusText } from "../features/orders/order-display";
 import {
@@ -295,9 +295,11 @@ export function ClientOrdersScreen() {
       />
 
       {loading ? (
-        <View style={styles.centered}>
-          <ActivityIndicator color={mobileTheme.colors.primaryStrong} size="large" />
-        </View>
+        <StateCard
+          description="Sincronizando status, pagamento e comprovantes."
+          title="Carregando seus pedidos..."
+          variant="loading"
+        />
       ) : (
         <ScrollView
           refreshControl={

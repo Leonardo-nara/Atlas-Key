@@ -8,6 +8,7 @@ import {
 } from "../features/products/products-service";
 import { ApiError } from "../lib/http";
 import { toMediaUrl } from "../lib/media-url";
+import { ConfirmDialog } from "../shared/ui/ConfirmDialog";
 import { PageHeader } from "../shared/ui/PageHeader";
 import type { Product } from "../types/api";
 
@@ -21,6 +22,7 @@ export function ProductsPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
@@ -111,14 +113,6 @@ export function ProductsPage() {
       return;
     }
 
-    const confirmed = window.confirm(
-      "Tem certeza que deseja remover este produto do catalogo?"
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
     setError(null);
     setDeletingProductId(productId);
 
@@ -134,6 +128,7 @@ export function ProductsPage() {
       );
     } finally {
       setDeletingProductId(null);
+      setProductToDelete(null);
     }
   }
 
@@ -176,7 +171,7 @@ export function ProductsPage() {
       ) : null}
 
       {loading ? (
-        <div className="screen-state">Carregando produtos...</div>
+        <div className="screen-state state-loading">Carregando produtos...</div>
       ) : (
         <div className="data-table panel">
           <div className="table-head table-row">
@@ -227,7 +222,7 @@ export function ProductsPage() {
                   <button
                     className="danger-button"
                     disabled={deletingProductId === product.id}
-                    onClick={() => void handleDelete(product.id)}
+                    onClick={() => setProductToDelete(product)}
                     type="button"
                   >
                     {deletingProductId === product.id ? "Removendo..." : "Remover"}
@@ -238,6 +233,18 @@ export function ProductsPage() {
           )}
         </div>
       )}
+
+      {productToDelete ? (
+        <ConfirmDialog
+          confirmLabel="Remover produto"
+          description={`O produto "${productToDelete.name}" sairá do catálogo da loja. Essa ação não altera pedidos já criados.`}
+          isSubmitting={deletingProductId === productToDelete.id}
+          onCancel={() => setProductToDelete(null)}
+          onConfirm={() => void handleDelete(productToDelete.id)}
+          title="Remover produto?"
+          tone="danger"
+        />
+      ) : null}
     </section>
   );
 }

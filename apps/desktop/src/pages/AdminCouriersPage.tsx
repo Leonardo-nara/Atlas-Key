@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { adminService } from "../features/admin/admin-service";
 import { useAuth } from "../features/auth/auth-context";
 import { ApiError } from "../lib/http";
+import { ConfirmDialog } from "../shared/ui/ConfirmDialog";
 import { PageHeader } from "../shared/ui/PageHeader";
 import type { AdminCourier, OperationalStatus } from "../types/api";
 
@@ -14,6 +15,15 @@ export function AdminCouriersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pendingStatusChange, setPendingStatusChange] = useState<{
+    courier: AdminCourier;
+    status: OperationalStatus;
+  } | null>(null);
+  const [pendingLinkBlock, setPendingLinkBlock] = useState<{
+    courier: AdminCourier;
+    linkId: string;
+    storeName: string;
+  } | null>(null);
 
   useEffect(() => {
     void loadCouriers();
@@ -74,14 +84,16 @@ export function AdminCouriersPage() {
         description="Acompanhe perfis, status e vinculos operacionais dos motoboys."
       />
 
-      {message ? <p className="success-text">{message}</p> : null}
-      {error ? <p className="error-text">{error}</p> : null}
+      {message ? <div className="feedback feedback-success">{message}</div> : null}
+      {error ? <div className="feedback feedback-error">{error}</div> : null}
 
       <div className="panel data-table">
         {isLoading ? (
-          <div className="screen-state">Carregando motoboys...</div>
+          <div className="screen-state state-loading">Carregando motoboys...</div>
         ) : couriers.length === 0 ? (
-          <div className="screen-state">Nenhum motoboy cadastrado.</div>
+          <div className="empty-state">
+            Nenhum motoboy cadastrado ainda. Quando houver cadastros, eles aparecerão aqui.
+          </div>
         ) : (
           <table>
             <thead>
@@ -106,10 +118,10 @@ export function AdminCouriersPage() {
                   <td>
                     <select
                       onChange={(event) =>
-                        void handleStatusChange(
-                          courier.id,
-                          event.target.value as OperationalStatus
-                        )
+                        setPendingStatusChange({
+                          courier,
+                          status: event.target.value as OperationalStatus
+                        })
                       }
                       value={courier.status}
                     >
@@ -132,7 +144,11 @@ export function AdminCouriersPage() {
                               <button
                                 className="ghost-button"
                                 onClick={() =>
-                                  void handleBlockLink(courier.id, link.id)
+                                  setPendingLinkBlock({
+                                    courier,
+                                    linkId: link.id,
+                                    storeName: link.store.name
+                                  })
                                 }
                                 type="button"
                               >
@@ -152,6 +168,36 @@ export function AdminCouriersPage() {
           </table>
         )}
       </div>
+
+      {pendingStatusChange ? (
+        <ConfirmDialog
+          confirmLabel={`Alterar para ${statusLabel(pendingStatusChange.status)}`}
+          description={`O motoboy "${pendingStatusChange.courier.name}" ficará como ${statusLabel(pendingStatusChange.status).toLowerCase()}. Se for suspenso ou inativado, ele não poderá operar entregas.`}
+          onCancel={() => setPendingStatusChange(null)}
+          onConfirm={() => {
+            const nextChange = pendingStatusChange;
+            setPendingStatusChange(null);
+            void handleStatusChange(nextChange.courier.id, nextChange.status);
+          }}
+          title="Alterar status do motoboy?"
+          tone={pendingStatusChange.status === "ACTIVE" ? "warning" : "danger"}
+        />
+      ) : null}
+
+      {pendingLinkBlock ? (
+        <ConfirmDialog
+          confirmLabel="Bloquear vínculo"
+          description={`O vínculo de "${pendingLinkBlock.courier.name}" com "${pendingLinkBlock.storeName}" será bloqueado. O motoboy deixará de operar por essa empresa.`}
+          onCancel={() => setPendingLinkBlock(null)}
+          onConfirm={() => {
+            const nextBlock = pendingLinkBlock;
+            setPendingLinkBlock(null);
+            void handleBlockLink(nextBlock.courier.id, nextBlock.linkId);
+          }}
+          title="Bloquear vínculo do motoboy?"
+          tone="danger"
+        />
+      ) : null}
     </section>
   );
 }

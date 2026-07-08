@@ -1,6 +1,5 @@
 ﻿import { useCallback, useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -13,6 +12,7 @@ import { OrderCard } from "../components/OrderCard";
 import { OrderTimeline } from "../components/OrderTimeline";
 import { ScreenContainer } from "../components/ScreenContainer";
 import { SectionHeader } from "../components/SectionHeader";
+import { StateCard } from "../components/StateCard";
 import { useAuth } from "../features/auth/auth-context";
 import { ordersService } from "../features/orders/orders-service";
 import { useRealtime } from "../features/realtime/realtime-context";
@@ -131,9 +131,11 @@ export function AvailableOrdersScreen() {
       />
 
       {loading ? (
-        <View style={styles.centered}>
-          <ActivityIndicator color={mobileTheme.colors.primaryStrong} size="large" />
-        </View>
+        <StateCard
+          description="Buscando pedidos liberados pelas empresas vinculadas."
+          title="Carregando pedidos disponíveis..."
+          variant="loading"
+        />
       ) : (
         <ScrollView
           refreshControl={
@@ -163,11 +165,10 @@ export function AvailableOrdersScreen() {
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
           {!error && orders.length === 0 ? (
-            <View style={styles.emptyBox}>
-              <Text style={styles.emptyText}>
-                Nenhum pedido disponível no momento para as empresas em que você foi aprovado.
-              </Text>
-            </View>
+            <StateCard
+              description="Quando uma loja confirmar um pedido para entrega, ele aparecerá aqui."
+              title="Nenhum pedido disponível no momento."
+            />
           ) : null}
 
           {orders.length > 0 ? (

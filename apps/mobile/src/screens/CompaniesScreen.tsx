@@ -1,6 +1,5 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   Image,
   Pressable,
   RefreshControl,
@@ -12,6 +11,7 @@ import {
 
 import { ScreenContainer } from "../components/ScreenContainer";
 import { SectionHeader } from "../components/SectionHeader";
+import { StateCard } from "../components/StateCard";
 import { useAuth } from "../features/auth/auth-context";
 import { companyLinksService } from "../features/company-links/company-links-service";
 import { ApiError } from "../lib/http";
@@ -142,9 +142,11 @@ export function CompaniesScreen() {
       />
 
       {loading ? (
-        <View style={styles.centered}>
-          <ActivityIndicator color={mobileTheme.colors.primaryStrong} size="large" />
-        </View>
+        <StateCard
+          description="Buscando empresas disponíveis e seus vínculos."
+          title="Carregando empresas..."
+          variant="loading"
+        />
       ) : (
         <ScrollView
           refreshControl={
@@ -169,11 +171,10 @@ export function CompaniesScreen() {
             </Text>
 
             {stores.length === 0 ? (
-              <View style={styles.emptyBox}>
-                <Text style={styles.emptyText}>
-                  Nenhuma empresa ativa encontrada no momento.
-                </Text>
-              </View>
+              <StateCard
+                description="Quando uma loja estiver ativa para motoboys, ela aparecerá aqui."
+                title="Nenhuma empresa ativa encontrada no momento."
+              />
             ) : (
               stores.map((store) => {
                 const disabled =
@@ -229,11 +230,10 @@ export function CompaniesScreen() {
             </Text>
 
             {sortedLinks.length === 0 ? (
-              <View style={styles.emptyBox}>
-                <Text style={styles.emptyText}>
-                  Você ainda não possui solicitações nem vínculos registrados.
-                </Text>
-              </View>
+              <StateCard
+                description="Solicite participação em uma empresa para acompanhar seu vínculo."
+                title="Você ainda não possui solicitações nem vínculos registrados."
+              />
             ) : (
               sortedLinks.map((link) => (
                 <View key={link.id} style={styles.linkCard}>

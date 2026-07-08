@@ -1,6 +1,5 @@
 ﻿import { useCallback, useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -13,6 +12,7 @@ import { OrderCard } from "../components/OrderCard";
 import { OrderTimeline } from "../components/OrderTimeline";
 import { ScreenContainer } from "../components/ScreenContainer";
 import { SectionHeader } from "../components/SectionHeader";
+import { StateCard } from "../components/StateCard";
 import { useAuth } from "../features/auth/auth-context";
 import { ordersService } from "../features/orders/orders-service";
 import { useRealtime } from "../features/realtime/realtime-context";
@@ -177,9 +177,11 @@ export function MyOrdersScreen() {
       </View>
 
       {loading ? (
-        <View style={styles.centered}>
-          <ActivityIndicator color={mobileTheme.colors.primaryStrong} size="large" />
-        </View>
+        <StateCard
+          description="Atualizando sua lista de entregas."
+          title="Carregando seus pedidos..."
+          variant="loading"
+        />
       ) : (
         <ScrollView
           refreshControl={
@@ -197,13 +199,18 @@ export function MyOrdersScreen() {
           {successMessage ? <Text style={styles.successText}>{successMessage}</Text> : null}
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
           {orders.length === 0 ? (
-            <View style={styles.emptyBox}>
-              <Text style={styles.emptyText}>
-                {scope === "active"
-                  ? "Você ainda não tem pedidos ativos nas empresas em que está vinculado."
-                  : "Nenhum pedido concluído por enquanto."}
-              </Text>
-            </View>
+            <StateCard
+              description={
+                scope === "active"
+                  ? "Novas entregas aceitas aparecerão nesta lista."
+                  : "Os pedidos finalizados aparecerão aqui para consulta."
+              }
+              title={
+                scope === "active"
+                  ? "Você ainda não tem pedidos ativos."
+                  : "Nenhum pedido concluído por enquanto."
+              }
+            />
           ) : (
             <>
               {orders.map((order) => {

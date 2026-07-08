@@ -5,6 +5,7 @@ import type { RouteProp } from "@react-navigation/native";
 
 import { ScreenContainer } from "../components/ScreenContainer";
 import { SectionHeader } from "../components/SectionHeader";
+import { StateCard } from "../components/StateCard";
 import { useCart } from "../features/cart/cart-context";
 import { catalogService } from "../features/catalog/catalog-service";
 import { ApiError } from "../lib/http";
@@ -90,16 +91,14 @@ export function ClientStoreProductsScreen() {
         </Text>
       </View>
 
-      {error ? (
-        <View style={styles.feedbackError}>
-          <Text style={styles.feedbackErrorText}>{error}</Text>
-        </View>
-      ) : null}
+      {error ? <StateCard title={error} variant="error" /> : null}
 
       {loading ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyStateText}>Carregando produtos...</Text>
-        </View>
+        <StateCard
+          description="Montando o catálogo atualizado desta empresa."
+          title="Carregando produtos..."
+          variant="loading"
+        />
       ) : products.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyStateText}>

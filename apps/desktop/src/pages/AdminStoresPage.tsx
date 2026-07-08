@@ -3,6 +3,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { adminService } from "../features/admin/admin-service";
 import { useAuth } from "../features/auth/auth-context";
 import { ApiError } from "../lib/http";
+import { ConfirmDialog } from "../shared/ui/ConfirmDialog";
 import { PageHeader } from "../shared/ui/PageHeader";
 import type { AdminStore, OperationalStatus } from "../types/api";
 
@@ -14,6 +15,10 @@ export function AdminStoresPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pendingStatusChange, setPendingStatusChange] = useState<{
+    store: AdminStore;
+    status: OperationalStatus;
+  } | null>(null);
   const [form, setForm] = useState({
     storeName: "",
     storeAddress: "",
@@ -155,14 +160,16 @@ export function AdminStoresPage() {
         </button>
       </form>
 
-      {message ? <p className="success-text">{message}</p> : null}
-      {error ? <p className="error-text">{error}</p> : null}
+      {message ? <div className="feedback feedback-success">{message}</div> : null}
+      {error ? <div className="feedback feedback-error">{error}</div> : null}
 
       <div className="panel data-table">
         {isLoading ? (
-          <div className="screen-state">Carregando empresas...</div>
+          <div className="screen-state state-loading">Carregando empresas...</div>
         ) : stores.length === 0 ? (
-          <div className="screen-state">Nenhuma empresa cadastrada.</div>
+          <div className="empty-state">
+            Nenhuma empresa cadastrada. Crie a primeira loja para iniciar a operação.
+          </div>
         ) : (
           <table>
             <thead>
@@ -188,10 +195,10 @@ export function AdminStoresPage() {
                   <td>
                     <select
                       onChange={(event) =>
-                        void handleStatusChange(
-                          store.id,
-                          event.target.value as OperationalStatus
-                        )
+                        setPendingStatusChange({
+                          store,
+                          status: event.target.value as OperationalStatus
+                        })
                       }
                       value={store.status}
                     >
@@ -208,6 +215,21 @@ export function AdminStoresPage() {
           </table>
         )}
       </div>
+
+      {pendingStatusChange ? (
+        <ConfirmDialog
+          confirmLabel={`Alterar para ${statusLabel(pendingStatusChange.status)}`}
+          description={`A empresa "${pendingStatusChange.store.name}" ficará como ${statusLabel(pendingStatusChange.status).toLowerCase()}. Isso pode bloquear operações da loja e ocultá-la para clientes.`}
+          onCancel={() => setPendingStatusChange(null)}
+          onConfirm={() => {
+            const nextChange = pendingStatusChange;
+            setPendingStatusChange(null);
+            void handleStatusChange(nextChange.store.id, nextChange.status);
+          }}
+          title="Alterar status da empresa?"
+          tone={pendingStatusChange.status === "ACTIVE" ? "warning" : "danger"}
+        />
+      ) : null}
     </section>
   );
 }

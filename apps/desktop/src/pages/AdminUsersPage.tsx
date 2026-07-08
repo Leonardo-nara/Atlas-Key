@@ -3,6 +3,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { adminService } from "../features/admin/admin-service";
 import { useAuth } from "../features/auth/auth-context";
 import { ApiError } from "../lib/http";
+import { ConfirmDialog } from "../shared/ui/ConfirmDialog";
 import { PageHeader } from "../shared/ui/PageHeader";
 import type { AdminUser, OperationalStatus } from "../types/api";
 
@@ -15,6 +16,10 @@ export function AdminUsersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pendingStatusChange, setPendingStatusChange] = useState<{
+    user: AdminUser;
+    status: OperationalStatus;
+  } | null>(null);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -152,14 +157,16 @@ export function AdminUsersPage() {
         </button>
       </form>
 
-      {message ? <p className="success-text">{message}</p> : null}
-      {error ? <p className="error-text">{error}</p> : null}
+      {message ? <div className="feedback feedback-success">{message}</div> : null}
+      {error ? <div className="feedback feedback-error">{error}</div> : null}
 
       <div className="panel data-table">
         {isLoading ? (
-          <div className="screen-state">Carregando usuarios...</div>
+          <div className="screen-state state-loading">Carregando usuarios...</div>
         ) : users.length === 0 ? (
-          <div className="screen-state">Nenhum usuario cadastrado.</div>
+          <div className="empty-state">
+            Nenhum usuário cadastrado para administração ou suporte.
+          </div>
         ) : (
           <table>
             <thead>
@@ -182,10 +189,10 @@ export function AdminUsersPage() {
                   <td>
                     <select
                       onChange={(event) =>
-                        void handleStatusChange(
-                          user.id,
-                          event.target.value as OperationalStatus
-                        )
+                        setPendingStatusChange({
+                          user,
+                          status: event.target.value as OperationalStatus
+                        })
                       }
                       value={user.status}
                     >
@@ -202,6 +209,21 @@ export function AdminUsersPage() {
           </table>
         )}
       </div>
+
+      {pendingStatusChange ? (
+        <ConfirmDialog
+          confirmLabel={`Alterar para ${statusLabel(pendingStatusChange.status)}`}
+          description={`O usuário "${pendingStatusChange.user.name}" ficará como ${statusLabel(pendingStatusChange.status).toLowerCase()}. Se for suspenso ou inativado, o acesso será bloqueado.`}
+          onCancel={() => setPendingStatusChange(null)}
+          onConfirm={() => {
+            const nextChange = pendingStatusChange;
+            setPendingStatusChange(null);
+            void handleStatusChange(nextChange.user.id, nextChange.status);
+          }}
+          title="Alterar status do usuário?"
+          tone={pendingStatusChange.status === "ACTIVE" ? "warning" : "danger"}
+        />
+      ) : null}
     </section>
   );
 }

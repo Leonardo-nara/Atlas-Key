@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import type { Product } from "../../types/api";
 import { toMediaUrl } from "../../lib/media-url";
+import { ConfirmDialog } from "../../shared/ui/ConfirmDialog";
 import type { ProductInput } from "./products-service";
 
 const MAX_PRODUCT_IMAGE_FILE_SIZE = 3 * 1024 * 1024;
@@ -40,6 +41,7 @@ export function ProductForm({
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [removeExistingImage, setRemoveExistingImage] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [confirmImageRemoval, setConfirmImageRemoval] = useState(false);
 
   useEffect(() => {
     if (!initialValue) {
@@ -48,6 +50,7 @@ export function ProductForm({
       setSelectedImageFile(null);
       setRemoveExistingImage(false);
       setPreviewUrl(null);
+      setConfirmImageRemoval(false);
       return;
     }
 
@@ -63,6 +66,7 @@ export function ProductForm({
     setSelectedImageFile(null);
     setRemoveExistingImage(false);
     setPreviewUrl(toMediaUrl(initialValue.imageUrl));
+    setConfirmImageRemoval(false);
   }, [initialValue]);
 
   useEffect(() => {
@@ -197,13 +201,7 @@ export function ProductForm({
           {hasImage ? (
             <button
               className="ghost-button"
-              onClick={() => {
-                setForm((current) => ({ ...current, imageUrl: "" }));
-                setSelectedImageFile(null);
-                setPreviewUrl(null);
-                setRemoveExistingImage(true);
-                setLocalError(null);
-              }}
+              onClick={() => setConfirmImageRemoval(true)}
               type="button"
             >
               Remover imagem
@@ -250,6 +248,23 @@ export function ProductForm({
       <button className="primary-button" disabled={submitting} type="submit">
         {submitting ? "Salvando..." : initialValue ? "Salvar alterações" : "Criar produto"}
       </button>
+      {confirmImageRemoval ? (
+        <ConfirmDialog
+          confirmLabel="Remover imagem"
+          description="A imagem atual será removida do produto quando você salvar as alterações."
+          onCancel={() => setConfirmImageRemoval(false)}
+          onConfirm={() => {
+            setForm((current) => ({ ...current, imageUrl: "" }));
+            setSelectedImageFile(null);
+            setPreviewUrl(null);
+            setRemoveExistingImage(true);
+            setLocalError(null);
+            setConfirmImageRemoval(false);
+          }}
+          title="Remover imagem do produto?"
+          tone="danger"
+        />
+      ) : null}
     </form>
   );
 }

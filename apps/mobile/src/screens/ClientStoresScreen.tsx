@@ -5,6 +5,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import { ScreenContainer } from "../components/ScreenContainer";
 import { SectionHeader } from "../components/SectionHeader";
+import { StateCard } from "../components/StateCard";
 import { catalogService } from "../features/catalog/catalog-service";
 import { ApiError } from "../lib/http";
 import { toMediaUrl } from "../lib/media-url";
@@ -71,21 +72,20 @@ export function ClientStoresScreen() {
       </View>
 
       {error ? (
-        <View style={styles.feedbackError}>
-          <Text style={styles.feedbackErrorText}>{error}</Text>
-        </View>
+        <StateCard title={error} variant="error" />
       ) : null}
 
       {loading ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyStateText}>Carregando empresas...</Text>
-        </View>
+        <StateCard
+          description="Buscando empresas ativas para o cliente."
+          title="Carregando empresas..."
+          variant="loading"
+        />
       ) : stores.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyStateText}>
-            Nenhuma empresa encontrada no momento.
-          </Text>
-        </View>
+        <StateCard
+          description="Assim que uma loja ativa estiver disponível, ela aparecerá nesta lista."
+          title="Nenhuma empresa encontrada no momento."
+        />
       ) : (
         stores.map((store) => (
           <Pressable
@@ -197,23 +197,4 @@ const styles = StyleSheet.create({
     color: mobileTheme.colors.textMuted,
     lineHeight: 20
   },
-  emptyState: {
-    padding: 18,
-    borderRadius: mobileTheme.radii.md,
-    backgroundColor: mobileTheme.colors.surfaceMuted,
-    borderWidth: 1,
-    borderColor: mobileTheme.colors.border
-  },
-  emptyStateText: {
-    color: mobileTheme.colors.textMuted,
-    textAlign: "center"
-  },
-  feedbackError: {
-    padding: 12,
-    borderRadius: mobileTheme.radii.sm,
-    backgroundColor: mobileTheme.colors.dangerSoft
-  },
-  feedbackErrorText: {
-    color: mobileTheme.colors.danger
-  }
 });

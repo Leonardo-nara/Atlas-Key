@@ -31,6 +31,7 @@ export function AvailableOrdersScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [actingOrderId, setActingOrderId] = useState<string | null>(null);
+  const [newOrderIds, setNewOrderIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -73,7 +74,15 @@ export function AvailableOrdersScreen() {
       return;
     }
 
-    return subscribeToOrderEvents(() => {
+    return subscribeToOrderEvents((payload) => {
+      if (payload.event === "orders.created") {
+        setNewOrderIds((current) => [
+          payload.order.id,
+          ...current.filter((orderId) => orderId !== payload.order.id)
+        ].slice(0, 8));
+        setSuccessMessage("Novo pedido disponível para entrega.");
+      }
+
       void loadOrders();
     });
   }, [loadOrders, subscribeToOrderEvents, token]);
@@ -179,6 +188,7 @@ export function AvailableOrdersScreen() {
                     actionLabel={actingOrderId === order.id ? "Aceitando..." : "Aceitar pedido"}
                     audience="courier"
                     disabled={actingOrderId === order.id}
+                    highlighted={newOrderIds.includes(order.id)}
                     onAction={() => void handleAccept(order.id)}
                     order={order}
                   />

@@ -368,6 +368,8 @@ export function OrdersPage() {
   const [proofReasonDraft, setProofReasonDraft] = useState("");
   const [proofError, setProofError] = useState<string | null>(null);
   const [lastRealtimeAt, setLastRealtimeAt] = useState<Date | null>(null);
+  const [newOrderNotice, setNewOrderNotice] = useState<string | null>(null);
+  const [newRealtimeOrderIds, setNewRealtimeOrderIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -385,8 +387,17 @@ export function OrdersPage() {
       return;
     }
 
-    return subscribeToOrderEvents(() => {
+    return subscribeToOrderEvents((payload) => {
       setLastRealtimeAt(new Date());
+
+      if (payload.event === "orders.created") {
+        setNewOrderNotice(`Novo pedido de ${payload.order.customerName}.`);
+        setNewRealtimeOrderIds((current) => [
+          payload.order.id,
+          ...current.filter((orderId) => orderId !== payload.order.id)
+        ].slice(0, 8));
+      }
+
       void loadData({ silent: true });
 
       if (selectedOrderId) {
@@ -394,6 +405,20 @@ export function OrdersPage() {
       }
     });
   }, [selectedOrderId, subscribeToOrderEvents, token, page, statusFilter]);
+
+  useEffect(() => {
+    if (!newOrderNotice) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setNewOrderNotice(null);
+    }, 5000);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [newOrderNotice]);
 
   useEffect(() => {
     if (!successMessage) {
@@ -839,6 +864,11 @@ export function OrdersPage() {
       {successMessage ? (
         <div className="feedback feedback-success">{successMessage}</div>
       ) : null}
+      {newOrderNotice ? (
+        <div className="feedback feedback-info order-realtime-banner">
+          {newOrderNotice} A lista foi atualizada automaticamente.
+        </div>
+      ) : null}
 
       <div className="orders-grid">
         <OrderForm
@@ -912,7 +942,8 @@ export function OrdersPage() {
                     "order-card",
                     selectedOrderId === order.id ? "order-card-selected" : "",
                     isOrderDelayed(order) ? "order-card-delayed" : "",
-                    isOrderAwaitingConfirmation(order) ? "order-card-awaiting" : ""
+                    isOrderAwaitingConfirmation(order) ? "order-card-awaiting" : "",
+                    newRealtimeOrderIds.includes(order.id) ? "order-card-new" : ""
                   ]
                     .filter(Boolean)
                     .join(" ")}

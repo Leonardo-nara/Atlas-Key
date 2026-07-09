@@ -62,6 +62,54 @@ function formatPaymentProofStatus(status?: Order["paymentProofStatus"]) {
   return "Comprovante ainda não enviado";
 }
 
+function getPaymentStateText(order: Order) {
+  if (order.paymentStatus === "PAID") {
+    return "Pago";
+  }
+
+  if (order.paymentProofStatus === "SUBMITTED") {
+    return "Pagamento em análise";
+  }
+
+  if (order.paymentProofStatus === "REJECTED") {
+    return "Comprovante recusado";
+  }
+
+  if (order.paymentMethod === "PIX_MANUAL") {
+    return "Aguardando pagamento Pix";
+  }
+
+  return "Aguardando pagamento";
+}
+
+function getPaymentStateStyle(order: Order) {
+  if (order.paymentStatus === "PAID" || order.paymentProofStatus === "APPROVED") {
+    return {
+      badge: styles.statusBadgeSuccess,
+      text: styles.statusBadgeTextSuccess
+    };
+  }
+
+  if (order.paymentProofStatus === "REJECTED") {
+    return {
+      badge: styles.statusBadgeDanger,
+      text: styles.statusBadgeTextDanger
+    };
+  }
+
+  if (order.paymentProofStatus === "SUBMITTED") {
+    return {
+      badge: styles.statusBadgePrimary,
+      text: styles.statusBadgeTextPrimary
+    };
+  }
+
+  return {
+    badge: styles.statusBadgeWarning,
+    text: styles.statusBadgeTextWarning
+  };
+}
+
 function formatFileSize(size?: number | null) {
   if (!size) {
     return "tamanho não informado";
@@ -95,6 +143,7 @@ export function ClientOrdersScreen() {
   const [proofDrafts, setProofDrafts] = useState<Record<string, PaymentProofDraft>>({});
   const [proofSubmittingOrderId, setProofSubmittingOrderId] = useState<string | null>(null);
   const [proofError, setProofError] = useState<string | null>(null);
+  const [realtimeMessage, setRealtimeMessage] = useState<string | null>(null);
 
   const loadOrders = useCallback(async () => {
     if (!token) {
@@ -127,10 +176,30 @@ export function ClientOrdersScreen() {
       return;
     }
 
-    return subscribeToOrderEvents(() => {
+    return subscribeToOrderEvents((payload) => {
+      if (
+        payload.event === "orders.accepted" ||
+        payload.event === "orders.status_updated" ||
+        payload.event === "orders.cancelled"
+      ) {
+        setRealtimeMessage("Seu pedido foi atualizado em tempo real.");
+      }
+
       void loadOrders();
     });
   }, [loadOrders, subscribeToOrderEvents, token]);
+
+  useEffect(() => {
+    if (!realtimeMessage) {
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      setRealtimeMessage(null);
+    }, 3500);
+
+    return () => clearTimeout(timeout);
+  }, [realtimeMessage]);
 
   function getProofDraft(orderId: string): PaymentProofDraft {
     return proofDrafts[orderId] ?? {
@@ -315,6 +384,7 @@ export function ClientOrdersScreen() {
           showsVerticalScrollIndicator={false}
         >
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          {realtimeMessage ? <Text style={styles.infoText}>{realtimeMessage}</Text> : null}
 
           {!error && orders.length === 0 ? (
             <View style={styles.emptyBox}>
@@ -324,11 +394,26 @@ export function ClientOrdersScreen() {
             </View>
           ) : null}
 
-          {orders.map((order) => (
-            <View key={order.id} style={styles.clientOrderCard}>
+          {orders.map((order) => {
+            const paymentStateStyle = getPaymentStateStyle(order);
+
+            return (
+              <View key={order.id} style={styles.clientOrderCard}>
               <OrderCard audience="client" order={order} />
               <View style={styles.statusBox}>
                 <Text style={styles.statusTitle}>{getOrderStatusText(order, "client")}</Text>
+                <View style={styles.statusBadgeRow}>
+                  <View style={[styles.statusBadge, styles.statusBadgePrimary]}>
+                    <Text style={[styles.statusBadgeText, styles.statusBadgeTextPrimary]}>
+                      {getOrderStatusText(order, "client")}
+                    </Text>
+                  </View>
+                  <View style={[styles.statusBadge, paymentStateStyle.badge]}>
+                    <Text style={[styles.statusBadgeText, paymentStateStyle.text]}>
+                      {getPaymentStateText(order)}
+                    </Text>
+                  </View>
+                </View>
                 <Text style={styles.statusText}>
                   {getFulfillmentText(order)} - Total atual R$ {order.total.toFixed(2)}
                 </Text>
@@ -478,8 +563,9 @@ export function ClientOrdersScreen() {
                 </View>
               ) : null}
               <OrderTimeline audience="client" order={order} />
-            </View>
-          ))}
+              </View>
+            );
+          })}
 
           {orders.length > 0 ? (
             <View style={styles.pagination}>
@@ -528,6 +614,12 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: mobileTheme.radii.sm
   },
+  infoText: {
+    color: mobileTheme.colors.primaryStrong,
+    backgroundColor: mobileTheme.colors.primarySoft,
+    padding: 12,
+    borderRadius: mobileTheme.radii.sm
+  },
   emptyBox: {
     padding: 18,
     borderRadius: mobileTheme.radii.md,
@@ -557,6 +649,46 @@ const styles = StyleSheet.create({
   },
   statusText: {
     color: mobileTheme.colors.textMuted
+  },
+  statusBadgeRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 8
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: mobileTheme.radii.pill
+  },
+  statusBadgeText: {
+    fontSize: 11,
+    fontWeight: "900",
+    textTransform: "uppercase"
+  },
+  statusBadgePrimary: {
+    backgroundColor: mobileTheme.colors.primarySoft
+  },
+  statusBadgeWarning: {
+    backgroundColor: mobileTheme.colors.warningSoft
+  },
+  statusBadgeSuccess: {
+    backgroundColor: mobileTheme.colors.successSoft
+  },
+  statusBadgeDanger: {
+    backgroundColor: mobileTheme.colors.dangerSoft
+  },
+  statusBadgeTextPrimary: {
+    color: mobileTheme.colors.primaryStrong
+  },
+  statusBadgeTextWarning: {
+    color: mobileTheme.colors.warning
+  },
+  statusBadgeTextSuccess: {
+    color: mobileTheme.colors.success
+  },
+  statusBadgeTextDanger: {
+    color: mobileTheme.colors.danger
   },
   pixBox: {
     padding: 14,

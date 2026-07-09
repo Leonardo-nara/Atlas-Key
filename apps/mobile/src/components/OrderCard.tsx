@@ -36,6 +36,30 @@ function getStatusVariant(label: string) {
   };
 }
 
+function getPaymentVariant(status?: Order["paymentStatus"]) {
+  if (status === "PAID") {
+    return {
+      container: styles.badgeSuccess,
+      text: styles.badgeTextSuccess,
+      label: "Pago"
+    };
+  }
+
+  if (status === "FAILED" || status === "CANCELLED" || status === "REFUNDED") {
+    return {
+      container: styles.badgeDanger,
+      text: styles.badgeTextDanger,
+      label: formatPaymentStatus(status)
+    };
+  }
+
+  return {
+    container: styles.badgeWarning,
+    text: styles.badgeTextWarning,
+    label: "Pagamento pendente"
+  };
+}
+
 function formatPaymentMethod(method?: Order["paymentMethod"]) {
   if (method === "CARD_ON_DELIVERY") {
     return "Cartão na entrega";
@@ -77,26 +101,36 @@ export function OrderCard({
   actionLabel,
   onAction,
   disabled,
+  highlighted,
   audience = actionLabel ? "courier" : "client"
 }: {
   order: Order;
   actionLabel?: string;
   onAction?: () => void;
   disabled?: boolean;
+  highlighted?: boolean;
   audience?: OrderTimelineAudience;
 }) {
   const statusLabel = getOrderStatusText(order, audience);
   const statusVariant = getStatusVariant(statusLabel);
+  const paymentVariant = getPaymentVariant(order.paymentStatus);
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, highlighted ? styles.cardHighlighted : undefined]}>
       <View style={styles.header}>
         <View style={styles.headerText}>
           <Text style={styles.customer}>{order.customerName}</Text>
           <Text style={styles.meta}>{order.customerPhone}</Text>
         </View>
-        <View style={[styles.badge, statusVariant.container]}>
-          <Text style={[styles.badgeText, statusVariant.text]}>{statusLabel}</Text>
+        <View style={styles.badgeColumn}>
+          {highlighted ? (
+            <View style={[styles.badge, styles.badgePrimary]}>
+              <Text style={[styles.badgeText, styles.badgeTextPrimary]}>Novo</Text>
+            </View>
+          ) : null}
+          <View style={[styles.badge, statusVariant.container]}>
+            <Text style={[styles.badgeText, statusVariant.text]}>{statusLabel}</Text>
+          </View>
         </View>
       </View>
 
@@ -119,6 +153,11 @@ export function OrderCard({
           Pagamento: {formatPaymentMethod(order.paymentMethod)} -{" "}
           {formatPaymentStatus(order.paymentStatus)}
         </Text>
+        <View style={[styles.badge, styles.paymentBadge, paymentVariant.container]}>
+          <Text style={[styles.badgeText, paymentVariant.text]}>
+            {paymentVariant.label}
+          </Text>
+        </View>
         {order.courier ? (
           <Text style={styles.meta}>
             Motoboy: {order.courier.name} - {order.courier.phone}
@@ -171,6 +210,10 @@ const styles = StyleSheet.create({
     borderColor: mobileTheme.colors.border,
     gap: 14,
     ...mobileShadow
+  },
+  cardHighlighted: {
+    borderColor: mobileTheme.colors.primaryStrong,
+    backgroundColor: mobileTheme.colors.primarySoft
   },
   header: {
     flexDirection: "row",
@@ -226,6 +269,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: mobileTheme.radii.pill
+  },
+  badgeColumn: {
+    alignItems: "flex-end",
+    gap: 8,
+    maxWidth: "46%"
+  },
+  paymentBadge: {
+    alignSelf: "flex-start",
+    marginTop: 2
   },
   badgeWarning: {
     backgroundColor: mobileTheme.colors.warningSoft

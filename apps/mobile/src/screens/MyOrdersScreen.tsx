@@ -48,6 +48,7 @@ export function MyOrdersScreen() {
   const [actingOrderId, setActingOrderId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [realtimeMessage, setRealtimeMessage] = useState<string | null>(null);
 
   const loadOrders = useCallback(async () => {
     if (!token) {
@@ -80,7 +81,15 @@ export function MyOrdersScreen() {
       return;
     }
 
-    return subscribeToOrderEvents(() => {
+    return subscribeToOrderEvents((payload) => {
+      if (
+        payload.event === "orders.accepted" ||
+        payload.event === "orders.status_updated" ||
+        payload.event === "orders.cancelled"
+      ) {
+        setRealtimeMessage("Lista atualizada com o status mais recente.");
+      }
+
       void loadOrders();
     });
   }, [loadOrders, subscribeToOrderEvents, token]);
@@ -96,6 +105,18 @@ export function MyOrdersScreen() {
 
     return () => clearTimeout(timeout);
   }, [successMessage]);
+
+  useEffect(() => {
+    if (!realtimeMessage) {
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      setRealtimeMessage(null);
+    }, 3000);
+
+    return () => clearTimeout(timeout);
+  }, [realtimeMessage]);
 
   async function handleStatusUpdate(orderId: string, status: "picked_up" | "delivered") {
     if (!token) {
@@ -197,6 +218,7 @@ export function MyOrdersScreen() {
           showsVerticalScrollIndicator={false}
         >
           {successMessage ? <Text style={styles.successText}>{successMessage}</Text> : null}
+          {realtimeMessage ? <Text style={styles.infoText}>{realtimeMessage}</Text> : null}
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
           {orders.length === 0 ? (
             <StateCard
@@ -313,6 +335,12 @@ const styles = StyleSheet.create({
   successText: {
     color: mobileTheme.colors.success,
     backgroundColor: mobileTheme.colors.successSoft,
+    padding: 12,
+    borderRadius: mobileTheme.radii.sm
+  },
+  infoText: {
+    color: mobileTheme.colors.primaryStrong,
+    backgroundColor: mobileTheme.colors.primarySoft,
     padding: 12,
     borderRadius: mobileTheme.radii.sm
   },

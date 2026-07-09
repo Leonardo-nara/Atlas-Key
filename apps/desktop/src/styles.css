@@ -932,6 +932,17 @@ p {
   box-shadow: inset 4px 0 0 rgba(214, 69, 65, 0.76);
 }
 
+.order-card-new {
+  background:
+    linear-gradient(135deg, rgba(62, 162, 255, 0.14), rgba(255, 255, 255, 0.9)),
+    var(--rp-surface-muted);
+  border-color: rgba(23, 119, 217, 0.32);
+}
+
+.order-realtime-banner {
+  border: 1px solid rgba(23, 119, 217, 0.16);
+}
+
 .indicator-row {
   display: flex;
   flex-wrap: wrap;

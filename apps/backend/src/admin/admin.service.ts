@@ -5,6 +5,8 @@ import {
   NotFoundException
 } from "@nestjs/common";
 import {
+  OrderPaymentStatus,
+  OrderStatus,
   Prisma,
   StoreCourierLinkStatus,
   StoreStatus,
@@ -24,6 +26,85 @@ import { UpdateAdminUserStatusDto } from "./dto/update-admin-user-status.dto";
 @Injectable()
 export class AdminService {
   constructor(private readonly prisma: PrismaService) {}
+
+  async getDashboard() {
+    const { startOfToday, startOfTomorrow } = getTodayRange();
+
+    const [
+      activeStores,
+      suspendedStores,
+      inactiveStores,
+      activeUsers,
+      activeCouriers,
+      ordersToday,
+      totalOrders,
+      pendingPayments,
+      recentStores
+    ] = await this.prisma.$transaction([
+      this.prisma.store.count({
+        where: { status: StoreStatus.ACTIVE, active: true }
+      }),
+      this.prisma.store.count({
+        where: { status: StoreStatus.SUSPENDED }
+      }),
+      this.prisma.store.count({
+        where: { status: StoreStatus.INACTIVE }
+      }),
+      this.prisma.user.count({
+        where: { status: UserStatus.ACTIVE, active: true }
+      }),
+      this.prisma.user.count({
+        where: {
+          role: PrismaUserRole.COURIER,
+          status: UserStatus.ACTIVE,
+          active: true
+        }
+      }),
+      this.prisma.order.count({
+        where: {
+          createdAt: { gte: startOfToday, lt: startOfTomorrow }
+        }
+      }),
+      this.prisma.order.count(),
+      this.prisma.order.count({
+        where: {
+          status: { not: OrderStatus.CANCELLED },
+          paymentStatus: OrderPaymentStatus.PENDING
+        }
+      }),
+      this.prisma.store.findMany({
+        orderBy: { createdAt: "desc" },
+        take: 5,
+        select: {
+          id: true,
+          name: true,
+          status: true,
+          active: true,
+          createdAt: true,
+          owner: {
+            select: {
+              id: true,
+              name: true,
+              email: true
+            }
+          }
+        }
+      })
+    ]);
+
+    return {
+      generatedAt: new Date(),
+      activeStores,
+      suspendedStores,
+      inactiveStores,
+      activeUsers,
+      activeCouriers,
+      ordersToday,
+      totalOrders,
+      pendingPayments,
+      recentStores
+    };
+  }
 
   async listAuditLogs(query: ListAdminAuditLogsQueryDto) {
     const page = query.page ?? 1;
@@ -616,4 +697,14 @@ export class AdminService {
       imageUrl: store.profileImageKey ? `/media/stores/${store.id}/image` : null
     };
   }
+}
+
+function getTodayRange(reference = new Date()) {
+  const startOfToday = new Date(reference);
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const startOfTomorrow = new Date(startOfToday);
+  startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+
+  return { startOfToday, startOfTomorrow };
 }

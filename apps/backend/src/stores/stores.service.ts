@@ -5,7 +5,15 @@ import {
   Injectable,
   NotFoundException
 } from "@nestjs/common";
-import { Prisma, StorePixKeyType, StoreStatus } from "@prisma/client";
+import {
+  OrderPaymentStatus,
+  OrderStatus,
+  Prisma,
+  StoreCourierLinkStatus,
+  StorePixKeyType,
+  StoreStatus,
+  UserStatus
+} from "@prisma/client";
 
 import { UserRole } from "../common/enums/user-role.enum";
 import { ImageStorageService } from "../common/storage/image-storage.service";
@@ -46,6 +54,93 @@ export class StoresService {
     const store = await this.getStoreByOwner(ownerUserId, role);
 
     return this.serializeStore(store);
+  }
+
+  async getDashboard(ownerUserId: string, role: UserRole) {
+    const store = await this.getStoreByOwner(ownerUserId, role);
+    const { startOfToday, startOfTomorrow } = getTodayRange();
+
+    const [
+      ordersToday,
+      pendingOrders,
+      inProgressOrders,
+      deliveredToday,
+      revenueToday,
+      pendingPayments,
+      activeProducts,
+      activeCouriers
+    ] = await this.prisma.$transaction([
+      this.prisma.order.count({
+        where: {
+          storeId: store.id,
+          createdAt: { gte: startOfToday, lt: startOfTomorrow }
+        }
+      }),
+      this.prisma.order.count({
+        where: { storeId: store.id, status: OrderStatus.PENDING }
+      }),
+      this.prisma.order.count({
+        where: {
+          storeId: store.id,
+          status: {
+            in: [
+              OrderStatus.ACCEPTED,
+              OrderStatus.ASSIGNED,
+              OrderStatus.OUT_FOR_DELIVERY
+            ]
+          }
+        }
+      }),
+      this.prisma.order.count({
+        where: {
+          storeId: store.id,
+          status: OrderStatus.DELIVERED,
+          updatedAt: { gte: startOfToday, lt: startOfTomorrow }
+        }
+      }),
+      this.prisma.order.aggregate({
+        where: {
+          storeId: store.id,
+          status: { not: OrderStatus.CANCELLED },
+          createdAt: { gte: startOfToday, lt: startOfTomorrow }
+        },
+        _sum: { total: true }
+      }),
+      this.prisma.order.count({
+        where: {
+          storeId: store.id,
+          status: { not: OrderStatus.CANCELLED },
+          paymentStatus: OrderPaymentStatus.PENDING
+        }
+      }),
+      this.prisma.product.count({
+        where: { storeId: store.id, available: true }
+      }),
+      this.prisma.storeCourierLink.count({
+        where: {
+          storeId: store.id,
+          status: StoreCourierLinkStatus.APPROVED,
+          courier: {
+            active: true,
+            status: UserStatus.ACTIVE
+          }
+        }
+      })
+    ]);
+
+    return {
+      storeId: store.id,
+      storeName: store.name,
+      generatedAt: new Date(),
+      ordersToday,
+      pendingOrders,
+      inProgressOrders,
+      deliveredToday,
+      estimatedRevenueToday: Number(revenueToday._sum.total ?? 0),
+      pendingPayments,
+      activeProducts,
+      activeCouriers
+    };
   }
 
   async uploadStoreImage(
@@ -360,6 +455,16 @@ export function normalizeDistrict(value: string) {
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/\s+/g, " ")
     .toLowerCase();
+}
+
+function getTodayRange(reference = new Date()) {
+  const startOfToday = new Date(reference);
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const startOfTomorrow = new Date(startOfToday);
+  startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+
+  return { startOfToday, startOfTomorrow };
 }
 
 function isUniqueConstraintError(error: unknown) {

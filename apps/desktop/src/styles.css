@@ -487,6 +487,86 @@ p {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
+.dashboard-stack {
+  display: grid;
+  gap: 18px;
+}
+
+.metric-card {
+  min-height: 148px;
+  align-content: space-between;
+}
+
+.metric-card-primary {
+  border-color: rgba(23, 119, 217, 0.28);
+  background:
+    linear-gradient(145deg, rgba(62, 162, 255, 0.16), rgba(255, 255, 255, 0.92)),
+    var(--rp-surface);
+}
+
+.metric-value {
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1;
+  color: var(--rp-text);
+}
+
+.dashboard-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.dashboard-recent-list {
+  display: grid;
+  gap: 12px;
+}
+
+.dashboard-recent-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 16px;
+  border: 1px solid var(--rp-line);
+  border-radius: 18px;
+  background: var(--rp-surface-muted);
+}
+
+.dashboard-recent-row p {
+  margin: 6px 0 0;
+  color: var(--rp-text-muted);
+}
+
+.dashboard-recent-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  text-align: right;
+  color: var(--rp-text-muted);
+}
+
+.dashboard-status-active {
+  background: var(--rp-success-soft);
+  color: var(--rp-success);
+}
+
+.dashboard-status-suspended {
+  background: var(--rp-warning-soft);
+  color: var(--rp-warning);
+}
+
+.dashboard-status-inactive {
+  background: rgba(18, 50, 77, 0.08);
+  color: var(--rp-text-muted);
+}
+
+.dashboard-updated-at {
+  margin: 0;
+  color: var(--rp-text-muted);
+  text-align: right;
+  font-size: 0.9rem;
+}
+
 .orders-grid {
   grid-template-columns: minmax(420px, 500px) minmax(0, 1fr);
   align-items: start;
@@ -1102,6 +1182,7 @@ p {
   .orders-page-actions,
   .page-header,
   .panel-heading,
+  .dashboard-recent-row,
   .sidebar-footer,
   .product-image-upload,
   .product-image-upload-actions {
@@ -1133,6 +1214,12 @@ p {
   .row-actions > *,
   .product-image-upload-actions > * {
     flex: 1 1 100%;
+  }
+
+  .dashboard-recent-meta,
+  .dashboard-updated-at {
+    align-items: flex-start;
+    text-align: left;
   }
 
   .order-form-item {

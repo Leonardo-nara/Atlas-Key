@@ -97,6 +97,16 @@ const ordersServiceMock = {
 };
 
 const storesServiceMock = {
+  getDashboard: () => ({
+    ordersToday: 0,
+    pendingOrders: 0,
+    inProgressOrders: 0,
+    deliveredToday: 0,
+    estimatedRevenueToday: 0,
+    pendingPayments: 0,
+    activeProducts: 0,
+    activeCouriers: 0
+  }),
   getStoreByOwner: () => ({ id: "store-1", name: "Loja", address: "Rua", active: true }),
   listDeliveryZones: () => [],
   getPixSettings: () => ({ pixEnabled: false }),
@@ -107,6 +117,17 @@ const storesServiceMock = {
 };
 
 const adminServiceMock = {
+  getDashboard: () => ({
+    activeStores: 1,
+    suspendedStores: 0,
+    inactiveStores: 0,
+    activeUsers: 1,
+    activeCouriers: 0,
+    ordersToday: 0,
+    totalOrders: 0,
+    pendingPayments: 0,
+    recentStores: []
+  }),
   listAuditLogs: () => ({
     items: [
       {
@@ -246,6 +267,8 @@ describe("backend smoke/security routes", () => {
     await expectStatus("/admin/users", 401);
     await expectStatus("/admin/couriers", 401);
     await expectStatus("/admin/audit-logs", 401);
+    await expectStatus("/admin/dashboard", 401);
+    await expectStatus("/stores/me/dashboard", 401);
   });
 
   it("bloqueia motoboy em Pix, comprovante detalhado e gestao de pagamento", async () => {
@@ -321,6 +344,8 @@ describe("backend smoke/security routes", () => {
     await expectStatus("/admin/stores", 403, { token: "client" });
     await expectStatus("/admin/stores", 403, { token: "courier" });
     await expectStatus("/admin/audit-logs", 403, { token: "store" });
+    await expectStatus("/admin/dashboard", 403, { token: "store" });
+    await expectStatus("/stores/me/dashboard", 403, { token: "platform" });
 
     const response = await request("/admin/users", { token: "platform" });
     assert.equal(response.status, 200);
@@ -328,5 +353,7 @@ describe("backend smoke/security routes", () => {
     assert.equal(JSON.stringify(payload).includes("passwordHash"), false);
 
     await expectStatus("/admin/audit-logs", 200, { token: "platform" });
+    await expectStatus("/admin/dashboard", 200, { token: "platform" });
+    await expectStatus("/stores/me/dashboard", 200, { token: "store" });
   });
 });

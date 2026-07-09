@@ -61,6 +61,46 @@ export interface Store {
   updatedAt: string;
 }
 
+export interface StoreDashboard {
+  storeId: string;
+  storeName: string;
+  generatedAt: string;
+  ordersToday: number;
+  pendingOrders: number;
+  inProgressOrders: number;
+  deliveredToday: number;
+  estimatedRevenueToday: number;
+  pendingPayments: number;
+  activeProducts: number;
+  activeCouriers: number;
+}
+
+export interface AdminDashboardRecentStore {
+  id: string;
+  name: string;
+  status: "ACTIVE" | "SUSPENDED" | "INACTIVE";
+  active: boolean;
+  createdAt: string;
+  owner?: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
+}
+
+export interface AdminDashboard {
+  generatedAt: string;
+  activeStores: number;
+  suspendedStores: number;
+  inactiveStores: number;
+  activeUsers: number;
+  activeCouriers: number;
+  ordersToday: number;
+  totalOrders: number;
+  pendingPayments: number;
+  recentStores: AdminDashboardRecentStore[];
+}
+
 export interface StoreDeliveryZone {
   id: string;
   storeId: string;

@@ -29,6 +29,11 @@ import { UpdateAdminUserStatusDto } from "./dto/update-admin-user-status.dto";
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
+  @Get("dashboard")
+  getDashboard() {
+    return this.adminService.getDashboard();
+  }
+
   @Get("audit-logs")
   listAuditLogs(@Query() query: ListAdminAuditLogsQueryDto) {
     return this.adminService.listAuditLogs(query);

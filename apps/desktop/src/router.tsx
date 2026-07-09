@@ -133,7 +133,7 @@ function HomeRoute() {
   const { user } = useAuth();
 
   if (user?.role === "PLATFORM_ADMIN") {
-    return <Navigate to="/admin/stores" replace />;
+    return <DashboardPage />;
   }
 
   if (user?.role === "STORE_ADMIN") {

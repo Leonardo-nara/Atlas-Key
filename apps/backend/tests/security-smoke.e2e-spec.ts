@@ -7,6 +7,7 @@ import {
   Injectable,
   Module,
   NotFoundException,
+  UnauthorizedException,
   ValidationPipe
 } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
@@ -25,9 +26,16 @@ import { RolesGuard } from "../src/common/guards/roles.guard";
 import { OrdersController } from "../src/orders/orders.controller";
 import { OrdersService } from "../src/orders/orders.service";
 import { PaymentGatewayService } from "../src/orders/payment-gateway.service";
+import { PaymentWebhooksController } from "../src/webhooks/payment-webhooks.controller";
 import { StoresController } from "../src/stores/stores.controller";
 import { StoresService } from "../src/stores/stores.service";
-import { OrderPaymentMethod, OrderPaymentStatus } from "@prisma/client";
+import {
+  OrderPaymentMethod,
+  OrderPaymentStatus,
+  PaymentTransactionProvider,
+  PaymentTransactionStatus,
+  Prisma
+} from "@prisma/client";
 
 const TEST_JWT_SECRET = "rotapronta-smoke-security-test-secret";
 
@@ -117,7 +125,13 @@ const paymentGatewayServiceMock = {
     throw new Error("Gateway de pagamento desativado");
   },
   getPaymentStatus: () => ({ status: "PENDING" }),
-  handleWebhook: () => ({ status: "PENDING" })
+  handleWebhook: (_payload?: unknown, headers: Record<string, string | string[] | undefined> = {}) => {
+    if (headers["asaas-access-token"] !== "valid-webhook-token") {
+      throw new UnauthorizedException("Webhook Asaas nao autorizado");
+    }
+
+    return { status: "PENDING" };
+  }
 };
 
 const storesServiceMock = {
@@ -206,7 +220,12 @@ const adminServiceMock = {
       signOptions: { expiresIn: "5m" }
     })
   ],
-  controllers: [OrdersController, StoresController, AdminController],
+  controllers: [
+    OrdersController,
+    StoresController,
+    AdminController,
+    PaymentWebhooksController
+  ],
   providers: [
     SmokeJwtStrategy,
     RolesGuard,
@@ -294,6 +313,10 @@ describe("backend smoke/security routes", () => {
     await expectStatus("/admin/audit-logs", 401);
     await expectStatus("/admin/dashboard", 401);
     await expectStatus("/stores/me/dashboard", 401);
+    await expectStatus("/webhooks/payments/asaas", 401, {
+      method: "POST",
+      body: JSON.stringify({ event: "PAYMENT_RECEIVED", payment: { id: "pay_1" } })
+    });
   });
 
   it("bloqueia motoboy em Pix, comprovante detalhado e gestao de pagamento", async () => {
@@ -380,8 +403,28 @@ describe("backend smoke/security routes", () => {
       })
     });
 
-    const webhookResult = await paymentGatewayServiceMock.handleWebhook();
+    const webhookResult = await paymentGatewayServiceMock.handleWebhook(undefined, {
+      "asaas-access-token": "valid-webhook-token"
+    });
     assert.equal(webhookResult.status, "PENDING");
+  });
+
+  it("bloqueia webhook Asaas sem token valido", async () => {
+    await expectStatus("/webhooks/payments/asaas", 401, {
+      method: "POST",
+      headers: {
+        "asaas-access-token": "invalid-token"
+      },
+      body: JSON.stringify({ event: "PAYMENT_RECEIVED", payment: { id: "pay_1" } })
+    });
+
+    await expectStatus("/webhooks/payments/asaas", 200, {
+      method: "POST",
+      headers: {
+        "asaas-access-token": "valid-webhook-token"
+      },
+      body: JSON.stringify({ event: "PAYMENT_RECEIVED", payment: { id: "pay_1" } })
+    });
   });
 
   it("retorna 400 para comprovante Pix com valor com mais de duas casas decimais", async () => {
@@ -448,5 +491,203 @@ describe("payment gateway foundation", () => {
 
     assert.equal(result.status, "PENDING");
     assert.notEqual(result.status, "PAID");
+  });
+
+  it("provider Asaas nao roda sem env obrigatoria", async () => {
+    const service = new PaymentGatewayService(
+      new ConfigService({
+        PAYMENT_GATEWAY_ENABLED: "true",
+        PAYMENT_GATEWAY_PROVIDER: "asaas",
+        ASAAS_ENV: "sandbox"
+      })
+    );
+
+    await assert.rejects(
+      () =>
+        service.createPixPayment({
+          id: "order-1",
+          paymentMethod: OrderPaymentMethod.ONLINE,
+          paymentStatus: OrderPaymentStatus.PENDING,
+          total: 25,
+          asaasCustomerId: "cus_1"
+        }),
+      /ASAAS_API_BASE_URL nao configurada/
+    );
+  });
+
+  it("webhook Asaas duplicado e idempotente", async () => {
+    const fetchOriginal = globalThis.fetch;
+    const paymentTransactionUpdateCalls: unknown[] = [];
+    const orderUpdateCalls: unknown[] = [];
+    const eventCreateCalls: unknown[] = [];
+
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          id: "pay_1",
+          status: "RECEIVED",
+          value: 50,
+          billingType: "PIX",
+          externalReference: "order-1",
+          paymentDate: "2026-07-09"
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )) as typeof fetch;
+
+    try {
+      const service = new PaymentGatewayService(
+        new ConfigService({
+          PAYMENT_GATEWAY_ENABLED: "true",
+          PAYMENT_GATEWAY_PROVIDER: "asaas",
+          ASAAS_ENV: "sandbox",
+          ASAAS_API_BASE_URL: "https://api-sandbox.asaas.com",
+          ASAAS_API_KEY: "test-api-key",
+          ASAAS_WEBHOOK_TOKEN: "valid-webhook-token"
+        }),
+        {
+          paymentTransaction: {
+            findFirst: async () => ({
+              id: "tx-1",
+              orderId: "order-1",
+              provider: PaymentTransactionProvider.ASAAS,
+              providerPaymentId: "pay_1",
+              status: PaymentTransactionStatus.PENDING,
+              amount: new Prisma.Decimal(50),
+              paidAt: null,
+              rawStatus: "PENDING",
+              metadataJson: { processedWebhookIds: ["evt-1"] },
+              order: {
+                paymentStatus: OrderPaymentStatus.PENDING
+              }
+            }),
+            update: async (args: unknown) => {
+              paymentTransactionUpdateCalls.push(args);
+              return args;
+            }
+          },
+          $transaction: async (callback: (prisma: unknown) => Promise<unknown>) =>
+            callback({
+              paymentTransaction: {
+                update: async (args: unknown) => {
+                  paymentTransactionUpdateCalls.push(args);
+                  return args;
+                }
+              },
+              order: {
+                update: async (args: unknown) => {
+                  orderUpdateCalls.push(args);
+                  return args;
+                }
+              },
+              orderEvent: {
+                create: async (args: unknown) => {
+                  eventCreateCalls.push(args);
+                  return args;
+                }
+              }
+            })
+        } as never
+      );
+
+      const result = await service.handleWebhook(
+        { id: "evt-1", event: "PAYMENT_RECEIVED", payment: { id: "pay_1" } },
+        { "asaas-access-token": "valid-webhook-token" }
+      );
+
+      assert.equal(result.status, "PENDING");
+      assert.equal(paymentTransactionUpdateCalls.length, 0);
+      assert.equal(orderUpdateCalls.length, 0);
+      assert.equal(eventCreateCalls.length, 0);
+    } finally {
+      globalThis.fetch = fetchOriginal;
+    }
+  });
+
+  it("webhook Asaas com valor divergente nao marca pedido como pago", async () => {
+    const fetchOriginal = globalThis.fetch;
+    const paymentTransactionUpdateCalls: unknown[] = [];
+    const orderUpdateCalls: unknown[] = [];
+    const eventCreateCalls: unknown[] = [];
+
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          id: "pay_1",
+          status: "RECEIVED",
+          value: 49,
+          billingType: "PIX",
+          externalReference: "order-1",
+          paymentDate: "2026-07-09"
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )) as typeof fetch;
+
+    try {
+      const service = new PaymentGatewayService(
+        new ConfigService({
+          PAYMENT_GATEWAY_ENABLED: "true",
+          PAYMENT_GATEWAY_PROVIDER: "asaas",
+          ASAAS_ENV: "sandbox",
+          ASAAS_API_BASE_URL: "https://api-sandbox.asaas.com",
+          ASAAS_API_KEY: "test-api-key",
+          ASAAS_WEBHOOK_TOKEN: "valid-webhook-token"
+        }),
+        {
+          paymentTransaction: {
+            findFirst: async () => ({
+              id: "tx-1",
+              orderId: "order-1",
+              provider: PaymentTransactionProvider.ASAAS,
+              providerPaymentId: "pay_1",
+              status: PaymentTransactionStatus.PENDING,
+              amount: new Prisma.Decimal(50),
+              paidAt: null,
+              rawStatus: "PENDING",
+              metadataJson: null,
+              order: {
+                paymentStatus: OrderPaymentStatus.PENDING
+              }
+            }),
+            update: async (args: unknown) => {
+              paymentTransactionUpdateCalls.push(args);
+              return args;
+            }
+          },
+          $transaction: async (callback: (prisma: unknown) => Promise<unknown>) =>
+            callback({
+              paymentTransaction: {
+                update: async (args: unknown) => {
+                  paymentTransactionUpdateCalls.push(args);
+                  return args;
+                }
+              },
+              order: {
+                update: async (args: unknown) => {
+                  orderUpdateCalls.push(args);
+                  return args;
+                }
+              },
+              orderEvent: {
+                create: async (args: unknown) => {
+                  eventCreateCalls.push(args);
+                  return args;
+                }
+              }
+            })
+        } as never
+      );
+
+      const result = await service.handleWebhook(
+        { id: "evt-2", event: "PAYMENT_RECEIVED", payment: { id: "pay_1" } },
+        { "asaas-access-token": "valid-webhook-token" }
+      );
+
+      assert.equal(result.status, "PENDING");
+      assert.equal(paymentTransactionUpdateCalls.length, 1);
+      assert.equal(orderUpdateCalls.length, 0);
+      assert.equal(eventCreateCalls.length, 0);
+    } finally {
+      globalThis.fetch = fetchOriginal;
+    }
   });
 });

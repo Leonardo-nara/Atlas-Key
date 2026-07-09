@@ -19,6 +19,7 @@ import { RealtimeModule } from "./realtime/realtime.module";
 import { StoreCourierLinksModule } from "./store-courier-links/store-courier-links.module";
 import { StoresModule } from "./stores/stores.module";
 import { UsersModule } from "./users/users.module";
+import { WebhooksModule } from "./webhooks/webhooks.module";
 
 @Module({
   imports: [
@@ -48,7 +49,8 @@ import { UsersModule } from "./users/users.module";
     StoreCourierLinksModule,
     RealtimeModule,
     ProductsModule,
-    OrdersModule
+    OrdersModule,
+    WebhooksModule
   ],
   controllers: [
     HealthController,

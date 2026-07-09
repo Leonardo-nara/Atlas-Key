@@ -10,6 +10,7 @@ import { PaymentProofStorageService } from "./payment-proof-storage.service";
 @Module({
   imports: [StoresModule, RealtimeModule],
   controllers: [OrdersController],
-  providers: [OrdersService, PaymentProofStorageService, PaymentGatewayService]
+  providers: [OrdersService, PaymentProofStorageService, PaymentGatewayService],
+  exports: [PaymentGatewayService]
 })
 export class OrdersModule {}

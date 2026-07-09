@@ -12,6 +12,8 @@ export class PaymentWebhooksController {
     @Body() payload: unknown,
     @Headers() headers: Record<string, string | string[] | undefined>
   ) {
-    return this.paymentGatewayService.handleWebhook(payload, headers);
+    return this.paymentGatewayService.handleWebhook(payload, headers, {
+      providerHint: "asaas"
+    });
   }
 }

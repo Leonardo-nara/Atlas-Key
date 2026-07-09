@@ -20,6 +20,7 @@ import { timingSafeEqual } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
 
 type HeadersLike = Record<string, string | string[] | undefined>;
+type WebhookProviderHint = "asaas";
 
 interface AsaasConfig {
   apiBaseUrl: string;
@@ -145,13 +146,26 @@ export class PaymentGatewayService {
 
   async handleWebhook(
     payload?: unknown,
-    headers: HeadersLike = {}
+    headers: HeadersLike = {},
+    options: { providerHint?: WebhookProviderHint } = {}
   ): Promise<PaymentGatewayStatusResult> {
+    if (options.providerHint === "asaas") {
+      this.validateAsaasWebhookToken(headers);
+      this.ensureGatewayEnabled();
+
+      if (this.resolveProvider() !== PaymentTransactionProvider.ASAAS) {
+        throw new ServiceUnavailableException("Provider Asaas nao configurado");
+      }
+
+      return this.handleAsaasWebhook(payload);
+    }
+
     this.ensureGatewayEnabled();
     const provider = this.resolveProvider();
 
     if (provider === PaymentTransactionProvider.ASAAS) {
-      return this.handleAsaasWebhook(payload, headers);
+      this.validateAsaasWebhookToken(headers);
+      return this.handleAsaasWebhook(payload);
     }
 
     return {
@@ -245,17 +259,7 @@ export class PaymentGatewayService {
     };
   }
 
-  private async handleAsaasWebhook(
-    payload: unknown,
-    headers: HeadersLike
-  ): Promise<PaymentGatewayStatusResult> {
-    const config = this.getAsaasConfig();
-    const token = this.getHeader(headers, "asaas-access-token");
-
-    if (!token || !this.safeCompare(token, config.webhookToken)) {
-      throw new UnauthorizedException("Webhook Asaas nao autorizado");
-    }
-
+  private async handleAsaasWebhook(payload: unknown): Promise<PaymentGatewayStatusResult> {
     if (!this.prismaService) {
       throw new ServiceUnavailableException("Prisma indisponivel para webhook Asaas");
     }
@@ -482,6 +486,15 @@ export class PaymentGatewayService {
       apiKey,
       webhookToken
     };
+  }
+
+  private validateAsaasWebhookToken(headers: HeadersLike) {
+    const token = this.getHeader(headers, "asaas-access-token");
+    const expectedToken = this.configService.get<string>("ASAAS_WEBHOOK_TOKEN")?.trim();
+
+    if (!token || !expectedToken || !this.safeCompare(token, expectedToken)) {
+      throw new UnauthorizedException("Webhook Asaas nao autorizado");
+    }
   }
 
   private parseAsaasWebhookPayload(payload: unknown) {

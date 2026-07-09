@@ -515,6 +515,46 @@ describe("payment gateway foundation", () => {
     );
   });
 
+  it("webhook Asaas valida token antes da feature flag", async () => {
+    const service = new PaymentGatewayService(
+      new ConfigService({
+        PAYMENT_GATEWAY_ENABLED: "false",
+        PAYMENT_GATEWAY_PROVIDER: "",
+        ASAAS_WEBHOOK_TOKEN: "valid-webhook-token"
+      })
+    );
+
+    await assert.rejects(
+      () =>
+        service.handleWebhook(
+          { event: "PAYMENT_RECEIVED", payment: { id: "pay_1" } },
+          {},
+          { providerHint: "asaas" }
+        ),
+      /Webhook Asaas nao autorizado/
+    );
+
+    await assert.rejects(
+      () =>
+        service.handleWebhook(
+          { event: "PAYMENT_RECEIVED", payment: { id: "pay_1" } },
+          { "asaas-access-token": "invalid-token" },
+          { providerHint: "asaas" }
+        ),
+      /Webhook Asaas nao autorizado/
+    );
+
+    await assert.rejects(
+      () =>
+        service.handleWebhook(
+          { event: "PAYMENT_RECEIVED", payment: { id: "pay_1" } },
+          { "asaas-access-token": "valid-webhook-token" },
+          { providerHint: "asaas" }
+        ),
+      /Gateway de pagamento desativado/
+    );
+  });
+
   it("webhook Asaas duplicado e idempotente", async () => {
     const fetchOriginal = globalThis.fetch;
     const paymentTransactionUpdateCalls: unknown[] = [];

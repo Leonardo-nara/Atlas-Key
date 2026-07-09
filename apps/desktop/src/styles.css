@@ -276,7 +276,8 @@ p {
   justify-content: space-between;
 }
 
-.audit-filter-panel {
+.audit-filter-panel,
+.operation-filter-panel {
   align-items: end;
   display: grid;
   gap: 16px;
@@ -921,6 +922,23 @@ p {
   border-color: rgba(23, 119, 217, 0.16);
 }
 
+.order-card-awaiting {
+  border-color: rgba(243, 156, 18, 0.32);
+  box-shadow: inset 4px 0 0 rgba(243, 156, 18, 0.72);
+}
+
+.order-card-delayed {
+  border-color: rgba(214, 69, 65, 0.32);
+  box-shadow: inset 4px 0 0 rgba(214, 69, 65, 0.76);
+}
+
+.indicator-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
 .order-card-head,
 .modal-header,
 .modal-actions,
@@ -1191,7 +1209,8 @@ p {
     align-items: stretch;
   }
 
-  .audit-filter-panel {
+  .audit-filter-panel,
+  .operation-filter-panel {
     grid-template-columns: 1fr;
   }
 

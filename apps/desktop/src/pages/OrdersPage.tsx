@@ -295,6 +295,37 @@ function canConfirmOrder(order: Order) {
   );
 }
 
+function isOrderAwaitingConfirmation(order: Order) {
+  return Boolean(
+    order.status === "PENDING" &&
+      !order.storeConfirmedAt &&
+      order.statusLabel === "awaiting_store_confirmation"
+  );
+}
+
+function isOrderDelayed(order: Order) {
+  if (order.status === "DELIVERED" || order.status === "CANCELLED") {
+    return false;
+  }
+
+  const createdAt = new Date(order.createdAt).getTime();
+  const ageInMinutes = (Date.now() - createdAt) / 60000;
+
+  if (isOrderAwaitingConfirmation(order)) {
+    return ageInMinutes >= 20;
+  }
+
+  return ageInMinutes >= 60;
+}
+
+function normalizeSearch(value: string) {
+  return value
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
 function parseMoneyDraft(value: string) {
   const trimmedValue = value.trim();
 
@@ -317,6 +348,7 @@ export function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState<
     "all" | "pending" | "accepted" | "picked_up" | "delivered" | "cancelled"
   >("all");
+  const [orderSearch, setOrderSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [actingOrderId, setActingOrderId] = useState<string | null>(null);
@@ -381,6 +413,33 @@ export function OrdersPage() {
     () => orders.find((order) => order.id === selectedOrderId) ?? null,
     [orders, selectedOrderId]
   );
+
+  const displayedOrders = useMemo(() => {
+    const search = normalizeSearch(orderSearch);
+
+    return [...orders]
+      .sort(
+        (firstOrder, secondOrder) =>
+          new Date(secondOrder.createdAt).getTime() -
+          new Date(firstOrder.createdAt).getTime()
+      )
+      .filter((order) => {
+        if (!search) {
+          return true;
+        }
+
+        const searchable = normalizeSearch(
+          [
+            order.id,
+            order.customerName,
+            order.customerPhone,
+            order.customerAddress
+          ].join(" ")
+        );
+
+        return searchable.includes(search);
+      });
+  }, [orderSearch, orders]);
 
   async function loadData(options?: { silent?: boolean }) {
     if (!token) {
@@ -766,12 +825,12 @@ export function OrdersPage() {
               }}
               value={statusFilter}
             >
-              <option value="all">Todos os status</option>
-              <option value="pending">Pendente</option>
-              <option value="accepted">Aceito</option>
-              <option value="picked_up">Em entrega</option>
-              <option value="delivered">Entregue</option>
-              <option value="cancelled">Cancelado</option>
+              <option value="all">Todos</option>
+              <option value="pending">Pendentes</option>
+              <option value="accepted">Em preparo</option>
+              <option value="picked_up">Saiu para entrega</option>
+              <option value="delivered">Entregues</option>
+              <option value="cancelled">Cancelados</option>
             </select>
           </div>
         }
@@ -791,7 +850,10 @@ export function OrdersPage() {
 
         <div className="panel">
           <div className="panel-heading">
-            <h3>Lista de pedidos</h3>
+            <div>
+              <h3>Lista de pedidos</h3>
+              <p className="muted-text">Mais recentes primeiro</p>
+            </div>
             <div className="pagination-controls">
               <button
                 className="ghost-button"
@@ -819,6 +881,17 @@ export function OrdersPage() {
             </div>
           </div>
 
+          <div className="operation-filter-panel">
+            <label className="field">
+              <span>Pesquisa rápida</span>
+              <input
+                onChange={(event) => setOrderSearch(event.target.value)}
+                placeholder="Número, cliente ou telefone"
+                value={orderSearch}
+              />
+            </label>
+          </div>
+
           {error ? <div className="feedback feedback-error">{error}</div> : null}
 
           {loading ? (
@@ -827,11 +900,22 @@ export function OrdersPage() {
             <div className="empty-state">
               Nenhum pedido por aqui ainda. Crie o primeiro para iniciar a operação.
             </div>
+          ) : displayedOrders.length === 0 ? (
+            <div className="empty-state">
+              Nenhum pedido encontrado para a pesquisa ou filtro selecionado.
+            </div>
           ) : (
             <div className="stack-list">
-              {orders.map((order) => (
+              {displayedOrders.map((order) => (
                 <article
-                  className={`order-card ${selectedOrderId === order.id ? "order-card-selected" : ""}`}
+                  className={[
+                    "order-card",
+                    selectedOrderId === order.id ? "order-card-selected" : "",
+                    isOrderDelayed(order) ? "order-card-delayed" : "",
+                    isOrderAwaitingConfirmation(order) ? "order-card-awaiting" : ""
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
                   key={order.id}
                   onClick={() => setSelectedOrderId(order.id)}
                 >
@@ -846,6 +930,16 @@ export function OrdersPage() {
                   </div>
 
                   <p className="muted-text">{formatFulfillmentType(order)}</p>
+                  {isOrderAwaitingConfirmation(order) ? (
+                    <div className="feedback feedback-warning">
+                      Aguardando confirmação da loja.
+                    </div>
+                  ) : null}
+                  {isOrderDelayed(order) ? (
+                    <div className="feedback feedback-error">
+                      Pedido possivelmente atrasado. Verifique o andamento.
+                    </div>
+                  ) : null}
                   <p>{order.customerAddress}</p>
                   <p className="muted-text">
                     Pagamento: {formatPaymentMethod(order.paymentMethod)} ·{" "}

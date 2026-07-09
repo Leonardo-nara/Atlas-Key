@@ -160,6 +160,11 @@ export class AdminService {
             orders: true,
             courierLinks: true
           }
+        },
+        orders: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: { createdAt: true }
         }
       }
     });
@@ -686,6 +691,7 @@ export class AdminService {
     pixEnabled?: boolean;
     createdAt: Date;
     updatedAt: Date;
+    orders?: Array<{ createdAt: Date }>;
     owner: ReturnType<AdminService["safeUserSelect"]> extends infer T
       ? { [K in keyof T]: unknown }
       : never;
@@ -693,6 +699,8 @@ export class AdminService {
   }) {
     return {
       ...store,
+      lastOrderAt: store.orders?.[0]?.createdAt ?? null,
+      orders: undefined,
       profileImageKey: undefined,
       imageUrl: store.profileImageKey ? `/media/stores/${store.id}/image` : null
     };

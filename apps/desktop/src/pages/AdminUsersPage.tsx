@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { adminService } from "../features/admin/admin-service";
 import { useAuth } from "../features/auth/auth-context";
@@ -14,6 +14,8 @@ export function AdminUsersPage() {
   const { token } = useAuth();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<OperationalStatus | "ALL">("ALL");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pendingStatusChange, setPendingStatusChange] = useState<{
@@ -31,6 +33,34 @@ export function AdminUsersPage() {
   useEffect(() => {
     void loadUsers();
   }, [token]);
+
+  const displayedUsers = useMemo(() => {
+    const normalizedSearch = normalizeSearch(search);
+
+    return [...users]
+      .sort((firstUser, secondUser) =>
+        firstUser.name.localeCompare(secondUser.name, "pt-BR")
+      )
+      .filter((user) => {
+        if (statusFilter !== "ALL" && user.status !== statusFilter) {
+          return false;
+        }
+
+        if (!normalizedSearch) {
+          return true;
+        }
+
+        return normalizeSearch(
+          [
+            user.name,
+            user.email,
+            user.phone,
+            roleLabel(user.role),
+            user.ownedStore?.name
+          ].join(" ")
+        ).includes(normalizedSearch);
+      });
+  }, [search, statusFilter, users]);
 
   async function loadUsers() {
     if (!token) {
@@ -161,11 +191,39 @@ export function AdminUsersPage() {
       {error ? <div className="feedback feedback-error">{error}</div> : null}
 
       <div className="panel data-table">
+        <div className="operation-filter-panel">
+          <label className="field">
+            <span>Pesquisar usuario</span>
+            <input
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Nome, email, telefone ou perfil"
+              value={search}
+            />
+          </label>
+          <label className="field">
+            <span>Status</span>
+            <select
+              onChange={(event) =>
+                setStatusFilter(event.target.value as OperationalStatus | "ALL")
+              }
+              value={statusFilter}
+            >
+              <option value="ALL">Todos</option>
+              <option value="ACTIVE">Ativos</option>
+              <option value="SUSPENDED">Suspensos</option>
+              <option value="INACTIVE">Inativos</option>
+            </select>
+          </label>
+        </div>
         {isLoading ? (
           <div className="screen-state state-loading">Carregando usuarios...</div>
         ) : users.length === 0 ? (
           <div className="empty-state">
             Nenhum usuário cadastrado para administração ou suporte.
+          </div>
+        ) : displayedUsers.length === 0 ? (
+          <div className="empty-state">
+            Nenhum usuario encontrado para os filtros selecionados.
           </div>
         ) : (
           <table>
@@ -178,7 +236,7 @@ export function AdminUsersPage() {
               </tr>
             </thead>
             <tbody>
-              {users.map((user) => (
+              {displayedUsers.map((user) => (
                 <tr key={user.id}>
                   <td>
                     <strong>{user.name}</strong>
@@ -258,4 +316,12 @@ function roleLabel(role: AdminUser["role"]) {
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof ApiError ? error.message : fallback;
+}
+
+function normalizeSearch(value: string) {
+  return value
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
 }

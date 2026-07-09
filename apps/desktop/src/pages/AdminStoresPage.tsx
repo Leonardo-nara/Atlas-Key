@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { adminService } from "../features/admin/admin-service";
 import { useAuth } from "../features/auth/auth-context";
@@ -13,6 +13,8 @@ export function AdminStoresPage() {
   const { token } = useAuth();
   const [stores, setStores] = useState<AdminStore[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<OperationalStatus | "ALL">("ALL");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pendingStatusChange, setPendingStatusChange] = useState<{
@@ -31,6 +33,33 @@ export function AdminStoresPage() {
   useEffect(() => {
     void loadStores();
   }, [token]);
+
+  const displayedStores = useMemo(() => {
+    const normalizedSearch = normalizeSearch(search);
+
+    return [...stores]
+      .sort((firstStore, secondStore) =>
+        firstStore.name.localeCompare(secondStore.name, "pt-BR")
+      )
+      .filter((store) => {
+        if (statusFilter !== "ALL" && store.status !== statusFilter) {
+          return false;
+        }
+
+        if (!normalizedSearch) {
+          return true;
+        }
+
+        return normalizeSearch(
+          [
+            store.name,
+            store.address,
+            store.owner?.name,
+            store.owner?.email
+          ].join(" ")
+        ).includes(normalizedSearch);
+      });
+  }, [search, statusFilter, stores]);
 
   async function loadStores() {
     if (!token) {
@@ -164,11 +193,39 @@ export function AdminStoresPage() {
       {error ? <div className="feedback feedback-error">{error}</div> : null}
 
       <div className="panel data-table">
+        <div className="operation-filter-panel">
+          <label className="field">
+            <span>Pesquisar empresa</span>
+            <input
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Empresa, dono ou email"
+              value={search}
+            />
+          </label>
+          <label className="field">
+            <span>Status</span>
+            <select
+              onChange={(event) =>
+                setStatusFilter(event.target.value as OperationalStatus | "ALL")
+              }
+              value={statusFilter}
+            >
+              <option value="ALL">Todos</option>
+              <option value="ACTIVE">Ativas</option>
+              <option value="SUSPENDED">Suspensas</option>
+              <option value="INACTIVE">Inativas</option>
+            </select>
+          </label>
+        </div>
         {isLoading ? (
           <div className="screen-state state-loading">Carregando empresas...</div>
         ) : stores.length === 0 ? (
           <div className="empty-state">
             Nenhuma empresa cadastrada. Crie a primeira loja para iniciar a operação.
+          </div>
+        ) : displayedStores.length === 0 ? (
+          <div className="empty-state">
+            Nenhuma empresa encontrada para os filtros selecionados.
           </div>
         ) : (
           <table>
@@ -181,11 +238,21 @@ export function AdminStoresPage() {
               </tr>
             </thead>
             <tbody>
-              {stores.map((store) => (
+              {displayedStores.map((store) => (
                 <tr key={store.id}>
                   <td>
                     <strong>{store.name}</strong>
                     <p>{store.address}</p>
+                    <div className="indicator-row">
+                      {store.status === "SUSPENDED" ? (
+                        <span className="pill dashboard-status-suspended">
+                          Empresa suspensa
+                        </span>
+                      ) : null}
+                      {isStoreWithoutRecentOrders(store) ? (
+                        <span className="pill pill-muted">Sem pedidos recentes</span>
+                      ) : null}
+                    </div>
                   </td>
                   <td>
                     <strong>{store.owner?.name ?? "Sem dono"}</strong>
@@ -248,4 +315,23 @@ function statusLabel(status: OperationalStatus) {
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof ApiError ? error.message : fallback;
+}
+
+function normalizeSearch(value: string) {
+  return value
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function isStoreWithoutRecentOrders(store: AdminStore) {
+  if (!store.lastOrderAt) {
+    return true;
+  }
+
+  const lastOrderAt = new Date(store.lastOrderAt).getTime();
+  const daysSinceLastOrder = (Date.now() - lastOrderAt) / 86_400_000;
+
+  return daysSinceLastOrder >= 30;
 }

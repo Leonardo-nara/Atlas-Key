@@ -315,6 +315,7 @@ export type OperationalStatus = "ACTIVE" | "SUSPENDED" | "INACTIVE";
 export interface AdminStore extends Store {
   status: OperationalStatus;
   owner?: AuthUser;
+  lastOrderAt?: string | null;
   _count?: {
     products?: number;
     orders?: number;

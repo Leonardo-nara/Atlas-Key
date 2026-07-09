@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { adminService } from "../features/admin/admin-service";
 import { useAuth } from "../features/auth/auth-context";
@@ -13,6 +13,8 @@ export function AdminCouriersPage() {
   const { token } = useAuth();
   const [couriers, setCouriers] = useState<AdminCourier[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<OperationalStatus | "ALL">("ALL");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pendingStatusChange, setPendingStatusChange] = useState<{
@@ -28,6 +30,35 @@ export function AdminCouriersPage() {
   useEffect(() => {
     void loadCouriers();
   }, [token]);
+
+  const displayedCouriers = useMemo(() => {
+    const normalizedSearch = normalizeSearch(search);
+
+    return [...couriers]
+      .sort((firstCourier, secondCourier) =>
+        firstCourier.name.localeCompare(secondCourier.name, "pt-BR")
+      )
+      .filter((courier) => {
+        if (statusFilter !== "ALL" && courier.status !== statusFilter) {
+          return false;
+        }
+
+        if (!normalizedSearch) {
+          return true;
+        }
+
+        return normalizeSearch(
+          [
+            courier.name,
+            courier.email,
+            courier.phone,
+            courier.courierProfile?.city,
+            courier.courierProfile?.vehicleModel,
+            courier.storeLinks?.map((link) => link.store.name).join(" ")
+          ].join(" ")
+        ).includes(normalizedSearch);
+      });
+  }, [couriers, search, statusFilter]);
 
   async function loadCouriers() {
     if (!token) {
@@ -88,11 +119,39 @@ export function AdminCouriersPage() {
       {error ? <div className="feedback feedback-error">{error}</div> : null}
 
       <div className="panel data-table">
+        <div className="operation-filter-panel">
+          <label className="field">
+            <span>Pesquisar motoboy</span>
+            <input
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Nome, email, cidade ou empresa"
+              value={search}
+            />
+          </label>
+          <label className="field">
+            <span>Status</span>
+            <select
+              onChange={(event) =>
+                setStatusFilter(event.target.value as OperationalStatus | "ALL")
+              }
+              value={statusFilter}
+            >
+              <option value="ALL">Todos</option>
+              <option value="ACTIVE">Ativos</option>
+              <option value="SUSPENDED">Suspensos</option>
+              <option value="INACTIVE">Inativos</option>
+            </select>
+          </label>
+        </div>
         {isLoading ? (
           <div className="screen-state state-loading">Carregando motoboys...</div>
         ) : couriers.length === 0 ? (
           <div className="empty-state">
             Nenhum motoboy cadastrado ainda. Quando houver cadastros, eles aparecerão aqui.
+          </div>
+        ) : displayedCouriers.length === 0 ? (
+          <div className="empty-state">
+            Nenhum motoboy encontrado para os filtros selecionados.
           </div>
         ) : (
           <table>
@@ -105,7 +164,7 @@ export function AdminCouriersPage() {
               </tr>
             </thead>
             <tbody>
-              {couriers.map((courier) => (
+              {displayedCouriers.map((courier) => (
                 <tr key={courier.id}>
                   <td>
                     <strong>{courier.name}</strong>
@@ -232,4 +291,12 @@ function linkStatusLabel(status: string) {
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof ApiError ? error.message : fallback;
+}
+
+function normalizeSearch(value: string) {
+  return value
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
 }

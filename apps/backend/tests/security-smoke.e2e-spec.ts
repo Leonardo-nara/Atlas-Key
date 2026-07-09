@@ -3,6 +3,7 @@ import { Readable } from "node:stream";
 import { after, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
+  BadRequestException,
   Injectable,
   Module,
   NotFoundException,
@@ -10,6 +11,7 @@ import {
 } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import type { INestApplication } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { JwtModule, JwtService } from "@nestjs/jwt";
 import { PassportModule } from "@nestjs/passport";
 import { PassportStrategy } from "@nestjs/passport";
@@ -22,8 +24,10 @@ import { JwtAuthGuard } from "../src/common/guards/jwt-auth.guard";
 import { RolesGuard } from "../src/common/guards/roles.guard";
 import { OrdersController } from "../src/orders/orders.controller";
 import { OrdersService } from "../src/orders/orders.service";
+import { PaymentGatewayService } from "../src/orders/payment-gateway.service";
 import { StoresController } from "../src/stores/stores.controller";
 import { StoresService } from "../src/stores/stores.service";
+import { OrderPaymentMethod, OrderPaymentStatus } from "@prisma/client";
 
 const TEST_JWT_SECRET = "rotapronta-smoke-security-test-secret";
 
@@ -66,8 +70,20 @@ class SmokeJwtStrategy extends PassportStrategy(Strategy) {
 }
 
 const ordersServiceMock = {
-  create: () => ({ id: "order-created" }),
-  createClientOrder: () => ({ id: "client-order-created" }),
+  create: (userId: string, role: UserRole, dto: { paymentMethod?: string }) => {
+    if (dto.paymentMethod === "ONLINE") {
+      throw new BadRequestException("Pagamento online ainda nao esta habilitado");
+    }
+
+    return { id: "order-created" };
+  },
+  createClientOrder: (userId: string, role: UserRole, dto: { paymentMethod?: string }) => {
+    if (dto.paymentMethod === "ONLINE") {
+      throw new BadRequestException("Pagamento online ainda nao esta habilitado");
+    }
+
+    return { id: "client-order-created" };
+  },
   listClientOrders: () => ({ items: [], meta: { page: 1, totalPages: 1 } }),
   list: () => ({ items: [], meta: { page: 1, totalPages: 1 } }),
   confirmOrder: () => ({ id: "order-confirmed" }),
@@ -94,6 +110,14 @@ const ordersServiceMock = {
   listCourierOrders: () => ({ items: [], meta: { page: 1, totalPages: 1 } }),
   acceptOrder: () => ({ id: "order-accepted" }),
   updateCourierOrderStatus: () => ({ id: "order-status-updated" })
+};
+
+const paymentGatewayServiceMock = {
+  createPixPayment: () => {
+    throw new Error("Gateway de pagamento desativado");
+  },
+  getPaymentStatus: () => ({ status: "PENDING" }),
+  handleWebhook: () => ({ status: "PENDING" })
 };
 
 const storesServiceMock = {
@@ -188,6 +212,7 @@ const adminServiceMock = {
     RolesGuard,
     { provide: AdminService, useValue: adminServiceMock },
     { provide: OrdersService, useValue: ordersServiceMock },
+    { provide: PaymentGatewayService, useValue: paymentGatewayServiceMock },
     { provide: StoresService, useValue: storesServiceMock }
   ]
 })
@@ -327,6 +352,38 @@ describe("backend smoke/security routes", () => {
     });
   });
 
+  it("mantem gateway automatico bloqueado e payloads de pagamento sensiveis rejeitados", async () => {
+    await expectStatus("/orders", 400, {
+      method: "POST",
+      token: "store",
+      body: JSON.stringify({
+        customerName: "Cliente Teste",
+        customerPhone: "11999999999",
+        customerAddress: "Rua Teste, 123",
+        deliveryFee: 8,
+        paymentMethod: "ONLINE",
+        items: [{ productId: "cmtestproduct123", quantity: 1 }]
+      })
+    });
+
+    await expectStatus("/orders/client", 400, {
+      method: "POST",
+      token: "client",
+      body: JSON.stringify({
+        storeId: "cmteststore123",
+        fulfillmentType: "PICKUP",
+        paymentMethod: "PIX_MANUAL",
+        paymentStatus: "PAID",
+        paidAt: new Date().toISOString(),
+        paymentProvider: "FUTURE_GATEWAY",
+        items: [{ productId: "cmtestproduct123", quantity: 1 }]
+      })
+    });
+
+    const webhookResult = await paymentGatewayServiceMock.handleWebhook();
+    assert.equal(webhookResult.status, "PENDING");
+  });
+
   it("retorna 400 para comprovante Pix com valor com mais de duas casas decimais", async () => {
     await expectStatus("/orders/order-1/payment-proof", 400, {
       method: "PATCH",
@@ -355,5 +412,41 @@ describe("backend smoke/security routes", () => {
     await expectStatus("/admin/audit-logs", 200, { token: "platform" });
     await expectStatus("/admin/dashboard", 200, { token: "platform" });
     await expectStatus("/stores/me/dashboard", 200, { token: "store" });
+  });
+});
+
+describe("payment gateway foundation", () => {
+  it("bloqueia criacao automatica quando a feature flag esta desligada", async () => {
+    const service = new PaymentGatewayService(
+      new ConfigService({
+        PAYMENT_GATEWAY_ENABLED: "false",
+        PAYMENT_GATEWAY_PROVIDER: ""
+      })
+    );
+
+    await assert.rejects(
+      () =>
+        service.createPixPayment({
+          id: "order-1",
+          paymentMethod: OrderPaymentMethod.ONLINE,
+          paymentStatus: OrderPaymentStatus.PENDING,
+          total: 25
+        }),
+      /Gateway de pagamento desativado/
+    );
+  });
+
+  it("stub nao marca pagamento como pago sem provider real", async () => {
+    const service = new PaymentGatewayService(
+      new ConfigService({
+        PAYMENT_GATEWAY_ENABLED: "true",
+        PAYMENT_GATEWAY_PROVIDER: "stub"
+      })
+    );
+
+    const result = await service.handleWebhook();
+
+    assert.equal(result.status, "PENDING");
+    assert.notEqual(result.status, "PAID");
   });
 });

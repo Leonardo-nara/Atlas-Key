@@ -86,6 +86,20 @@ enum OrderPaymentProvider {
   FUTURE_GATEWAY
 }
 
+enum PaymentTransactionProvider {
+  STUB
+  FUTURE_GATEWAY
+}
+
+enum PaymentTransactionStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELLED
+  EXPIRED
+  REFUNDED
+}
+
 enum StorePixKeyType {
   CPF
   CNPJ
@@ -382,11 +396,37 @@ model Order {
   client  User?       @relation("ClientOrders", fields: [clientId], references: [id], onDelete: SetNull)
   items   OrderItem[]
   events  OrderEvent[]
+  paymentTransactions PaymentTransaction[]
 
   @@index([storeId])
   @@index([courierId])
   @@index([clientId])
   @@map("orders")
+}
+
+model PaymentTransaction {
+  id                String                     @id @default(cuid())
+  orderId           String
+  provider          PaymentTransactionProvider
+  providerPaymentId String?
+  status            PaymentTransactionStatus   @default(PENDING)
+  amount            Decimal                    @db.Decimal(10, 2)
+  currency          String                     @default("BRL")
+  qrCodeText        String?
+  qrCodeImageUrl    String?
+  expiresAt         DateTime?
+  paidAt            DateTime?
+  rawStatus         String?
+  metadataJson      Json?
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([provider, providerPaymentId])
+  @@index([status, createdAt])
+  @@map("payment_transactions")
 }
 
 model OrderItem {

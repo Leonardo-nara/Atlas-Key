@@ -182,6 +182,29 @@ export interface OrderPixPaymentInstructions {
   pixInstructions: string;
 }
 
+export type AutomaticPixPaymentStatus =
+  | "PENDING"
+  | "PAID"
+  | "FAILED"
+  | "CANCELLED"
+  | "EXPIRED"
+  | "REFUNDED";
+
+export interface OrderAutomaticPixPayment {
+  status: AutomaticPixPaymentStatus;
+  amount: number;
+  currency: "BRL";
+  qrCodeText?: string | null;
+  qrCodeImageUrl?: string | null;
+  expiresAt?: string | null;
+  paidAt?: string | null;
+}
+
+export interface ClientPaymentOptions {
+  methods: OrderPaymentMethod[];
+  automaticPixEnabled: boolean;
+}
+
 export interface Order {
   id: string;
   storeId: string;
@@ -217,6 +240,7 @@ export interface Order {
   paymentProofFileSize?: number | null;
   paymentProofUploadedAt?: string | null;
   pixPaymentInstructions?: OrderPixPaymentInstructions | null;
+  automaticPixPayment?: OrderAutomaticPixPayment | null;
   status: string;
   statusLabel?: string;
   notes?: string | null;

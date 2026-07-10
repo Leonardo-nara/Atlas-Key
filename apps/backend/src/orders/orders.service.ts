@@ -15,6 +15,7 @@ import {
   OrderPaymentProvider,
   OrderPaymentStatus,
   OrderStatus as PrismaOrderStatus,
+  PaymentTransaction,
   Prisma,
   StoreStatus,
   UserRole as PrismaUserRole
@@ -45,6 +46,7 @@ import {
   PaymentProofStorageService,
   type UploadedPaymentProofFile
 } from "./payment-proof-storage.service";
+import { PaymentGatewayService } from "./payment-gateway.service";
 
 @Injectable()
 export class OrdersService {
@@ -52,7 +54,8 @@ export class OrdersService {
     private readonly prisma: PrismaService,
     private readonly storesService: StoresService,
     private readonly ordersRealtimeService: OrdersRealtimeService,
-    private readonly paymentProofStorageService: PaymentProofStorageService
+    private readonly paymentProofStorageService: PaymentProofStorageService,
+    private readonly paymentGatewayService: PaymentGatewayService
   ) {}
 
   async create(ownerUserId: string, role: UserRole, dto: CreateOrderDto) {
@@ -104,7 +107,9 @@ export class OrdersService {
       0
     );
     const total = subtotal + dto.deliveryFee;
-    const paymentMethod = this.resolveOrderCreationPaymentMethod(dto.paymentMethod);
+    const paymentMethod = this.resolveOrderCreationPaymentMethod(dto.paymentMethod, {
+      allowOnline: false
+    });
 
     const order = await this.prisma.$transaction(async (transaction) => {
       const createdOrder = await transaction.order.create({
@@ -235,7 +240,14 @@ export class OrdersService {
     const deliveryFee = 0;
     const total = subtotal + deliveryFee;
     const fulfillmentType = dto.fulfillmentType as OrderFulfillmentType;
-    const paymentMethod = this.resolveOrderCreationPaymentMethod(dto.paymentMethod);
+    const paymentMethod = this.resolveOrderCreationPaymentMethod(dto.paymentMethod, {
+      allowOnline: true
+    });
+    const payerDocument = dto.payerDocument?.trim();
+
+    if (paymentMethod === OrderPaymentMethod.ONLINE && !payerDocument) {
+      throw new BadRequestException("Informe CPF ou CNPJ para gerar o Pix automatico.");
+    }
     const customerAddress = this.buildCustomerAddress(dto);
     const suggestedDeliveryZone =
       fulfillmentType === OrderFulfillmentType.DELIVERY
@@ -310,13 +322,86 @@ export class OrdersService {
       return createdOrder;
     });
 
-    const serializedOrder = this.serializeOrder(order, {
+    let serializedOrder = this.serializeOrder(order, {
       includePixPaymentInstructions: true,
-      includePaymentProofDetails: true
+      includePaymentProofDetails: true,
+      includeAutomaticPixPayment: true
     });
+
+    if (paymentMethod === OrderPaymentMethod.ONLINE) {
+      try {
+        const pixPayment = await this.paymentGatewayService.createPixPayment({
+          id: order.id,
+          paymentMethod: order.paymentMethod,
+          paymentStatus: order.paymentStatus,
+          total: order.total,
+          payer: {
+            name: client.name,
+            cpfCnpj: payerDocument,
+            phone: client.phone
+          },
+          description: `Pedido ${order.id} - Rotapronta`,
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
+        });
+
+        const updatedOrder = await this.prisma.$transaction(async (transaction) => {
+          await transaction.paymentTransaction.create({
+            data: {
+              orderId: order.id,
+              provider: pixPayment.provider,
+              providerPaymentId: pixPayment.providerPaymentId,
+              status: pixPayment.status,
+              amount: pixPayment.amount,
+              currency: pixPayment.currency,
+              qrCodeText: pixPayment.qrCodeText,
+              qrCodeImageUrl: pixPayment.qrCodeImageUrl,
+              expiresAt: pixPayment.expiresAt,
+              rawStatus: pixPayment.rawStatus,
+              metadataJson: pixPayment.metadataJson
+            }
+          });
+
+          return transaction.order.findUniqueOrThrow({
+            where: { id: order.id },
+            include: this.orderIncludeWithPaymentTransactions()
+          });
+        });
+
+        serializedOrder = this.serializeOrder(updatedOrder, {
+          includePixPaymentInstructions: true,
+          includePaymentProofDetails: true,
+          includeAutomaticPixPayment: true
+        });
+      } catch (error) {
+        await this.prisma.order.delete({ where: { id: order.id } }).catch(() => undefined);
+
+        if (error instanceof BadRequestException) {
+          throw error;
+        }
+
+        throw new BadRequestException(
+          "Nao foi possivel gerar o Pix automatico. Tente outra forma de pagamento."
+        );
+      }
+    }
+
     this.ordersRealtimeService.emitOrderCreated(serializedOrder);
 
     return serializedOrder;
+  }
+
+  getClientPaymentOptions(_clientUserId: string, role: UserRole) {
+    this.ensureClient(role);
+
+    return {
+      methods: [
+        OrderPaymentMethod.CASH,
+        OrderPaymentMethod.CARD_ON_DELIVERY,
+        OrderPaymentMethod.PIX_MANUAL,
+        ...(this.isAutomaticPixAvailable() ? [OrderPaymentMethod.ONLINE] : [])
+      ],
+      automaticPixEnabled: this.isAutomaticPixAvailable()
+    };
   }
 
   async list(
@@ -335,8 +420,24 @@ export class OrdersService {
 
     return this.paginateOrders(where, query, {
       includePixPaymentInstructions: true,
-      includePaymentProofDetails: true
+      includePaymentProofDetails: true,
+      includeAutomaticPixPayment: true
     });
+  }
+
+  async getPaymentTransaction(orderId: string, userId: string, role: UserRole) {
+    const order = await this.getAuthorizedOrderForPaymentTransaction(orderId, userId, role);
+    const transaction = this.getLatestPaymentTransaction(order.paymentTransactions);
+
+    return {
+      orderId: order.id,
+      paymentMethod: order.paymentMethod,
+      paymentStatus: order.paymentStatus,
+      paidAt: order.paidAt,
+      automaticPixPayment: this.serializeAutomaticPixPayment(transaction, {
+        includePixPayload: role === UserRole.CLIENT && order.clientId === userId
+      })
+    };
   }
 
   async listClientOrders(
@@ -1438,18 +1539,30 @@ export class OrdersService {
       : OrderPaymentProvider.MANUAL;
   }
 
-  private resolveOrderCreationPaymentMethod(paymentMethod?: OrderPaymentMethod) {
+  private resolveOrderCreationPaymentMethod(
+    paymentMethod?: OrderPaymentMethod,
+    options?: { allowOnline?: boolean }
+  ) {
     if (!paymentMethod) {
       return OrderPaymentMethod.CASH;
     }
 
     if (paymentMethod === OrderPaymentMethod.ONLINE) {
-      throw new BadRequestException(
-        "Pagamento online ainda nao esta disponivel para criacao de pedidos"
-      );
+      if (!options?.allowOnline || !this.isAutomaticPixAvailable()) {
+        throw new BadRequestException(
+          "Pagamento online ainda nao esta disponivel para criacao de pedidos"
+        );
+      }
     }
 
     return paymentMethod;
+  }
+
+  private isAutomaticPixAvailable() {
+    return (
+      this.paymentGatewayService.isEnabled() &&
+      this.paymentGatewayService.getConfiguredProvider().toLowerCase() === "asaas"
+    );
   }
 
   private parsePaymentProofAmount(amount?: string) {
@@ -1482,6 +1595,7 @@ export class OrdersService {
     options?: {
       includePixPaymentInstructions?: boolean;
       includePaymentProofDetails?: boolean;
+      includeAutomaticPixPayment?: boolean;
     }
   ) {
     const page = query.page ?? 1;
@@ -1494,6 +1608,14 @@ export class OrdersService {
         include: {
           items: true,
           store: true,
+          paymentTransactions: options?.includeAutomaticPixPayment
+            ? {
+                orderBy: {
+                  createdAt: "desc"
+                },
+                take: 1
+              }
+            : false,
           courier: {
             select: {
               id: true,
@@ -1537,13 +1659,21 @@ export class OrdersService {
         pixInstructions?: string | null;
       };
       courier?: { id: string; name: string; email: string; phone: string } | null;
+      paymentTransactions?: PaymentTransaction[];
     },
     options?: {
       includePixPaymentInstructions?: boolean;
       includePaymentProofDetails?: boolean;
+      includeAutomaticPixPayment?: boolean;
     }
   ) {
     const includePaymentProofDetails = Boolean(options?.includePaymentProofDetails);
+    const automaticPixPayment = options?.includeAutomaticPixPayment
+      ? this.serializeAutomaticPixPayment(
+          this.getLatestPaymentTransaction(order.paymentTransactions),
+          { includePixPayload: true }
+        )
+      : null;
 
     return {
       ...order,
@@ -1563,6 +1693,7 @@ export class OrdersService {
       pixPaymentInstructions: options?.includePixPaymentInstructions
         ? this.buildPixPaymentInstructions(order)
         : null,
+      automaticPixPayment,
       paymentProofStatus: includePaymentProofDetails
         ? order.paymentProofStatus
         : undefined,
@@ -1637,6 +1768,92 @@ export class OrdersService {
         order.store.pixInstructions ??
         "Envie o comprovante para a loja. O pagamento sera confirmado manualmente."
     };
+  }
+
+  private orderIncludeWithPaymentTransactions() {
+    return {
+      items: true,
+      store: true,
+      paymentTransactions: {
+        orderBy: {
+          createdAt: "desc" as const
+        },
+        take: 1
+      },
+      courier: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true
+        }
+      }
+    };
+  }
+
+  private getLatestPaymentTransaction(transactions?: PaymentTransaction[]) {
+    return transactions?.[0] ?? null;
+  }
+
+  private serializeAutomaticPixPayment(
+    transaction: PaymentTransaction | null,
+    options: { includePixPayload: boolean }
+  ) {
+    if (!transaction) {
+      return null;
+    }
+
+    return {
+      status: transaction.status,
+      amount: Number(transaction.amount),
+      currency: transaction.currency,
+      qrCodeText: options.includePixPayload ? transaction.qrCodeText : undefined,
+      qrCodeImageUrl: options.includePixPayload ? transaction.qrCodeImageUrl : undefined,
+      expiresAt: transaction.expiresAt,
+      paidAt: transaction.paidAt
+    };
+  }
+
+  private async getAuthorizedOrderForPaymentTransaction(
+    orderId: string,
+    userId: string,
+    role: UserRole
+  ) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        paymentTransactions: {
+          orderBy: {
+            createdAt: "desc"
+          },
+          take: 1
+        }
+      }
+    });
+
+    if (!order) {
+      throw new NotFoundException("Pedido nao encontrado");
+    }
+
+    if (role === UserRole.CLIENT) {
+      if (order.clientId !== userId) {
+        throw new NotFoundException("Pedido nao encontrado para o cliente autenticado");
+      }
+
+      return order;
+    }
+
+    if (role === UserRole.STORE_ADMIN) {
+      const store = await this.storesService.getStoreByOwner(userId, role);
+
+      if (order.storeId !== store.id) {
+        throw new NotFoundException("Pedido nao encontrado para a loja autenticada");
+      }
+
+      return order;
+    }
+
+    throw new ForbiddenException("Perfil sem acesso ao pagamento do pedido");
   }
 
   private serializeAuditEvent(

@@ -1,6 +1,11 @@
 import { mobileEnv } from "../../env";
 import { ApiError, http } from "../../lib/http";
-import type { Order, OrderPaymentMethod, PaginatedResponse } from "../../types/api";
+import type {
+  ClientPaymentOptions,
+  Order,
+  OrderPaymentMethod,
+  PaginatedResponse
+} from "../../types/api";
 
 export interface PaymentProofAttachment {
   uri: string;
@@ -27,6 +32,18 @@ export const ordersService = {
       { token }
     );
   },
+  clientPaymentOptions(token: string) {
+    return http<ClientPaymentOptions>("/orders/client/payment-options", { token });
+  },
+  paymentTransaction(token: string, orderId: string) {
+    return http<{
+      orderId: string;
+      paymentMethod: Order["paymentMethod"];
+      paymentStatus: Order["paymentStatus"];
+      paidAt?: string | null;
+      automaticPixPayment?: Order["automaticPixPayment"];
+    }>(`/orders/${orderId}/payment/transaction`, { token });
+  },
   createClient(
     token: string,
     input: {
@@ -39,7 +56,8 @@ export const ordersService = {
       addressComplement?: string;
       addressCity?: string;
       addressReference?: string;
-      paymentMethod: Exclude<OrderPaymentMethod, "ONLINE">;
+      paymentMethod: OrderPaymentMethod;
+      payerDocument?: string;
       notes?: string;
       items: Array<{ productId: string; quantity: number }>;
     }

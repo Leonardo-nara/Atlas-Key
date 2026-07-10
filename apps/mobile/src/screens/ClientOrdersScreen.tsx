@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
+import * as Clipboard from "expo-clipboard";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import {
+  Image,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -75,6 +77,21 @@ function getPaymentStateText(order: Order) {
     return "Comprovante recusado";
   }
 
+  if (order.paymentMethod === "ONLINE") {
+    if (order.automaticPixPayment?.status === "EXPIRED") {
+      return "Cobranca expirada";
+    }
+
+    if (
+      order.automaticPixPayment?.status === "FAILED" ||
+      order.automaticPixPayment?.status === "CANCELLED"
+    ) {
+      return "Pagamento nao concluido";
+    }
+
+    return "Aguardando Pix automatico";
+  }
+
   if (order.paymentMethod === "PIX_MANUAL") {
     return "Aguardando pagamento Pix";
   }
@@ -144,6 +161,7 @@ export function ClientOrdersScreen() {
   const [proofSubmittingOrderId, setProofSubmittingOrderId] = useState<string | null>(null);
   const [proofError, setProofError] = useState<string | null>(null);
   const [realtimeMessage, setRealtimeMessage] = useState<string | null>(null);
+  const [copiedPixOrderId, setCopiedPixOrderId] = useState<string | null>(null);
 
   const loadOrders = useCallback(async () => {
     if (!token) {
@@ -200,6 +218,25 @@ export function ClientOrdersScreen() {
 
     return () => clearTimeout(timeout);
   }, [realtimeMessage]);
+
+  useEffect(() => {
+    const hasPendingOnlineOrder = orders.some(
+      (order) =>
+        order.paymentMethod === "ONLINE" &&
+        order.paymentStatus === "PENDING" &&
+        order.automaticPixPayment?.status === "PENDING"
+    );
+
+    if (!token || !hasPendingOnlineOrder) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      void loadOrders();
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [loadOrders, orders, token]);
 
   function getProofDraft(orderId: string): PaymentProofDraft {
     return proofDrafts[orderId] ?? {
@@ -414,10 +451,60 @@ export function ClientOrdersScreen() {
                     </Text>
                   </View>
                 </View>
-                <Text style={styles.statusText}>
+              <Text style={styles.statusText}>
                   {getFulfillmentText(order)} - Total atual R$ {order.total.toFixed(2)}
                 </Text>
               </View>
+              {order.paymentMethod === "ONLINE" ? (
+                <View style={styles.pixBox}>
+                  <Text style={styles.pixTitle}>Pix automatico</Text>
+                  <Text style={styles.pixMeta}>
+                    {order.paymentStatus === "PAID" ||
+                    order.automaticPixPayment?.status === "PAID"
+                      ? "Pagamento confirmado."
+                      : order.automaticPixPayment?.status === "EXPIRED"
+                        ? "Cobranca expirada."
+                        : "Aguardando pagamento pelo QR Code ou copia e cola."}
+                  </Text>
+                  {order.automaticPixPayment?.expiresAt ? (
+                    <Text style={styles.pixMeta}>
+                      Expira em:{" "}
+                      {new Date(order.automaticPixPayment.expiresAt).toLocaleString("pt-BR")}
+                    </Text>
+                  ) : null}
+                  {order.paymentStatus !== "PAID" &&
+                  order.automaticPixPayment?.qrCodeImageUrl ? (
+                    <Image
+                      resizeMode="contain"
+                      source={{ uri: order.automaticPixPayment.qrCodeImageUrl }}
+                      style={styles.qrCodeImage}
+                    />
+                  ) : null}
+                  {order.paymentStatus !== "PAID" &&
+                  order.automaticPixPayment?.qrCodeText ? (
+                    <>
+                      <Text selectable style={styles.pixCopyCode}>
+                        {order.automaticPixPayment.qrCodeText}
+                      </Text>
+                      <Pressable
+                        onPress={() => {
+                          void Clipboard.setStringAsync(
+                            order.automaticPixPayment?.qrCodeText ?? ""
+                          );
+                          setCopiedPixOrderId(order.id);
+                        }}
+                        style={styles.proofButton}
+                      >
+                        <Text style={styles.proofButtonText}>
+                          {copiedPixOrderId === order.id
+                            ? "Codigo copiado"
+                            : "Copiar codigo Pix"}
+                        </Text>
+                      </Pressable>
+                    </>
+                  ) : null}
+                </View>
+              ) : null}
               {order.paymentMethod === "PIX_MANUAL" ? (
                 <View style={styles.pixBox}>
                   <Text style={styles.pixTitle}>Pix manual</Text>
@@ -710,6 +797,23 @@ const styles = StyleSheet.create({
   pixMeta: {
     color: mobileTheme.colors.textMuted,
     lineHeight: 20
+  },
+  qrCodeImage: {
+    alignSelf: "center",
+    width: 220,
+    height: 220,
+    borderRadius: mobileTheme.radii.sm,
+    backgroundColor: "#ffffff",
+    marginVertical: 10
+  },
+  pixCopyCode: {
+    color: mobileTheme.colors.text,
+    backgroundColor: mobileTheme.colors.surface,
+    borderRadius: mobileTheme.radii.sm,
+    padding: 10,
+    fontSize: 12,
+    lineHeight: 18,
+    marginVertical: 8
   },
   proofForm: {
     gap: 10,

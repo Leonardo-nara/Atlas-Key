@@ -92,6 +92,23 @@ const ordersServiceMock = {
 
     return { id: "client-order-created" };
   },
+  getClientPaymentOptions: () => ({
+    methods: ["CASH", "CARD_ON_DELIVERY", "PIX_MANUAL"],
+    automaticPixEnabled: false
+  }),
+  getPaymentTransaction: () => ({
+    orderId: "order-1",
+    paymentMethod: "ONLINE",
+    paymentStatus: "PENDING",
+    automaticPixPayment: {
+      status: "PENDING",
+      amount: 25,
+      currency: "BRL",
+      qrCodeText: "pix-copia-e-cola",
+      qrCodeImageUrl: "data:image/png;base64,abc",
+      expiresAt: new Date().toISOString()
+    }
+  }),
   listClientOrders: () => ({ items: [], meta: { page: 1, totalPages: 1 } }),
   list: () => ({ items: [], meta: { page: 1, totalPages: 1 } }),
   confirmOrder: () => ({ id: "order-confirmed" }),
@@ -304,6 +321,8 @@ describe("backend smoke/security routes", () => {
     await expectStatus("/stores/me/pix-settings", 401);
     await expectStatus("/stores/me/delivery-zones", 401);
     await expectStatus("/orders/order-1/payment-proof/file", 401);
+    await expectStatus("/orders/client/payment-options", 401);
+    await expectStatus("/orders/order-1/payment/transaction", 401);
     await expectStatus("/orders/order-1/payment/paid", 401, { method: "PATCH" });
     await expectStatus("/orders/order-1/payment-proof/approve", 401, { method: "PATCH" });
     await expectStatus("/orders/order-1/payment-proof/reject", 401, { method: "PATCH" });
@@ -324,6 +343,9 @@ describe("backend smoke/security routes", () => {
     await expectStatus("/orders/order-1/payment-proof/file", 403, { token: "courier" });
     await expectStatus("/orders/order-1/payment/paid", 403, {
       method: "PATCH",
+      token: "courier"
+    });
+    await expectStatus("/orders/order-1/payment/transaction", 403, {
       token: "courier"
     });
   });
@@ -407,6 +429,25 @@ describe("backend smoke/security routes", () => {
       "asaas-access-token": "valid-webhook-token"
     });
     assert.equal(webhookResult.status, "PENDING");
+
+    const paymentOptionsResponse = await request("/orders/client/payment-options", {
+      token: "client"
+    });
+    assert.equal(paymentOptionsResponse.status, 200);
+    const paymentOptions = (await paymentOptionsResponse.json()) as {
+      methods: string[];
+      automaticPixEnabled: boolean;
+    };
+    assert.equal(paymentOptions.automaticPixEnabled, false);
+    assert.equal(paymentOptions.methods.includes("ONLINE"), false);
+
+    const transactionResponse = await request("/orders/order-1/payment/transaction", {
+      token: "client"
+    });
+    assert.equal(transactionResponse.status, 200);
+    const transactionPayload = await transactionResponse.json();
+    assert.equal(JSON.stringify(transactionPayload).includes("providerPaymentId"), false);
+    assert.equal(JSON.stringify(transactionPayload).includes("metadataJson"), false);
   });
 
   it("bloqueia webhook Asaas sem token valido", async () => {

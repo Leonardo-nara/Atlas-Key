@@ -81,6 +81,12 @@ export class CreateClientOrderDto {
   @IsEnum(OrderPaymentMethod)
   paymentMethod?: OrderPaymentMethod;
 
+  @IsOptional()
+  @Transform(trimOptionalString)
+  @IsString()
+  @MaxLength(20)
+  payerDocument?: string;
+
   @IsArray()
   @ArrayMinSize(1)
   @ValidateNested({ each: true })

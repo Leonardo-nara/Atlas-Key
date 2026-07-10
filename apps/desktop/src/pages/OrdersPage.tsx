@@ -1143,6 +1143,20 @@ export function OrdersPage() {
                     </div>
                   )
                 ) : null}
+                {selectedOrder.paymentMethod === "ONLINE" ? (
+                  <div className="feedback feedback-info">
+                    <strong>Pix automatico:</strong>{" "}
+                    {selectedOrder.automaticPixPayment
+                      ? `status ${formatPaymentStatus(selectedOrder.paymentStatus)} · valor R$ ${selectedOrder.automaticPixPayment.amount.toFixed(2)}${
+                          selectedOrder.automaticPixPayment.expiresAt
+                            ? ` · expira em ${new Date(
+                                selectedOrder.automaticPixPayment.expiresAt
+                              ).toLocaleString("pt-BR")}`
+                            : ""
+                        }`
+                      : "cobranca ainda nao carregada."}
+                  </div>
+                ) : null}
                 {selectedOrder.paymentMethod === "PIX_MANUAL" ? (
                   <div className="order-detail-card">
                     <p className="section-kicker">Comprovante Pix</p>

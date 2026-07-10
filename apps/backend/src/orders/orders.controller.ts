@@ -55,6 +55,13 @@ export class OrdersController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.CLIENT)
+  @Get("client/payment-options")
+  clientPaymentOptions(@CurrentUser() user: AuthenticatedUser) {
+    return this.ordersService.getClientPaymentOptions(user.sub, user.role);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.CLIENT)
   @Post("client")
   createClientOrder(
     @CurrentUser() user: AuthenticatedUser,
@@ -185,6 +192,16 @@ export class OrdersController {
       dto,
       file
     );
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.STORE_ADMIN, UserRole.CLIENT)
+  @Get(":orderId/payment/transaction")
+  paymentTransaction(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("orderId") orderId: string
+  ) {
+    return this.ordersService.getPaymentTransaction(orderId, user.sub, user.role);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

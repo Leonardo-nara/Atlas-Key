@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
+import * as Clipboard from "expo-clipboard";
+import { useEffect, useMemo, useState } from "react";
 import {
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -25,7 +27,7 @@ import type {
 } from "../types/api";
 
 const paymentMethodOptions: Array<{
-  value: Exclude<OrderPaymentMethod, "ONLINE">;
+  value: OrderPaymentMethod;
   label: string;
   description: string;
 }> = [
@@ -43,6 +45,11 @@ const paymentMethodOptions: Array<{
     value: "PIX_MANUAL",
     label: "Pix manual",
     description: "A loja confirmará o pagamento manualmente."
+  },
+  {
+    value: "ONLINE",
+    label: "Pix automatico",
+    description: "Gere QR Code e Pix copia e cola para pagamento online."
   }
 ];
 
@@ -75,8 +82,12 @@ export function ClientCartScreen() {
     clearCart
   } = useCart();
   const [fulfillmentType, setFulfillmentType] = useState<"DELIVERY" | "PICKUP">("DELIVERY");
-  const [paymentMethod, setPaymentMethod] =
-    useState<Exclude<OrderPaymentMethod, "ONLINE">>("CASH");
+  const [paymentMethod, setPaymentMethod] = useState<OrderPaymentMethod>("CASH");
+  const [availablePaymentMethods, setAvailablePaymentMethods] = useState<OrderPaymentMethod[]>([
+    "CASH",
+    "CARD_ON_DELIVERY",
+    "PIX_MANUAL"
+  ]);
   const [savedAddress, setSavedAddress] = useState<ClientAddress | null>(null);
   const [addressMode, setAddressMode] = useState<"saved" | "other">("other");
   const [saveAddress, setSaveAddress] = useState(false);
@@ -86,11 +97,22 @@ export function ClientCartScreen() {
   const [city, setCity] = useState("");
   const [complement, setComplement] = useState("");
   const [reference, setReference] = useState("");
+  const [payerDocument, setPayerDocument] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [pixOrders, setPixOrders] = useState<Order[]>([]);
+  const [automaticPixOrders, setAutomaticPixOrders] = useState<Order[]>([]);
+  const [copiedOrderId, setCopiedOrderId] = useState<string | null>(null);
+
+  const visiblePaymentOptions = useMemo(
+    () =>
+      paymentMethodOptions.filter((option) =>
+        availablePaymentMethods.includes(option.value)
+      ),
+    [availablePaymentMethods]
+  );
 
   useEffect(() => {
     if (!token || user?.role !== "CLIENT") {
@@ -128,6 +150,78 @@ export function ClientCartScreen() {
     };
   }, [token, user?.role]);
 
+  useEffect(() => {
+    if (!token || user?.role !== "CLIENT") {
+      return;
+    }
+
+    let active = true;
+    const authToken = token;
+
+    async function loadPaymentOptions() {
+      try {
+        const options = await ordersService.clientPaymentOptions(authToken);
+
+        if (!active) {
+          return;
+        }
+
+        setAvailablePaymentMethods(options.methods);
+
+        if (!options.methods.includes(paymentMethod)) {
+          setPaymentMethod("CASH");
+        }
+      } catch {
+        if (active) {
+          setAvailablePaymentMethods(["CASH", "CARD_ON_DELIVERY", "PIX_MANUAL"]);
+        }
+      }
+    }
+
+    void loadPaymentOptions();
+
+    return () => {
+      active = false;
+    };
+  }, [paymentMethod, token, user?.role]);
+
+  useEffect(() => {
+    const pendingOrders = automaticPixOrders.filter(
+      (order) =>
+        order.paymentStatus === "PENDING" &&
+        order.automaticPixPayment?.status === "PENDING"
+    );
+
+    if (!token || pendingOrders.length === 0) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      for (const order of pendingOrders) {
+        void ordersService
+          .paymentTransaction(token, order.id)
+          .then((payment) => {
+            setAutomaticPixOrders((current) =>
+              current.map((entry) =>
+                entry.id === order.id
+                  ? {
+                      ...entry,
+                      paymentStatus: payment.paymentStatus,
+                      paidAt: payment.paidAt ?? entry.paidAt,
+                      automaticPixPayment:
+                        payment.automaticPixPayment ?? entry.automaticPixPayment
+                    }
+                  : entry
+              )
+            );
+          })
+          .catch(() => undefined);
+      }
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [automaticPixOrders, token]);
+
   function applyAddress(address: ClientAddress) {
     setStreet(address.street);
     setNumber(address.number);
@@ -150,6 +244,7 @@ export function ClientCartScreen() {
     setError(null);
     setSuccess(null);
     setPixOrders([]);
+    setAutomaticPixOrders([]);
 
     if (!token) {
       setError("Sessão não encontrada. Entre novamente para finalizar o pedido.");
@@ -166,6 +261,11 @@ export function ClientCartScreen() {
       (!street.trim() || !number.trim() || !district.trim() || !city.trim())
     ) {
       setError("Informe rua, número, bairro e cidade para entrega.");
+      return;
+    }
+
+    if (paymentMethod === "ONLINE" && !payerDocument.trim()) {
+      setError("Informe CPF ou CNPJ para gerar o Pix automatico.");
       return;
     }
 
@@ -205,6 +305,8 @@ export function ClientCartScreen() {
           addressCity: city.trim() || undefined,
           addressReference: reference.trim() || undefined,
           paymentMethod,
+          payerDocument:
+            paymentMethod === "ONLINE" ? payerDocument.trim() : undefined,
           notes: notes.trim() || undefined,
           items: group.items.map((item) => ({
             productId: item.product.id,
@@ -220,8 +322,12 @@ export function ClientCartScreen() {
         clearAddressDraft();
       }
       setNotes("");
+      setPayerDocument("");
       setPixOrders(
         createdOrders.filter((order) => order.paymentMethod === "PIX_MANUAL")
+      );
+      setAutomaticPixOrders(
+        createdOrders.filter((order) => order.paymentMethod === "ONLINE")
       );
       setSuccess(
         groups.length > 1
@@ -452,7 +558,7 @@ export function ClientCartScreen() {
 
           <Text style={styles.label}>Forma de pagamento</Text>
           <View style={styles.paymentOptions}>
-            {paymentMethodOptions.map((option) => (
+            {visiblePaymentOptions.map((option) => (
               <Pressable
                 key={option.value}
                 onPress={() => setPaymentMethod(option.value)}
@@ -484,6 +590,22 @@ export function ClientCartScreen() {
                 A loja confirmará o pagamento manualmente. Ainda não há QR Code,
                 webhook ou confirmação automática de Pix.
               </Text>
+            </View>
+          ) : null}
+
+          {paymentMethod === "ONLINE" ? (
+            <View style={styles.paymentNotice}>
+              <Text style={styles.paymentNoticeText}>
+                O Pix automatico gera QR Code em ambiente controlado. O status
+                muda para pago somente apos confirmacao segura do gateway.
+              </Text>
+              <TextInput
+                onChangeText={setPayerDocument}
+                placeholder="CPF ou CNPJ do pagador"
+                placeholderTextColor={mobileTheme.colors.textSoft}
+                style={styles.input}
+                value={payerDocument}
+              />
             </View>
           ) : null}
 
@@ -547,6 +669,64 @@ export function ClientCartScreen() {
               <Text style={styles.pixResultMeta}>
                 O status continuará pendente até a loja confirmar o pagamento.
               </Text>
+            </View>
+          ) : null}
+
+          {automaticPixOrders.length > 0 ? (
+            <View style={styles.automaticPixBox}>
+              <Text style={styles.pixResultTitle}>Pix automatico</Text>
+              {automaticPixOrders.map((order) => {
+                const pixPayment = order.automaticPixPayment;
+                const isPaid =
+                  order.paymentStatus === "PAID" || pixPayment?.status === "PAID";
+
+                return (
+                  <View key={order.id} style={styles.pixResultItem}>
+                    <Text style={styles.pixResultText}>
+                      {order.store?.name ?? "Empresa"} - R$ {order.total.toFixed(2)}
+                    </Text>
+                    <Text style={styles.pixResultMeta}>
+                      {isPaid
+                        ? "Pagamento confirmado."
+                        : pixPayment?.status === "EXPIRED"
+                          ? "Cobranca expirada."
+                          : "Aguardando pagamento."}
+                    </Text>
+                    {pixPayment?.expiresAt ? (
+                      <Text style={styles.pixResultMeta}>
+                        Expira em: {new Date(pixPayment.expiresAt).toLocaleString("pt-BR")}
+                      </Text>
+                    ) : null}
+                    {!isPaid && pixPayment?.qrCodeImageUrl ? (
+                      <Image
+                        resizeMode="contain"
+                        source={{ uri: pixPayment.qrCodeImageUrl }}
+                        style={styles.qrCodeImage}
+                      />
+                    ) : null}
+                    {!isPaid && pixPayment?.qrCodeText ? (
+                      <>
+                        <Text selectable style={styles.pixCopyCode}>
+                          {pixPayment.qrCodeText}
+                        </Text>
+                        <Pressable
+                          onPress={() => {
+                            void Clipboard.setStringAsync(pixPayment.qrCodeText ?? "");
+                            setCopiedOrderId(order.id);
+                          }}
+                          style={styles.copyButton}
+                        >
+                          <Text style={styles.copyButtonText}>
+                            {copiedOrderId === order.id
+                              ? "Codigo copiado"
+                              : "Copiar codigo Pix"}
+                          </Text>
+                        </Pressable>
+                      </>
+                    ) : null}
+                  </View>
+                );
+              })}
             </View>
           ) : null}
 
@@ -872,6 +1052,12 @@ const styles = StyleSheet.create({
     borderRadius: mobileTheme.radii.sm,
     backgroundColor: mobileTheme.colors.warningSoft
   },
+  automaticPixBox: {
+    gap: 10,
+    padding: 12,
+    borderRadius: mobileTheme.radii.sm,
+    backgroundColor: mobileTheme.colors.primarySoft
+  },
   pixResultTitle: {
     color: mobileTheme.colors.warning,
     fontWeight: "900"
@@ -889,6 +1075,31 @@ const styles = StyleSheet.create({
   pixResultMeta: {
     color: mobileTheme.colors.textMuted,
     lineHeight: 20
+  },
+  qrCodeImage: {
+    alignSelf: "center",
+    width: 220,
+    height: 220,
+    borderRadius: mobileTheme.radii.sm,
+    backgroundColor: "#ffffff"
+  },
+  pixCopyCode: {
+    color: mobileTheme.colors.text,
+    backgroundColor: mobileTheme.colors.surface,
+    borderRadius: mobileTheme.radii.sm,
+    padding: 10,
+    fontSize: 12,
+    lineHeight: 18
+  },
+  copyButton: {
+    alignItems: "center",
+    borderRadius: mobileTheme.radii.sm,
+    backgroundColor: mobileTheme.colors.primaryStrong,
+    paddingVertical: 12
+  },
+  copyButtonText: {
+    color: "#ffffff",
+    fontWeight: "900"
   },
   checkoutButton: {
     alignItems: "center",

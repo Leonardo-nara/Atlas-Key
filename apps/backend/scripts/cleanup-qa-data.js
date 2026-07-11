@@ -12,17 +12,116 @@ const prisma = new PrismaClient();
 
 const APPLY_FLAG = "--apply";
 const CONFIRM_ENV_VALUE = "DELETE_QA_DATA";
+const exactQaPrefixes = (process.env.CLEAN_QA_EXACT_PREFIXES ?? "")
+  .split(",")
+  .map((prefix) => prefix.trim().toLowerCase())
+  .filter(Boolean);
+const safeTargetText = [
+  process.env.DATABASE_URL,
+  process.env.RAILWAY_PROJECT_NAME,
+  process.env.RAILWAY_SERVICE_NAME,
+  process.env.RAILWAY_ENVIRONMENT_NAME,
+  process.env.RAILWAY_PUBLIC_DOMAIN,
+  process.env.RAILWAY_STATIC_URL,
+  process.env.CLEAN_QA_DATABASE_LABEL
+]
+  .filter(Boolean)
+  .join(" ")
+  .toLowerCase();
 
 function isApplyMode() {
   return process.argv.includes(APPLY_FLAG);
 }
 
+function hasExactQaPrefix(value) {
+  const normalizedValue = value.trim().toLowerCase();
+
+  return exactQaPrefixes.some((prefix) => normalizedValue.includes(prefix));
+}
+
+function isSafeCleanupTarget() {
+  return /\b(sandbox|test|e2e)\b/.test(safeTargetText);
+}
+
+function assertSafeApplyTarget() {
+  if (!exactQaPrefixes.length) {
+    throw new Error(
+      "Limpeza real bloqueada. Defina CLEAN_QA_EXACT_PREFIXES com o prefixo exato do teste, por exemplo qa-pdv-1783796838726."
+    );
+  }
+
+  if (!isSafeCleanupTarget()) {
+    throw new Error(
+      "Limpeza real bloqueada. O alvo precisa indicar sandbox/test/e2e em DATABASE_URL, variaveis Railway ou CLEAN_QA_DATABASE_LABEL=sandbox."
+    );
+  }
+}
+
+function getSafeStoreWhere() {
+  const qaNamePatterns = [
+    { name: { startsWith: "QA " } },
+    { name: { startsWith: "qa " } },
+    { name: { startsWith: "QA-" } },
+    { name: { startsWith: "qa-" } },
+    { name: { startsWith: "QA_" } },
+    { name: { startsWith: "qa_" } }
+  ];
+
+  if (exactQaPrefixes.length === 0) {
+    return { OR: qaNamePatterns };
+  }
+
+  return {
+    OR: exactQaPrefixes.flatMap((prefix) => [
+      { name: { contains: prefix, mode: "insensitive" } },
+      { owner: { email: { contains: prefix, mode: "insensitive" } } }
+    ])
+  };
+}
+
+function getSafeUserWhere() {
+  const qaEmailPatterns = [
+    { email: { startsWith: "qa" } },
+    { email: { startsWith: "test" } },
+    { email: { startsWith: "smoke" } },
+    { email: { startsWith: "cliente-smoke" } },
+    { email: { startsWith: "client-smoke" } },
+    { email: { startsWith: "courier-smoke" } },
+    { email: { startsWith: "store-smoke" } },
+    { email: { endsWith: "@example.com" } },
+    { email: { endsWith: "@example.org" } },
+    { email: { endsWith: "@test.local" } },
+    { email: { endsWith: "@qa.local" } },
+    { email: { endsWith: "@smoke.local" } }
+  ];
+
+  if (exactQaPrefixes.length === 0) {
+    return { OR: qaEmailPatterns };
+  }
+
+  return {
+    OR: exactQaPrefixes.flatMap((prefix) => [
+      { email: { contains: prefix, mode: "insensitive" } },
+      { name: { contains: prefix, mode: "insensitive" } }
+    ])
+  };
+}
+
 function isQaStoreName(name) {
+  if (exactQaPrefixes.length > 0) {
+    return hasExactQaPrefix(name);
+  }
+
   return /^qa[\s_-]/i.test(name.trim());
 }
 
 function isQaEmail(email) {
   const normalizedEmail = email.trim().toLowerCase();
+
+  if (exactQaPrefixes.length > 0) {
+    return hasExactQaPrefix(normalizedEmail);
+  }
+
   const [localPart, domain] = normalizedEmail.split("@");
 
   if (!localPart || !domain) {
@@ -41,42 +140,25 @@ function uniq(values) {
 
 async function collectQaData() {
   const stores = await prisma.store.findMany({
-    where: {
-      OR: [
-        { name: { startsWith: "QA " } },
-        { name: { startsWith: "qa " } },
-        { name: { startsWith: "QA-" } },
-        { name: { startsWith: "qa-" } },
-        { name: { startsWith: "QA_" } },
-        { name: { startsWith: "qa_" } }
-      ]
-    },
+    where: getSafeStoreWhere(),
     select: {
       id: true,
       name: true,
-      ownerUserId: true
+      ownerUserId: true,
+      owner: {
+        select: {
+          email: true
+        }
+      }
     },
     orderBy: { createdAt: "asc" }
   });
 
-  const safeStores = stores.filter((store) => isQaStoreName(store.name));
+  const safeStores = stores.filter((store) => {
+    return isQaStoreName(store.name) || (store.owner?.email ? isQaEmail(store.owner.email) : false);
+  });
   const users = await prisma.user.findMany({
-    where: {
-      OR: [
-        { email: { startsWith: "qa" } },
-        { email: { startsWith: "test" } },
-        { email: { startsWith: "smoke" } },
-        { email: { startsWith: "cliente-smoke" } },
-        { email: { startsWith: "client-smoke" } },
-        { email: { startsWith: "courier-smoke" } },
-        { email: { startsWith: "store-smoke" } },
-        { email: { endsWith: "@example.com" } },
-        { email: { endsWith: "@example.org" } },
-        { email: { endsWith: "@test.local" } },
-        { email: { endsWith: "@qa.local" } },
-        { email: { endsWith: "@smoke.local" } }
-      ]
-    },
+    where: getSafeUserWhere(),
     select: {
       id: true,
       name: true,
@@ -173,6 +255,77 @@ async function collectQaData() {
     orderBy: { createdAt: "asc" }
   });
 
+  const sales = await prisma.sale.findMany({
+    where: {
+      OR: [
+        { storeId: { in: storeIds } },
+        { operatorUserId: { in: userIds } },
+        ...(exactQaPrefixes.length
+          ? exactQaPrefixes.map((prefix) => ({
+              notes: { contains: prefix, mode: "insensitive" }
+            }))
+          : [])
+      ]
+    },
+    select: {
+      id: true,
+      storeId: true,
+      operatorUserId: true,
+      customerName: true,
+      status: true,
+      createdAt: true
+    },
+    orderBy: { createdAt: "asc" }
+  });
+  const saleIds = sales.map((sale) => sale.id);
+  const saleItems = saleIds.length
+    ? await prisma.saleItem.findMany({
+        where: { saleId: { in: saleIds } },
+        select: {
+          id: true,
+          saleId: true,
+          productNameSnapshot: true,
+          quantity: true
+        },
+        orderBy: { createdAt: "asc" }
+      })
+    : [];
+  const salePayments = saleIds.length
+    ? await prisma.salePayment.findMany({
+        where: { saleId: { in: saleIds } },
+        select: {
+          id: true,
+          saleId: true,
+          method: true,
+          amount: true
+        },
+        orderBy: { createdAt: "asc" }
+      })
+    : [];
+  const saleEvents = saleIds.length
+    ? await prisma.saleEvent.findMany({
+        where: { saleId: { in: saleIds } },
+        select: {
+          id: true,
+          saleId: true,
+          type: true,
+          createdAt: true
+        },
+        orderBy: { createdAt: "asc" }
+      })
+    : [];
+  const authSessions = userIds.length
+    ? await prisma.authSession.findMany({
+        where: { userId: { in: userIds } },
+        select: {
+          id: true,
+          userId: true,
+          createdAt: true
+        },
+        orderBy: { createdAt: "asc" }
+      })
+    : [];
+
   return {
     stores: safeStores,
     users: removableUsers,
@@ -184,6 +337,12 @@ async function collectQaData() {
     products,
     courierLinks,
     deliveryZones,
+    sales,
+    saleIds,
+    saleItems,
+    salePayments,
+    saleEvents,
+    authSessions,
     blockingStores
   };
 }
@@ -192,12 +351,20 @@ function printSummary(data, applyMode) {
   console.log(applyMode ? "Modo: EXECUCAO REAL" : "Modo: DRY-RUN");
   console.log("");
   console.log("Candidatos QA encontrados:");
+  if (exactQaPrefixes.length) {
+    console.log(`- prefixos exatos: ${exactQaPrefixes.join(", ")}`);
+  }
   console.log(`- lojas QA: ${data.stores.length}`);
   console.log(`- usuarios que serao removidos: ${data.users.length}`);
   console.log(`- pedidos relacionados: ${data.orders.length}`);
   console.log(`- produtos relacionados: ${data.products.length}`);
+  console.log(`- vendas PDV relacionadas: ${data.sales.length}`);
+  console.log(`- itens de venda PDV relacionados: ${data.saleItems.length}`);
+  console.log(`- pagamentos de venda PDV relacionados: ${data.salePayments.length}`);
+  console.log(`- eventos de venda PDV relacionados: ${data.saleEvents.length}`);
   console.log(`- vinculos relacionados: ${data.courierLinks.length}`);
   console.log(`- taxas por bairro relacionadas: ${data.deliveryZones.length}`);
+  console.log(`- sessoes relacionadas: ${data.authSessions.length}`);
   console.log(`- lojas bloqueadas para revisao manual: ${data.blockingStores.length}`);
   console.log("");
 
@@ -213,6 +380,24 @@ function printSummary(data, applyMode) {
     console.log("Usuarios que serao removidos:");
     data.users.forEach((user) => {
       console.log(`- ${user.id} | ${user.role} | ${user.email} | ${user.name}`);
+    });
+    console.log("");
+  }
+
+  if (data.products.length) {
+    console.log("Produtos que serao removidos:");
+    data.products.forEach((product) => {
+      console.log(`- ${product.id} | storeId=${product.storeId} | ${product.name}`);
+    });
+    console.log("");
+  }
+
+  if (data.sales.length) {
+    console.log("Vendas PDV que serao removidas:");
+    data.sales.forEach((sale) => {
+      console.log(
+        `- ${sale.id} | storeId=${sale.storeId} | operador=${sale.operatorUserId} | status=${sale.status} | cliente=${sale.customerName ?? "sem cliente"}`
+      );
     });
     console.log("");
   }
@@ -245,6 +430,10 @@ async function deleteQaData(data) {
     orderEvents: 0,
     orderItems: 0,
     orders: 0,
+    saleEvents: 0,
+    saleItems: 0,
+    salePayments: 0,
+    sales: 0,
     courierLinks: 0,
     deliveryZones: 0,
     products: 0,
@@ -281,6 +470,25 @@ async function deleteQaData(data) {
         }
       });
       removedCounts.courierLinks += courierLinks.count;
+    }
+
+    if (data.saleIds.length) {
+      const saleEvents = await transaction.saleEvent.deleteMany({
+        where: { saleId: { in: data.saleIds } }
+      });
+      const salePayments = await transaction.salePayment.deleteMany({
+        where: { saleId: { in: data.saleIds } }
+      });
+      const saleItems = await transaction.saleItem.deleteMany({
+        where: { saleId: { in: data.saleIds } }
+      });
+      const sales = await transaction.sale.deleteMany({
+        where: { id: { in: data.saleIds } }
+      });
+      removedCounts.saleEvents += saleEvents.count;
+      removedCounts.salePayments += salePayments.count;
+      removedCounts.saleItems += saleItems.count;
+      removedCounts.sales += sales.count;
     }
 
     if (data.storeIds.length) {
@@ -334,6 +542,10 @@ function printApplyResult(data, removedCounts) {
   console.log(`- pedidos: ${removedCounts.orders}`);
   console.log(`- itens de pedido: ${removedCounts.orderItems}`);
   console.log(`- eventos de pedido: ${removedCounts.orderEvents}`);
+  console.log(`- vendas PDV: ${removedCounts.sales}`);
+  console.log(`- itens de venda PDV: ${removedCounts.saleItems}`);
+  console.log(`- pagamentos de venda PDV: ${removedCounts.salePayments}`);
+  console.log(`- eventos de venda PDV: ${removedCounts.saleEvents}`);
   console.log(`- produtos: ${removedCounts.products}`);
   console.log(`- vinculos: ${removedCounts.courierLinks}`);
   console.log(`- taxas por bairro: ${removedCounts.deliveryZones}`);
@@ -365,6 +577,8 @@ async function main() {
       `Confirmacao ausente. Defina CLEAN_QA_CONFIRM=${CONFIRM_ENV_VALUE} para executar a limpeza real.`
     );
   }
+
+  assertSafeApplyTarget();
 
   const removedCounts = await deleteQaData(data);
   printApplyResult(data, removedCounts);

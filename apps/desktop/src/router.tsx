@@ -11,6 +11,7 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { DeliveryZonesPage } from "./pages/DeliveryZonesPage";
 import { LoginPage } from "./pages/LoginPage";
 import { OrdersPage } from "./pages/OrdersPage";
+import { PdvPage } from "./pages/PdvPage";
 import { PixSettingsPage } from "./pages/PixSettingsPage";
 import { ProductsPage } from "./pages/ProductsPage";
 import { ProtectedRoute } from "./shared/routing/ProtectedRoute";
@@ -38,6 +39,14 @@ export const appRouter = createHashRouter([
         element: (
           <RoleRoute role="STORE_ADMIN">
             <ProductsPage />
+          </RoleRoute>
+        )
+      },
+      {
+        path: "pdv",
+        element: (
+          <RoleRoute role="STORE_ADMIN">
+            <PdvPage />
           </RoleRoute>
         )
       },

@@ -26,6 +26,8 @@ import { RolesGuard } from "../src/common/guards/roles.guard";
 import { OrdersController } from "../src/orders/orders.controller";
 import { OrdersService } from "../src/orders/orders.service";
 import { PaymentGatewayService } from "../src/orders/payment-gateway.service";
+import { SalesController } from "../src/sales/sales.controller";
+import { SalesService } from "../src/sales/sales.service";
 import { PaymentWebhooksController } from "../src/webhooks/payment-webhooks.controller";
 import { StoresController } from "../src/stores/stores.controller";
 import { StoresService } from "../src/stores/stores.service";
@@ -171,6 +173,39 @@ const storesServiceMock = {
   deactivateDeliveryZone: () => ({ id: "zone-deactivated" })
 };
 
+const salesServiceMock = {
+  create: () => ({ id: "sale-created" }),
+  list: () => ({ items: [], meta: { page: 1, totalPages: 1 } }),
+  findOne: () => ({ id: "sale-1" }),
+  addItem: (_userId: string, _role: UserRole, _saleId: string, dto: { quantity: number }) => {
+    if (dto.quantity <= 0) {
+      throw new BadRequestException("Quantidade invalida");
+    }
+
+    return { id: "sale-1" };
+  },
+  updateItem: () => ({ id: "sale-1" }),
+  removeItem: () => ({ id: "sale-1" }),
+  update: () => ({ id: "sale-1" }),
+  complete: (
+    _userId: string,
+    _role: UserRole,
+    _saleId: string,
+    dto: { payments: Array<{ method: string; amount: number }> }
+  ) => {
+    if (dto.payments.some((payment) => payment.method === "PIX_AUTOMATIC")) {
+      throw new BadRequestException("Pix automatico para PDV ainda nao esta habilitado");
+    }
+
+    return { id: "sale-1", status: "COMPLETED" };
+  },
+  cancel: () => ({ id: "sale-1", status: "CANCELLED" }),
+  receipt: () => ({
+    notice: "DOCUMENTO SEM VALOR FISCAL",
+    sale: { id: "sale-1" }
+  })
+};
+
 const adminServiceMock = {
   getDashboard: () => ({
     activeStores: 1,
@@ -239,6 +274,7 @@ const adminServiceMock = {
   ],
   controllers: [
     OrdersController,
+    SalesController,
     StoresController,
     AdminController,
     PaymentWebhooksController
@@ -248,6 +284,7 @@ const adminServiceMock = {
     RolesGuard,
     { provide: AdminService, useValue: adminServiceMock },
     { provide: OrdersService, useValue: ordersServiceMock },
+    { provide: SalesService, useValue: salesServiceMock },
     { provide: PaymentGatewayService, useValue: paymentGatewayServiceMock },
     { provide: StoresService, useValue: storesServiceMock }
   ]
@@ -332,6 +369,10 @@ describe("backend smoke/security routes", () => {
     await expectStatus("/admin/audit-logs", 401);
     await expectStatus("/admin/dashboard", 401);
     await expectStatus("/stores/me/dashboard", 401);
+    await expectStatus("/sales", 401);
+    await expectStatus("/sales/sale-1/items", 401, { method: "POST" });
+    await expectStatus("/sales/sale-1/complete", 401, { method: "POST" });
+    await expectStatus("/sales/sale-1/receipt", 401);
     await expectStatus("/webhooks/payments/asaas", 401, {
       method: "POST",
       body: JSON.stringify({ event: "PAYMENT_RECEIVED", payment: { id: "pay_1" } })
@@ -365,6 +406,17 @@ describe("backend smoke/security routes", () => {
     });
   });
 
+  it("bloqueia PDV para platform admin, cliente e motoboy", async () => {
+    await expectStatus("/sales", 403, { token: "platform" });
+    await expectStatus("/sales", 403, { token: "client" });
+    await expectStatus("/sales", 403, { token: "courier" });
+    await expectStatus("/sales/sale-1/complete", 403, {
+      method: "POST",
+      token: "client",
+      body: JSON.stringify({ payments: [{ method: "CASH", amount: 10 }] })
+    });
+  });
+
   it("nao permite acesso de loja a comprovante fora do escopo da loja", async () => {
     await expectStatus("/orders/other-store-order/payment-proof/file", 404, {
       token: "store"
@@ -395,6 +447,32 @@ describe("backend smoke/security routes", () => {
         isActive: true
       })
     });
+
+    await expectStatus("/sales/sale-1/items", 400, {
+      method: "POST",
+      token: "store",
+      body: JSON.stringify({
+        productId: "cmtestproduct123",
+        quantity: 0
+      })
+    });
+
+    await expectStatus("/sales/sale-1/complete", 400, {
+      method: "POST",
+      token: "store",
+      body: JSON.stringify({
+        payments: [{ method: "PIX_AUTOMATIC", amount: 10 }]
+      })
+    });
+  });
+
+  it("retorna recibo de PDV com aviso sem valor fiscal", async () => {
+    const response = await request("/sales/sale-1/receipt", {
+      token: "store"
+    });
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.notice, "DOCUMENTO SEM VALOR FISCAL");
   });
 
   it("mantem gateway automatico bloqueado e payloads de pagamento sensiveis rejeitados", async () => {

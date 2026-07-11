@@ -174,6 +174,89 @@ export interface Product {
   updatedAt: string;
 }
 
+export type SaleStatus = "DRAFT" | "COMPLETED" | "CANCELLED";
+export type SalePaymentMethod = "CASH" | "CARD" | "PIX_MANUAL" | "PIX_AUTOMATIC";
+export type SalePaymentStatus =
+  | "PENDING"
+  | "PAID"
+  | "FAILED"
+  | "CANCELLED"
+  | "REFUNDED";
+
+export interface SaleItem {
+  id: string;
+  saleId: string;
+  productId?: string | null;
+  productNameSnapshot: string;
+  unitPrice: number;
+  quantity: number;
+  discountAmount: number;
+  surchargeAmount: number;
+  total: number;
+  createdAt: string;
+}
+
+export interface SalePayment {
+  id: string;
+  saleId: string;
+  method: SalePaymentMethod;
+  amount: number;
+  status: SalePaymentStatus;
+  provider?: string | null;
+  paidAt?: string | null;
+  createdAt: string;
+}
+
+export interface SaleEvent {
+  id: string;
+  saleId: string;
+  type:
+    | "sale_created"
+    | "sale_completed"
+    | "sale_cancelled"
+    | "sale_discount_applied";
+  actorUserId?: string | null;
+  actorRole?: AuthUser["role"] | null;
+  metadata?: Record<string, unknown> | null;
+  createdAt: string;
+  actorUser?: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
+}
+
+export interface Sale {
+  id: string;
+  storeId: string;
+  operatorUserId: string;
+  customerName?: string | null;
+  customerDocument?: string | null;
+  status: SaleStatus;
+  subtotal: number;
+  discountAmount: number;
+  surchargeAmount: number;
+  total: number;
+  paymentStatus: SalePaymentStatus;
+  notes?: string | null;
+  cancelReason?: string | null;
+  completedAt?: string | null;
+  cancelledAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  store?: Pick<Store, "id" | "name" | "address">;
+  operator?: Pick<AuthUser, "id" | "name" | "email">;
+  items: SaleItem[];
+  payments: SalePayment[];
+  events: SaleEvent[];
+}
+
+export interface SaleReceipt {
+  notice: "DOCUMENTO SEM VALOR FISCAL";
+  generatedAt: string;
+  sale: Sale;
+}
+
 export interface OrderItem {
   id: string;
   orderId: string;

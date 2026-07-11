@@ -14,6 +14,10 @@ import {
   OrderPaymentStatus,
   OrderStatus,
   Prisma,
+  SaleEventType,
+  SalePaymentMethod,
+  SalePaymentStatus,
+  SaleStatus,
   StoreCourierLinkRequestedBy,
   StoreCourierLinkStatus,
   StoreStatus,
@@ -42,6 +46,10 @@ type SeedData = {
   orders: {
     orderA: { id: string };
     orderB: { id: string };
+  };
+  sales: {
+    saleA: { id: string; itemId: string };
+    saleB: { id: string; itemId: string };
   };
 };
 
@@ -152,6 +160,126 @@ describe("backend real e2e ownership/security", () => {
       tokens.get("clientA"),
       403,
       { reason: "Cliente nao pode aprovar" }
+    );
+  });
+
+  it("isola vendas PDV por loja e role", async () => {
+    await expectStatus("GET", "/sales", undefined, 401);
+    await expectStatus("GET", "/sales", tokens.get("clientA"), 403);
+    await expectStatus("GET", "/sales", tokens.get("courierA"), 403);
+    await expectStatus("GET", "/sales", tokens.get("platform"), 403);
+
+    await expectStatus(
+      "GET",
+      `/sales/${seed.sales.saleB.id}`,
+      tokens.get("storeA"),
+      404
+    );
+    await expectStatus(
+      "POST",
+      `/sales/${seed.sales.saleA.id}/items`,
+      tokens.get("storeA"),
+      404,
+      {
+        productId: seed.products.productB.id,
+        quantity: 1,
+        unitPrice: 0.01
+      }
+    );
+  });
+
+  it("valida conclusao, recibo e bloqueio de alteracao de venda PDV", async () => {
+    const createdSale = await requestJson("POST", "/sales", tokens.get("storeA"), {
+      customerName: "Cliente PDV E2E"
+    });
+    assert.equal(createdSale.status, 201);
+
+    const emptyComplete = await requestJson(
+      "POST",
+      `/sales/${createdSale.body.id}/complete`,
+      tokens.get("storeA"),
+      {
+        payments: [{ method: SalePaymentMethod.CASH, amount: 1 }]
+      }
+    );
+    assert.equal(emptyComplete.status, 400);
+
+    const withItem = await requestJson(
+      "POST",
+      `/sales/${createdSale.body.id}/items`,
+      tokens.get("storeA"),
+      {
+        productId: seed.products.productA.id,
+        quantity: 1,
+        unitPrice: 0.01
+      }
+    );
+    assert.equal(withItem.status, 201);
+    assert.equal(withItem.body.items[0].unitPrice, 12.5);
+
+    await expectStatus(
+      "POST",
+      `/sales/${createdSale.body.id}/complete`,
+      tokens.get("storeA"),
+      400,
+      {
+        payments: [{ method: SalePaymentMethod.CASH, amount: 1 }]
+      }
+    );
+
+    const completed = await requestJson(
+      "POST",
+      `/sales/${createdSale.body.id}/complete`,
+      tokens.get("storeA"),
+      {
+        payments: [{ method: SalePaymentMethod.CASH, amount: 12.5 }]
+      }
+    );
+    assert.equal(completed.status, 201);
+    assert.equal(completed.body.status, SaleStatus.COMPLETED);
+
+    await expectStatus(
+      "POST",
+      `/sales/${createdSale.body.id}/complete`,
+      tokens.get("storeA"),
+      409,
+      {
+        payments: [{ method: SalePaymentMethod.CASH, amount: 12.5 }]
+      }
+    );
+    await expectStatus(
+      "PATCH",
+      `/sales/${createdSale.body.id}/items/${withItem.body.items[0].id}`,
+      tokens.get("storeA"),
+      409,
+      { quantity: 2 }
+    );
+
+    const receipt = await requestJson(
+      "GET",
+      `/sales/${createdSale.body.id}/receipt`,
+      tokens.get("storeA")
+    );
+    assert.equal(receipt.status, 200);
+    assert.equal(receipt.body.notice, "DOCUMENTO SEM VALOR FISCAL");
+  });
+
+  it("cancela venda PDV e registra motivo", async () => {
+    const cancelled = await requestJson(
+      "POST",
+      `/sales/${seed.sales.saleA.id}/cancel`,
+      tokens.get("storeA"),
+      {
+        reason: "Cancelamento PDV E2E"
+      }
+    );
+    assert.equal(cancelled.status, 201);
+    assert.equal(cancelled.body.status, SaleStatus.CANCELLED);
+    assert.equal(cancelled.body.cancelReason, "Cancelamento PDV E2E");
+    assert.ok(
+      cancelled.body.events.some(
+        (event: { type: string }) => event.type === "sale_cancelled"
+      )
     );
   });
 
@@ -268,12 +396,14 @@ async function seedOwnershipData(prisma: PrismaService): Promise<SeedData> {
 
   await createCourierProfilesAndLinks(prisma, users, stores);
   const orders = await createOrders(prisma, users, stores, products);
+  const sales = await createSales(prisma, users, stores, products);
 
   return {
     users,
     stores,
     products,
-    orders
+    orders,
+    sales
   };
 }
 
@@ -497,6 +627,83 @@ async function createOrders(
       unitPrice: "20.00",
       proofReference: "E2E-B-REF"
     })
+  };
+}
+
+async function createSales(
+  prisma: PrismaService,
+  users: Awaited<ReturnType<typeof createUsers>>,
+  stores: Awaited<ReturnType<typeof createStores>>,
+  products: Awaited<ReturnType<typeof createProducts>>
+) {
+  return {
+    saleA: await createDraftSale(prisma, {
+      storeId: stores.storeA.id,
+      operatorUserId: users.storeA.id,
+      productId: products.productA.id,
+      productName: "Produto A E2E",
+      unitPrice: "12.50"
+    }),
+    saleB: await createDraftSale(prisma, {
+      storeId: stores.storeB.id,
+      operatorUserId: users.storeB.id,
+      productId: products.productB.id,
+      productName: "Produto B E2E",
+      unitPrice: "20.00"
+    })
+  };
+}
+
+async function createDraftSale(
+  prisma: PrismaService,
+  input: {
+    storeId: string;
+    operatorUserId: string;
+    productId: string;
+    productName: string;
+    unitPrice: string;
+  }
+) {
+  const unitPrice = new Prisma.Decimal(input.unitPrice);
+  const sale = await prisma.sale.create({
+    data: {
+      storeId: input.storeId,
+      operatorUserId: input.operatorUserId,
+      status: SaleStatus.DRAFT,
+      subtotal: unitPrice,
+      total: unitPrice,
+      paymentStatus: SalePaymentStatus.PENDING,
+      items: {
+        create: [
+          {
+            productId: input.productId,
+            productNameSnapshot: input.productName,
+            unitPrice,
+            quantity: 1,
+            total: unitPrice
+          }
+        ]
+      },
+      events: {
+        create: [
+          {
+            type: SaleEventType.SALE_CREATED,
+            actorUserId: input.operatorUserId,
+            actorRole: UserRole.STORE_ADMIN
+          }
+        ]
+      }
+    },
+    include: {
+      items: {
+        select: { id: true }
+      }
+    }
+  });
+
+  return {
+    id: sale.id,
+    itemId: sale.items[0].id
   };
 }
 

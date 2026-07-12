@@ -27,6 +27,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { OrdersRealtimeService } from "../realtime/orders-realtime.service";
 import { StoreCourierLinkStatus } from "../store-courier-links/enums/store-courier-link-status.enum";
 import { StoresService } from "../stores/stores.service";
+import { StockService } from "../stock/stock.service";
 import { MAX_MONEY_AMOUNT } from "../common/validation/money";
 import { CancelOrderDto } from "./dto/cancel-order.dto";
 import { ConfirmOrderDto } from "./dto/confirm-order.dto";
@@ -55,7 +56,8 @@ export class OrdersService {
     private readonly storesService: StoresService,
     private readonly ordersRealtimeService: OrdersRealtimeService,
     private readonly paymentProofStorageService: PaymentProofStorageService,
-    private readonly paymentGatewayService: PaymentGatewayService
+    private readonly paymentGatewayService: PaymentGatewayService,
+    private readonly stockService: StockService
   ) {}
 
   async create(ownerUserId: string, role: UserRole, dto: CreateOrderDto) {
@@ -148,6 +150,14 @@ export class OrdersService {
           actorRole: PrismaUserRole.STORE_ADMIN
         }
       });
+
+      await this.stockService.reserveForOrder(
+        transaction,
+        store.id,
+        ownerUserId,
+        createdOrder.id,
+        normalizedItems
+      );
 
       return createdOrder;
     });
@@ -319,6 +329,14 @@ export class OrdersService {
         }
       });
 
+      await this.stockService.reserveForOrder(
+        transaction,
+        store.id,
+        clientUserId,
+        createdOrder.id,
+        normalizedItems
+      );
+
       return createdOrder;
     });
 
@@ -373,7 +391,14 @@ export class OrdersService {
           includeAutomaticPixPayment: true
         });
       } catch (error) {
-        await this.prisma.order.delete({ where: { id: order.id } }).catch(() => undefined);
+        await this.prisma.$transaction(async (transaction) => {
+          await this.stockService.releaseOrderReservation(
+            transaction,
+            order.id,
+            clientUserId
+          );
+          await transaction.order.delete({ where: { id: order.id } });
+        }).catch(() => undefined);
 
         if (error instanceof BadRequestException) {
           throw error;
@@ -1394,6 +1419,12 @@ export class OrdersService {
           "Nao foi possivel cancelar o pedido. Atualize a lista e tente novamente."
         );
       }
+
+      await this.stockService.releaseOrderReservation(
+        transaction,
+        orderId,
+        ownerUserId
+      );
 
       await transaction.orderEvent.create({
         data: {

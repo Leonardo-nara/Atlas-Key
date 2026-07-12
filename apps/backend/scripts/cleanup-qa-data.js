@@ -375,6 +375,19 @@ async function collectQaData() {
         orderBy: { createdAt: "asc" }
       })
     : [];
+  const stockMovements = storeIds.length || saleIds.length || orders.length
+    ? await prisma.stockMovement.findMany({
+        where: {
+          OR: [
+            { storeId: { in: storeIds } },
+            { saleId: { in: saleIds } },
+            { orderId: { in: orders.map((order) => order.id) } }
+          ]
+        },
+        select: { id: true, storeId: true, productId: true, type: true },
+        orderBy: { createdAt: "asc" }
+      })
+    : [];
 
   return {
     stores: safeStores,
@@ -398,6 +411,7 @@ async function collectQaData() {
     cashRegisterSessions,
     cashRegisterSessionIds,
     cashMovements,
+    stockMovements,
     blockingStores
   };
 }
@@ -420,6 +434,7 @@ function printSummary(data, applyMode) {
   console.log(`- caixas relacionados: ${data.cashRegisters.length}`);
   console.log(`- sessoes de caixa relacionadas: ${data.cashRegisterSessions.length}`);
   console.log(`- movimentos de caixa relacionados: ${data.cashMovements.length}`);
+  console.log(`- movimentos de estoque relacionados: ${data.stockMovements.length}`);
   console.log(`- vinculos relacionados: ${data.courierLinks.length}`);
   console.log(`- taxas por bairro relacionadas: ${data.deliveryZones.length}`);
   console.log(`- sessoes relacionadas: ${data.authSessions.length}`);
@@ -501,6 +516,7 @@ async function deleteQaData(data) {
     salePayments: 0,
     sales: 0,
     cashMovements: 0,
+    stockMovements: 0,
     cashRegisterSessions: 0,
     cashRegisters: 0,
     courierLinks: 0,
@@ -514,6 +530,13 @@ async function deleteQaData(data) {
   };
 
   await prisma.$transaction(async (transaction) => {
+    if (data.stockMovements.length) {
+      const stockMovements = await transaction.stockMovement.deleteMany({
+        where: { id: { in: data.stockMovements.map((movement) => movement.id) } }
+      });
+      removedCounts.stockMovements += stockMovements.count;
+    }
+
     if (data.orderIds.length) {
       const orderEvents = await transaction.orderEvent.deleteMany({
         where: { orderId: { in: data.orderIds } }
@@ -637,6 +660,7 @@ function printApplyResult(data, removedCounts) {
   console.log(`- pagamentos de venda PDV: ${removedCounts.salePayments}`);
   console.log(`- eventos de venda PDV: ${removedCounts.saleEvents}`);
   console.log(`- movimentos de caixa: ${removedCounts.cashMovements}`);
+  console.log(`- movimentos de estoque: ${removedCounts.stockMovements}`);
   console.log(`- sessoes de caixa: ${removedCounts.cashRegisterSessions}`);
   console.log(`- caixas: ${removedCounts.cashRegisters}`);
   console.log(`- produtos: ${removedCounts.products}`);

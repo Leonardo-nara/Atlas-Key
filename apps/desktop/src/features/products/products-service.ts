@@ -10,6 +10,10 @@ export interface ProductInput {
   imageFile?: File | null;
   removeImage?: boolean;
   available: boolean;
+  stockControlEnabled: boolean;
+  minimumStock: number;
+  allowNegativeStock: boolean;
+  initialQuantity?: number;
 }
 
 export const productsService = {
@@ -50,6 +54,20 @@ export const productsService = {
     return http<Product>(`/products/${productId}/image`, {
       method: "DELETE",
       token
+    });
+  },
+  updateStockSettings(token: string, productId: string, input: ProductInput, wasControlled: boolean) {
+    return http<Product>(`/stock/products/${productId}/settings`, {
+      method: "PATCH",
+      token,
+      body: JSON.stringify({
+        stockControlEnabled: input.stockControlEnabled,
+        minimumStock: input.minimumStock,
+        allowNegativeStock: input.allowNegativeStock,
+        ...(!wasControlled && input.stockControlEnabled
+          ? { initialQuantity: input.initialQuantity ?? 0 }
+          : {})
+      })
     });
   }
 };

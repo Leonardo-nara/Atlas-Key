@@ -73,6 +73,8 @@ export interface StoreDashboard {
   pendingPayments: number;
   activeProducts: number;
   activeCouriers: number;
+  lowStockProducts: number;
+  outOfStockProducts: number;
 }
 
 export interface AdminDashboardRecentStore {
@@ -170,8 +172,41 @@ export interface Product {
   imageSize?: number | null;
   imageUpdatedAt?: string | null;
   available: boolean;
+  stockControlEnabled: boolean;
+  stockQuantity: number;
+  minimumStock: number;
+  allowNegativeStock: boolean;
+  stockUpdatedAt?: string | null;
+  stockStatus?: "UNCONTROLLED" | "NORMAL" | "LOW" | "OUT";
   createdAt: string;
   updatedAt: string;
+}
+
+export type StockMovementType =
+  | "INITIAL" | "PURCHASE_ENTRY" | "MANUAL_ENTRY" | "MANUAL_EXIT"
+  | "INVENTORY_ADJUSTMENT" | "PDV_SALE" | "DELIVERY_RESERVED"
+  | "DELIVERY_RELEASED" | "RETURN" | "CORRECTION";
+
+export interface StockMovement {
+  id: string;
+  productId: string;
+  type: StockMovementType;
+  direction: "IN" | "OUT";
+  quantity: number;
+  balanceBefore: number;
+  balanceAfter: number;
+  reason?: string | null;
+  sourceReference?: string | null;
+  createdAt: string;
+  product?: { id: string; name: string };
+  createdByUser?: { id: string; name: string } | null;
+}
+
+export interface StockSummary {
+  controlledProducts: number;
+  availableProducts: number;
+  lowStockProducts: number;
+  outOfStockProducts: number;
 }
 
 export type SaleStatus = "DRAFT" | "COMPLETED" | "CANCELLED";

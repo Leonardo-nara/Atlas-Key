@@ -73,6 +73,7 @@ export interface Product {
   imageSize?: number | null;
   imageUpdatedAt?: string | null;
   available: boolean;
+  stockAvailable?: boolean;
   createdAt: string;
   updatedAt: string;
 }

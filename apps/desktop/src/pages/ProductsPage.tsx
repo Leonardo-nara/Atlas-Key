@@ -80,6 +80,7 @@ export function ProductsPage() {
     try {
       if (editingProduct) {
         await productsService.update(token, editingProduct.id, input);
+        await productsService.updateStockSettings(token, editingProduct.id, input, editingProduct.stockControlEnabled);
         if (input.imageFile) {
           await productsService.uploadImage(token, editingProduct.id, input.imageFile);
         } else if (input.removeImage) {
@@ -88,6 +89,7 @@ export function ProductsPage() {
         setSuccessMessage("Produto atualizado com sucesso.");
       } else {
         const createdProduct = await productsService.create(token, input);
+        await productsService.updateStockSettings(token, createdProduct.id, input, false);
         if (input.imageFile) {
           await productsService.uploadImage(token, createdProduct.id, input.imageFile);
         }

@@ -81,7 +81,27 @@ export class CatalogService {
             }
           : {})
       },
-      orderBy: [{ category: "asc" }, { name: "asc" }]
+      orderBy: [{ category: "asc" }, { name: "asc" }],
+      select: {
+        id: true,
+        storeId: true,
+        name: true,
+        description: true,
+        price: true,
+        category: true,
+        imageUrl: true,
+        imageKey: true,
+        imageFileName: true,
+        imageMimeType: true,
+        imageSize: true,
+        imageUpdatedAt: true,
+        available: true,
+        stockControlEnabled: true,
+        stockQuantity: true,
+        allowNegativeStock: true,
+        createdAt: true,
+        updatedAt: true
+      }
     });
 
     return {
@@ -92,7 +112,14 @@ export class CatalogService {
         imageUrl: product.imageKey
           ? `/media/products/${product.id}/image`
           : product.imageUrl,
-        price: Number(product.price)
+        price: Number(product.price),
+        stockAvailable:
+          !product.stockControlEnabled ||
+          product.allowNegativeStock ||
+          product.stockQuantity.greaterThan(0),
+        stockControlEnabled: undefined,
+        stockQuantity: undefined,
+        allowNegativeStock: undefined
       }))
     };
   }

@@ -129,6 +129,24 @@ enum SaleEventType {
   SALE_DISCOUNT_APPLIED
 }
 
+enum StockMovementDirection {
+  IN
+  OUT
+}
+
+enum StockMovementType {
+  INITIAL
+  PURCHASE_ENTRY
+  MANUAL_ENTRY
+  MANUAL_EXIT
+  INVENTORY_ADJUSTMENT
+  PDV_SALE
+  DELIVERY_RESERVED
+  DELIVERY_RELEASED
+  RETURN
+  CORRECTION
+}
+
 enum CashRegisterSessionStatus {
   OPEN
   CLOSED
@@ -205,6 +223,7 @@ model User {
   authSessions  AuthSession[]
   authAuditEvents AuthAuditEvent[]
   adminAuditLogs AdminAuditLog[]
+  stockMovementsCreated StockMovement[] @relation("StockMovementCreatedBy")
 
   @@index([status])
   @@map("users")
@@ -336,6 +355,7 @@ model Store {
   cashMovements CashMovement[]
   courierLinks StoreCourierLink[]
   deliveryZones StoreDeliveryZone[]
+  stockMovements StockMovement[]
 
   @@index([status])
   @@map("stores")
@@ -393,12 +413,18 @@ model Product {
   imageSize    Int?
   imageUpdatedAt DateTime?
   available   Boolean  @default(true)
+  stockControlEnabled Boolean @default(false)
+  stockQuantity Decimal @default(0) @db.Decimal(14, 3)
+  minimumStock Decimal @default(0) @db.Decimal(14, 3)
+  allowNegativeStock Boolean @default(false)
+  stockUpdatedAt DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   store      Store      @relation(fields: [storeId], references: [id])
   orderItems OrderItem[]
   saleItems  SaleItem[]
+  stockMovements StockMovement[]
 
   @@index([storeId])
   @@map("products")
@@ -431,6 +457,7 @@ model Sale {
   payments SalePayment[]
   events   SaleEvent[]
   cashMovements CashMovement[]
+  stockMovements StockMovement[]
 
   @@index([storeId, createdAt])
   @@index([storeId, status])
@@ -609,11 +636,42 @@ model Order {
   items   OrderItem[]
   events  OrderEvent[]
   paymentTransactions PaymentTransaction[]
+  stockMovements StockMovement[]
 
   @@index([storeId])
   @@index([courierId])
   @@index([clientId])
   @@map("orders")
+}
+
+model StockMovement {
+  id              String                 @id @default(cuid())
+  storeId         String
+  productId       String
+  createdByUserId String?
+  type            StockMovementType
+  direction       StockMovementDirection
+  quantity        Decimal                @db.Decimal(14, 3)
+  balanceBefore   Decimal                @db.Decimal(14, 3)
+  balanceAfter    Decimal                @db.Decimal(14, 3)
+  reason          String?
+  orderId         String?
+  saleId          String?
+  sourceReference String?
+  createdAt       DateTime               @default(now())
+
+  store         Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  product       Product @relation(fields: [productId], references: [id])
+  createdByUser User? @relation("StockMovementCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  order         Order? @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sale          Sale? @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  @@unique([orderId, productId, type])
+  @@unique([saleId, productId, type])
+  @@index([storeId, createdAt])
+  @@index([storeId, type, createdAt])
+  @@index([productId, createdAt])
+  @@map("stock_movements")
 }
 
 model PaymentTransaction {

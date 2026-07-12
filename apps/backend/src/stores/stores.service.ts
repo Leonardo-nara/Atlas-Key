@@ -68,7 +68,8 @@ export class StoresService {
       revenueToday,
       pendingPayments,
       activeProducts,
-      activeCouriers
+      activeCouriers,
+      controlledStockProducts
     ] = await this.prisma.$transaction([
       this.prisma.order.count({
         where: {
@@ -125,6 +126,10 @@ export class StoresService {
             status: UserStatus.ACTIVE
           }
         }
+      }),
+      this.prisma.product.findMany({
+        where: { storeId: store.id, stockControlEnabled: true },
+        select: { stockQuantity: true, minimumStock: true }
       })
     ]);
 
@@ -139,7 +144,15 @@ export class StoresService {
       estimatedRevenueToday: Number(revenueToday._sum.total ?? 0),
       pendingPayments,
       activeProducts,
-      activeCouriers
+      activeCouriers,
+      lowStockProducts: controlledStockProducts.filter(
+        (product) =>
+          product.stockQuantity.greaterThan(0) &&
+          product.stockQuantity.lessThanOrEqualTo(product.minimumStock)
+      ).length,
+      outOfStockProducts: controlledStockProducts.filter((product) =>
+        product.stockQuantity.lessThanOrEqualTo(0)
+      ).length
     };
   }
 

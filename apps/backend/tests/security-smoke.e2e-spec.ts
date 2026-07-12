@@ -33,12 +33,15 @@ import { SalesService } from "../src/sales/sales.service";
 import { PaymentWebhooksController } from "../src/webhooks/payment-webhooks.controller";
 import { StoresController } from "../src/stores/stores.controller";
 import { StoresService } from "../src/stores/stores.service";
+import { StockController } from "../src/stock/stock.controller";
+import { StockService } from "../src/stock/stock.service";
 import {
   OrderPaymentMethod,
   OrderPaymentStatus,
   PaymentTransactionProvider,
   PaymentTransactionStatus,
-  Prisma
+  Prisma,
+  StockMovementType
 } from "@prisma/client";
 
 const TEST_JWT_SECRET = "rotapronta-smoke-security-test-secret";
@@ -280,6 +283,15 @@ const cashRegistersServiceMock = {
   report: () => ({ session: { id: "cash-session-1" }, report: {} })
 };
 
+const stockServiceMock = {
+  listProducts: () => ({ items: [], page: 1, limit: 20, total: 0, totalPages: 1 }),
+  getProduct: () => ({ id: "product-1" }),
+  updateSettings: () => ({ id: "product-1", stockControlEnabled: true }),
+  createMovement: () => ({ id: "movement-1" }),
+  listMovements: () => ({ items: [], page: 1, limit: 20, total: 0, totalPages: 1 }),
+  getSummary: () => ({ controlledProducts: 0, availableProducts: 0, lowStockProducts: 0, outOfStockProducts: 0 })
+};
+
 @Module({
   imports: [
     PassportModule,
@@ -292,6 +304,7 @@ const cashRegistersServiceMock = {
     OrdersController,
     SalesController,
     CashRegistersController,
+    StockController,
     StoresController,
     AdminController,
     PaymentWebhooksController
@@ -305,6 +318,7 @@ const cashRegistersServiceMock = {
     { provide: CashRegistersService, useValue: cashRegistersServiceMock },
     { provide: PaymentGatewayService, useValue: paymentGatewayServiceMock },
     { provide: StoresService, useValue: storesServiceMock }
+    ,{ provide: StockService, useValue: stockServiceMock }
   ]
 })
 class SmokeSecurityTestModule {}
@@ -395,10 +409,27 @@ describe("backend smoke/security routes", () => {
     await expectStatus("/cash-registers/cash-1/open", 401, { method: "POST" });
     await expectStatus("/cash-register-sessions/session-1/cash-in", 401, { method: "POST" });
     await expectStatus("/cash-register-sessions/session-1/close", 401, { method: "POST" });
+    await expectStatus("/stock/products", 401);
+    await expectStatus("/stock/summary", 401);
+    await expectStatus("/stock/products/product-1/settings", 401, { method: "PATCH" });
+    await expectStatus("/stock/products/product-1/movements", 401, { method: "POST" });
     await expectStatus("/webhooks/payments/asaas", 401, {
       method: "POST",
       body: JSON.stringify({ event: "PAYMENT_RECEIVED", payment: { id: "pay_1" } })
     });
+  });
+
+  it("restringe gestao de estoque ao administrador da loja", async () => {
+    for (const token of ["courier", "client", "platform"] as const) {
+      await expectStatus("/stock/products", 403, { token });
+      await expectStatus("/stock/summary", 403, { token });
+      await expectStatus("/stock/products/product-1/movements", 403, {
+        method: "POST",
+        token,
+        body: JSON.stringify({ type: "MANUAL_ENTRY", quantity: 1, reason: "Teste seguro" })
+      });
+    }
+    await expectStatus("/stock/products", 200, { token: "store" });
   });
 
   it("bloqueia motoboy em Pix, comprovante detalhado e gestao de pagamento", async () => {
@@ -873,5 +904,92 @@ describe("payment gateway foundation", () => {
     } finally {
       globalThis.fetch = fetchOriginal;
     }
+  });
+});
+
+describe("integrated stock rules", () => {
+  function createStockHarness(initial = 5, controlled = true) {
+    let product = {
+      id: "product-1",
+      storeId: "store-1",
+      name: "Produto controlado",
+      stockControlEnabled: controlled,
+      stockQuantity: new Prisma.Decimal(initial),
+      minimumStock: new Prisma.Decimal(1),
+      allowNegativeStock: false,
+      price: new Prisma.Decimal(10),
+      imageKey: null
+    };
+    const movements: Array<Record<string, unknown>> = [];
+    const tx = {
+      $queryRaw: async () => [{ id: product.id }],
+      product: {
+        findFirst: async ({ where }: { where: { id: string; storeId?: string } }) =>
+          where.id === product.id && (!where.storeId || where.storeId === product.storeId) ? product : null,
+        findUniqueOrThrow: async () => product,
+        update: async ({ data }: { data: { stockQuantity?: Prisma.Decimal; stockControlEnabled?: boolean; minimumStock?: Prisma.Decimal; allowNegativeStock?: boolean; stockUpdatedAt?: Date } }) => {
+          product = { ...product, ...data } as typeof product;
+          return product;
+        }
+      },
+      stockMovement: {
+        findFirst: async ({ where }: { where: Record<string, unknown> }) =>
+          movements.find((movement) =>
+            movement.productId === where.productId &&
+            movement.type === where.type &&
+            (where.saleId === undefined || movement.saleId === where.saleId) &&
+            (where.orderId === undefined || movement.orderId === where.orderId)
+          ) ?? null,
+        create: async ({ data }: { data: Record<string, unknown> }) => {
+          const movement = { id: `movement-${movements.length + 1}`, createdAt: new Date(), ...data };
+          movements.push(movement);
+          return movement;
+        }
+      }
+    };
+    const prisma = {
+      product: { findFirst: tx.product.findFirst },
+      $transaction: async (callback: (client: typeof tx) => Promise<unknown>) => callback(tx)
+    };
+    const stores = { getStoreByOwner: async () => ({ id: "store-1" }) };
+    const service = new StockService(prisma as never, stores as never);
+    return { service, tx, movements, getProduct: () => product };
+  }
+
+  it("baixa PDV uma vez e ignora produto sem controle", async () => {
+    const controlled = createStockHarness(5, true);
+    await controlled.service.consumeForSale(controlled.tx as never, "store-1", "user-1", "sale-1", [{ productId: "product-1", quantity: 2 }]);
+    await controlled.service.consumeForSale(controlled.tx as never, "store-1", "user-1", "sale-1", [{ productId: "product-1", quantity: 2 }]);
+    assert.equal(Number(controlled.getProduct().stockQuantity), 3);
+    assert.equal(controlled.movements.length, 1);
+    assert.equal(controlled.movements[0]?.type, StockMovementType.PDV_SALE);
+
+    const uncontrolled = createStockHarness(5, false);
+    await uncontrolled.service.consumeForSale(uncontrolled.tx as never, "store-1", "user-1", "sale-2", [{ productId: "product-1", quantity: 2 }]);
+    assert.equal(Number(uncontrolled.getProduct().stockQuantity), 5);
+    assert.equal(uncontrolled.movements.length, 0);
+  });
+
+  it("bloqueia consumo acima do saldo sem criar movimento", async () => {
+    const harness = createStockHarness(1);
+    await assert.rejects(
+      harness.service.reserveForOrder(harness.tx as never, "store-1", "client-1", "order-1", [{ productId: "product-1", quantity: 2 }]),
+      /Estoque insuficiente/
+    );
+    assert.equal(Number(harness.getProduct().stockQuantity), 1);
+    assert.equal(harness.movements.length, 0);
+  });
+
+  it("reserva delivery e libera o saldo apenas uma vez", async () => {
+    const harness = createStockHarness(4);
+    const reservationRows: Array<Record<string, unknown>> = harness.movements;
+    Object.assign(harness.tx.stockMovement, {
+      findMany: async () => reservationRows.filter((item) => item.type === StockMovementType.DELIVERY_RESERVED)
+    });
+    await harness.service.reserveForOrder(harness.tx as never, "store-1", "client-1", "order-1", [{ productId: "product-1", quantity: 2 }]);
+    await harness.service.releaseOrderReservation(harness.tx as never, "order-1", "store-user");
+    await harness.service.releaseOrderReservation(harness.tx as never, "order-1", "store-user");
+    assert.equal(Number(harness.getProduct().stockQuantity), 4);
+    assert.equal(harness.movements.filter((item) => item.type === StockMovementType.DELIVERY_RELEASED).length, 1);
   });
 });

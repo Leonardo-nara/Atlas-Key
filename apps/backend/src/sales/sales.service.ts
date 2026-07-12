@@ -17,6 +17,7 @@ import {
 import { UserRole } from "../common/enums/user-role.enum";
 import { PrismaService } from "../prisma/prisma.service";
 import { StoresService } from "../stores/stores.service";
+import { StockService } from "../stock/stock.service";
 import { AddSaleItemDto } from "./dto/add-sale-item.dto";
 import { CancelSaleDto } from "./dto/cancel-sale.dto";
 import { CompleteSaleDto } from "./dto/complete-sale.dto";
@@ -73,7 +74,8 @@ type SaleWithRelations = Prisma.SaleGetPayload<{
 export class SalesService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly storesService: StoresService
+    private readonly storesService: StoresService,
+    private readonly stockService: StockService
   ) {}
 
   async create(operatorUserId: string, role: UserRole, dto: CreateSaleDto) {
@@ -390,6 +392,14 @@ export class SalesService {
       if (!paymentTotal.equals(recalculatedSale.total)) {
         throw new BadRequestException("A soma dos pagamentos deve ser igual ao total da venda");
       }
+
+      await this.stockService.consumeForSale(
+        prisma,
+        store.id,
+        operatorUserId,
+        saleId,
+        currentSale.items
+      );
 
       const cashPaymentTotal = dto.payments
         .filter((payment) => payment.method === SalePaymentMethod.CASH)

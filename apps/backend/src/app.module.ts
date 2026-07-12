@@ -20,6 +20,7 @@ import { RealtimeModule } from "./realtime/realtime.module";
 import { SalesModule } from "./sales/sales.module";
 import { StoreCourierLinksModule } from "./store-courier-links/store-courier-links.module";
 import { StoresModule } from "./stores/stores.module";
+import { StockModule } from "./stock/stock.module";
 import { UsersModule } from "./users/users.module";
 import { WebhooksModule } from "./webhooks/webhooks.module";
 
@@ -53,6 +54,7 @@ import { WebhooksModule } from "./webhooks/webhooks.module";
     RealtimeModule,
     ProductsModule,
     SalesModule,
+    StockModule,
     OrdersModule,
     WebhooksModule
   ],

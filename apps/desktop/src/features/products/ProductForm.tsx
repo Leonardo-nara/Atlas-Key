@@ -26,7 +26,11 @@ const emptyForm: ProductInput = {
   price: 0,
   category: "",
   imageUrl: "",
-  available: true
+  available: true,
+  stockControlEnabled: false,
+  minimumStock: 0,
+  allowNegativeStock: false,
+  initialQuantity: 0
 };
 
 export function ProductForm({
@@ -60,7 +64,11 @@ export function ProductForm({
       price: initialValue.price,
       category: initialValue.category,
       imageUrl: initialValue.imageUrl ?? "",
-      available: initialValue.available
+      available: initialValue.available,
+      stockControlEnabled: initialValue.stockControlEnabled,
+      minimumStock: initialValue.minimumStock,
+      allowNegativeStock: initialValue.allowNegativeStock,
+      initialQuantity: undefined
     });
     setLocalError(null);
     setSelectedImageFile(null);
@@ -240,6 +248,71 @@ export function ProductForm({
         />
         <span>Produto disponivel para venda</span>
       </label>
+
+      <section className="stock-settings-card">
+        <label className="checkbox-field">
+          <input
+            checked={form.stockControlEnabled}
+            onChange={(event) =>
+              setForm((current) => ({
+                ...current,
+                stockControlEnabled: event.target.checked
+              }))
+            }
+            type="checkbox"
+          />
+          <span>Controlar estoque deste produto</span>
+        </label>
+        {form.stockControlEnabled ? (
+          <div className="form-columns">
+            {!initialValue?.stockControlEnabled ? (
+              <label className="field">
+                <span>Quantidade inicial</span>
+                <input
+                  min="0"
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      initialQuantity: Number(event.target.value)
+                    }))
+                  }
+                  step="0.001"
+                  type="number"
+                  value={form.initialQuantity ?? 0}
+                />
+              </label>
+            ) : null}
+            <label className="field">
+              <span>Estoque minimo</span>
+              <input
+                min="0"
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    minimumStock: Number(event.target.value)
+                  }))
+                }
+                step="0.001"
+                type="number"
+                value={form.minimumStock}
+              />
+            </label>
+            <label className="checkbox-field">
+              <input
+                checked={form.allowNegativeStock}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    allowNegativeStock: event.target.checked
+                  }))
+                }
+                type="checkbox"
+              />
+              <span>Permitir saldo negativo</span>
+            </label>
+          </div>
+        ) : null}
+      </section>
 
       {error || localError ? (
         <div className="feedback feedback-error">{error ?? localError}</div>

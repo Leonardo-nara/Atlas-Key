@@ -130,6 +130,8 @@ function StoreDashboardView({ dashboard }: { dashboard: StoreDashboard }) {
         <MetricCard label="Pagamentos pendentes" value={dashboard.pendingPayments} />
         <MetricCard label="Produtos ativos" value={dashboard.activeProducts} />
         <MetricCard label="Motoboys ativos" value={dashboard.activeCouriers} />
+        <MetricCard label="Estoque baixo" value={dashboard.lowStockProducts} />
+        <MetricCard label="Sem estoque" value={dashboard.outOfStockProducts} />
       </div>
 
       <p className="dashboard-updated-at">

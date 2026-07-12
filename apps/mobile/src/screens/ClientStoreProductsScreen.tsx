@@ -129,7 +129,7 @@ export function ClientStoreProductsScreen() {
               <View style={styles.productFooter}>
                 <Text style={styles.productPrice}>R$ {product.price.toFixed(2)}</Text>
                 <Pressable
-                  disabled={!store}
+                  disabled={!store || product.stockAvailable === false}
                   onPress={() => {
                     if (store) {
                       addItem(store, product);
@@ -137,11 +137,14 @@ export function ClientStoreProductsScreen() {
                   }}
                   style={({ pressed }) => [
                     styles.addButton,
-                    pressed ? styles.addButtonPressed : undefined
+                    pressed ? styles.addButtonPressed : undefined,
+                    product.stockAvailable === false ? styles.addButtonDisabled : undefined
                   ]}
                 >
                   <Text style={styles.addButtonText}>
-                    {items.find((item) => item.product.id === product.id)
+                    {product.stockAvailable === false
+                      ? "Indisponivel"
+                      : items.find((item) => item.product.id === product.id)
                       ? "Adicionar mais"
                       : "Adicionar"}
                   </Text>
@@ -268,6 +271,9 @@ const styles = StyleSheet.create({
   addButtonPressed: {
     opacity: 0.92,
     transform: [{ scale: 0.985 }]
+  },
+  addButtonDisabled: {
+    opacity: 0.55
   },
   addButtonText: {
     color: "#ffffff",

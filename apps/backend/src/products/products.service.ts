@@ -94,6 +94,20 @@ export class ProductsService {
 
   async remove(ownerUserId: string, role: UserRole, productId: string) {
     const product = await this.findOwnedProduct(ownerUserId, role, productId);
+    const movementCount = await this.prisma.stockMovement.count({
+      where: { productId }
+    });
+
+    if (movementCount > 0) {
+      await this.prisma.product.update({
+        where: { id: productId },
+        data: { available: false }
+      });
+      return {
+        message: "Produto inativado para preservar o historico de estoque"
+      };
+    }
+
     await this.prisma.product.delete({
       where: { id: productId }
     });

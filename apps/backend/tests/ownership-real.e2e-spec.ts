@@ -227,16 +227,39 @@ describe("backend real e2e ownership/security", () => {
       }
     );
 
+    const cashRegister = await requestJson("POST", "/cash-registers", tokens.get("storeA"), {
+      name: "Caixa E2E"
+    });
+    assert.equal(cashRegister.status, 201);
+    const cashSession = await requestJson(
+      "POST",
+      `/cash-registers/${cashRegister.body.id}/open`,
+      tokens.get("storeA"),
+      {
+        openingAmount: 10,
+        notes: "Abertura E2E"
+      }
+    );
+    assert.equal(cashSession.status, 201);
+
     const completed = await requestJson(
       "POST",
       `/sales/${createdSale.body.id}/complete`,
       tokens.get("storeA"),
       {
+        cashRegisterSessionId: cashSession.body.id,
         payments: [{ method: SalePaymentMethod.CASH, amount: 12.5 }]
       }
     );
     assert.equal(completed.status, 201);
     assert.equal(completed.body.status, SaleStatus.COMPLETED);
+    assert.equal(completed.body.cashRegisterSessionId, cashSession.body.id);
+
+    const cashMovement = await prisma.cashMovement.findFirst({
+      where: { saleId: createdSale.body.id, type: "SALE" }
+    });
+    assert.ok(cashMovement);
+    assert.equal(Number(cashMovement.amount), 12.5);
 
     await expectStatus(
       "POST",

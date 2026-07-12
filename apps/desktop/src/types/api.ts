@@ -230,6 +230,7 @@ export interface Sale {
   id: string;
   storeId: string;
   operatorUserId: string;
+  cashRegisterSessionId?: string | null;
   customerName?: string | null;
   customerDocument?: string | null;
   status: SaleStatus;
@@ -246,6 +247,13 @@ export interface Sale {
   updatedAt: string;
   store?: Pick<Store, "id" | "name" | "address">;
   operator?: Pick<AuthUser, "id" | "name" | "email">;
+  cashRegisterSession?: {
+    id: string;
+    status: "OPEN" | "CLOSED";
+    openedAt: string;
+    closedAt?: string | null;
+    cashRegister: CashRegister;
+  } | null;
   items: SaleItem[];
   payments: SalePayment[];
   events: SaleEvent[];
@@ -255,6 +263,106 @@ export interface SaleReceipt {
   notice: "DOCUMENTO SEM VALOR FISCAL";
   generatedAt: string;
   sale: Sale;
+}
+
+export type CashRegisterSessionStatus = "OPEN" | "CLOSED";
+export type CashMovementType =
+  | "OPENING"
+  | "SALE"
+  | "CASH_IN"
+  | "CASH_OUT"
+  | "REFUND"
+  | "ADJUSTMENT"
+  | "CLOSING_DIFFERENCE";
+
+export interface CashRegisterSummarySession {
+  id: string;
+  status: CashRegisterSessionStatus;
+  openingAmount: number;
+  expectedCashAmount: number;
+  openedAt: string;
+  openedBy?: Pick<AuthUser, "id" | "name" | "email">;
+}
+
+export interface CashRegister {
+  id: string;
+  storeId: string;
+  name: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+  currentSession?: CashRegisterSummarySession | null;
+}
+
+export interface CashMovement {
+  id: string;
+  cashRegisterSessionId: string;
+  storeId: string;
+  userId: string;
+  type: CashMovementType;
+  amount: number;
+  reason?: string | null;
+  saleId?: string | null;
+  createdAt: string;
+  user?: Pick<AuthUser, "id" | "name" | "email">;
+}
+
+export interface CashRegisterSessionSummary {
+  openingAmount: number;
+  cashSales: number;
+  cardSales: number;
+  pixManualSales: number;
+  pixAutomaticSales: number;
+  totalSold: number;
+  cashInTotal: number;
+  cashOutTotal: number;
+  expectedCashAmount: number;
+  countedCashAmount?: number | null;
+  differenceAmount?: number | null;
+}
+
+export interface CashRegisterSession {
+  id: string;
+  cashRegisterId: string;
+  storeId: string;
+  status: CashRegisterSessionStatus;
+  openingAmount: number;
+  expectedCashAmount: number;
+  countedCashAmount?: number | null;
+  differenceAmount?: number | null;
+  openingNotes?: string | null;
+  closingNotes?: string | null;
+  openedAt: string;
+  closedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  cashRegister: CashRegister;
+  openedBy?: Pick<AuthUser, "id" | "name" | "email">;
+  closedBy?: Pick<AuthUser, "id" | "name" | "email"> | null;
+  summary: CashRegisterSessionSummary;
+  movements: CashMovement[];
+  sales: Array<{
+    id: string;
+    customerName?: string | null;
+    status: SaleStatus;
+    total: number;
+    completedAt?: string | null;
+    payments: SalePayment[];
+    itemsCount: number;
+    operator?: Pick<AuthUser, "id" | "name" | "email">;
+  }>;
+}
+
+export interface CashRegisterSessionReport {
+  session: CashRegisterSession;
+  report: CashRegisterSessionSummary & {
+    cashRegister: CashRegister;
+    openedBy?: Pick<AuthUser, "id" | "name" | "email">;
+    closedBy?: Pick<AuthUser, "id" | "name" | "email"> | null;
+    openedAt: string;
+    closedAt?: string | null;
+    movements: CashMovement[];
+  };
 }
 
 export interface OrderItem {

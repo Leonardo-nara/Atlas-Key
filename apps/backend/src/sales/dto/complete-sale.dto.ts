@@ -36,4 +36,9 @@ export class CompleteSaleDto {
   @IsString()
   @MaxLength(80)
   idempotencyKey?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  cashRegisterSessionId?: string;
 }

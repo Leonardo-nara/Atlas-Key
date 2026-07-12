@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "../features/auth/auth-context";
+import { cashRegistersService } from "../features/cash-registers/cash-registers-service";
 import { productsService } from "../features/products/products-service";
 import {
   salesService,
@@ -9,7 +10,7 @@ import {
 import { ApiError } from "../lib/http";
 import { ConfirmDialog } from "../shared/ui/ConfirmDialog";
 import { PageHeader } from "../shared/ui/PageHeader";
-import type { Product, Sale, SalePaymentMethod, SaleReceipt } from "../types/api";
+import type { CashRegister, Product, Sale, SalePaymentMethod, SaleReceipt } from "../types/api";
 
 const paymentOptions: Array<{ method: SalePaymentMethod; label: string }> = [
   { method: "CASH", label: "Dinheiro" },
@@ -51,6 +52,7 @@ function paymentMethodLabel(method: SalePaymentMethod) {
 export function PdvPage() {
   const { token, store, user } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
+  const [cashRegisters, setCashRegisters] = useState<CashRegister[]>([]);
   const [recentSales, setRecentSales] = useState<Sale[]>([]);
   const [sale, setSale] = useState<Sale | null>(null);
   const [receipt, setReceipt] = useState<SaleReceipt | null>(null);
@@ -140,6 +142,10 @@ export function PdvPage() {
       total: Math.max(0, subtotal - safeDiscount + safeSurcharge)
     };
   }, [discountDraft, sale?.subtotal, surchargeDraft]);
+  const openCashSessions = cashRegisters
+    .map((cashRegister) => cashRegister.currentSession)
+    .filter(Boolean);
+  const selectedCashSession = openCashSessions[0] ?? null;
 
   async function loadInitialData() {
     if (!token) {
@@ -150,12 +156,14 @@ export function PdvPage() {
     setError(null);
 
     try {
-      const [loadedProducts, loadedSales] = await Promise.all([
+      const [loadedProducts, loadedSales, loadedCashRegisters] = await Promise.all([
         productsService.list(token),
-        salesService.list(token, { page: 1 })
+        salesService.list(token, { page: 1 }),
+        cashRegistersService.list(token)
       ]);
       setProducts(loadedProducts);
       setRecentSales(loadedSales.items);
+      setCashRegisters(loadedCashRegisters);
     } catch (loadError) {
       setError(
         loadError instanceof ApiError
@@ -264,6 +272,11 @@ export function PdvPage() {
       return;
     }
 
+    if (!selectedCashSession) {
+      setError("Abra o caixa antes de finalizar vendas.");
+      return;
+    }
+
     setPaymentAmountDraft(projectedTotals.total.toFixed(2));
     setPaymentModalOpen(true);
   }
@@ -282,6 +295,13 @@ export function PdvPage() {
       return;
     }
 
+    if (!selectedCashSession) {
+      setError("Abra o caixa antes de finalizar vendas.");
+      return;
+    }
+
+    const cashRegisterSessionId = selectedCashSession.id;
+
     setSaving(true);
     setError(null);
 
@@ -299,7 +319,12 @@ export function PdvPage() {
           amount: paymentAmount
         }
       ];
-      const completedSale = await salesService.complete(token, updatedSale.id, payments);
+      const completedSale = await salesService.complete(
+        token,
+        updatedSale.id,
+        payments,
+        cashRegisterSessionId
+      );
       const saleReceipt = await salesService.receipt(token, completedSale.id);
 
       setSale(completedSale);
@@ -385,6 +410,15 @@ export function PdvPage() {
       {successMessage ? (
         <div className="feedback feedback-success">{successMessage}</div>
       ) : null}
+      {!selectedCashSession ? (
+        <div className="feedback feedback-warning">
+          Abra o caixa antes de finalizar vendas. A venda pode ser montada como rascunho, mas a conclusao exige caixa aberto.
+        </div>
+      ) : (
+        <div className="feedback feedback-info">
+          Caixa aberto: {selectedCashSession.id.slice(-8).toUpperCase()} · saldo esperado {formatMoney(selectedCashSession.expectedCashAmount)}
+        </div>
+      )}
 
       {loading ? (
         <div className="screen-state state-loading">Carregando PDV...</div>

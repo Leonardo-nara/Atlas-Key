@@ -888,6 +888,26 @@ p {
   align-items: start;
 }
 
+.cash-register-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.85fr) minmax(480px, 1.15fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.cash-history-panel {
+  grid-column: 1 / -1;
+}
+
+.cash-summary {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.cash-movement-card {
+  grid-template-columns: minmax(0, 1fr) minmax(140px, auto) minmax(120px, auto);
+  align-items: center;
+}
+
 .pdv-history-panel {
   grid-column: 1 / -1;
 }
@@ -1241,6 +1261,7 @@ p {
   .desktop-shell,
   .orders-grid,
   .pdv-grid,
+  .cash-register-grid,
   .zones-grid,
   .couriers-grid,
   .login-card {

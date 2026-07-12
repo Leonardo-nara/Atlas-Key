@@ -20,6 +20,8 @@ import { ExtractJwt, Strategy } from "passport-jwt";
 
 import { AdminController } from "../src/admin/admin.controller";
 import { AdminService } from "../src/admin/admin.service";
+import { CashRegistersController } from "../src/cash-registers/cash-registers.controller";
+import { CashRegistersService } from "../src/cash-registers/cash-registers.service";
 import { UserRole } from "../src/common/enums/user-role.enum";
 import { JwtAuthGuard } from "../src/common/guards/jwt-auth.guard";
 import { RolesGuard } from "../src/common/guards/roles.guard";
@@ -264,6 +266,20 @@ const adminServiceMock = {
   blockCourierLink: () => ({ id: "link-1", status: "BLOCKED" })
 };
 
+const cashRegistersServiceMock = {
+  create: () => ({ id: "cash-register-created" }),
+  list: () => [],
+  update: () => ({ id: "cash-register-1" }),
+  open: () => ({ id: "cash-session-open" }),
+  getCurrentSession: () => null,
+  listSessions: () => ({ items: [], meta: { page: 1, limit: 20, total: 0, totalPages: 1 } }),
+  findSession: () => ({ id: "cash-session-1" }),
+  cashIn: () => ({ id: "cash-session-1" }),
+  cashOut: () => ({ id: "cash-session-1" }),
+  close: () => ({ id: "cash-session-1" }),
+  report: () => ({ session: { id: "cash-session-1" }, report: {} })
+};
+
 @Module({
   imports: [
     PassportModule,
@@ -275,6 +291,7 @@ const adminServiceMock = {
   controllers: [
     OrdersController,
     SalesController,
+    CashRegistersController,
     StoresController,
     AdminController,
     PaymentWebhooksController
@@ -285,6 +302,7 @@ const adminServiceMock = {
     { provide: AdminService, useValue: adminServiceMock },
     { provide: OrdersService, useValue: ordersServiceMock },
     { provide: SalesService, useValue: salesServiceMock },
+    { provide: CashRegistersService, useValue: cashRegistersServiceMock },
     { provide: PaymentGatewayService, useValue: paymentGatewayServiceMock },
     { provide: StoresService, useValue: storesServiceMock }
   ]
@@ -373,6 +391,10 @@ describe("backend smoke/security routes", () => {
     await expectStatus("/sales/sale-1/items", 401, { method: "POST" });
     await expectStatus("/sales/sale-1/complete", 401, { method: "POST" });
     await expectStatus("/sales/sale-1/receipt", 401);
+    await expectStatus("/cash-registers", 401);
+    await expectStatus("/cash-registers/cash-1/open", 401, { method: "POST" });
+    await expectStatus("/cash-register-sessions/session-1/cash-in", 401, { method: "POST" });
+    await expectStatus("/cash-register-sessions/session-1/close", 401, { method: "POST" });
     await expectStatus("/webhooks/payments/asaas", 401, {
       method: "POST",
       body: JSON.stringify({ event: "PAYMENT_RECEIVED", payment: { id: "pay_1" } })
@@ -410,6 +432,9 @@ describe("backend smoke/security routes", () => {
     await expectStatus("/sales", 403, { token: "platform" });
     await expectStatus("/sales", 403, { token: "client" });
     await expectStatus("/sales", 403, { token: "courier" });
+    await expectStatus("/cash-registers", 403, { token: "platform" });
+    await expectStatus("/cash-registers", 403, { token: "client" });
+    await expectStatus("/cash-registers", 403, { token: "courier" });
     await expectStatus("/sales/sale-1/complete", 403, {
       method: "POST",
       token: "client",

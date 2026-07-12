@@ -87,11 +87,16 @@ export const salesService = {
       body: JSON.stringify(input)
     });
   },
-  complete(token: string, saleId: string, payments: CompleteSalePaymentInput[]) {
+  complete(
+    token: string,
+    saleId: string,
+    payments: CompleteSalePaymentInput[],
+    cashRegisterSessionId?: string
+  ) {
     return http<Sale>(`/sales/${saleId}/complete`, {
       method: "POST",
       token,
-      body: JSON.stringify({ payments })
+      body: JSON.stringify({ payments, cashRegisterSessionId })
     });
   },
   cancel(token: string, saleId: string, reason?: string) {

@@ -6,6 +6,7 @@ import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 
 import { AdminModule } from "./admin/admin.module";
 import { AuthModule } from "./auth/auth.module";
+import { CashRegistersModule } from "./cash-registers/cash-registers.module";
 import { CatalogModule } from "./catalog/catalog.module";
 import { CouriersModule } from "./couriers/couriers.module";
 import { HealthController } from "./health.controller";
@@ -42,6 +43,7 @@ import { WebhooksModule } from "./webhooks/webhooks.module";
     PrismaModule,
     AdminModule,
     StorageModule,
+    CashRegistersModule,
     CatalogModule,
     CouriersModule,
     AuthModule,

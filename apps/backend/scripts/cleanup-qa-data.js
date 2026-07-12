@@ -325,6 +325,56 @@ async function collectQaData() {
         orderBy: { createdAt: "asc" }
       })
     : [];
+  const cashRegisters = storeIds.length
+    ? await prisma.cashRegister.findMany({
+        where: { storeId: { in: storeIds } },
+        select: {
+          id: true,
+          storeId: true,
+          name: true,
+          active: true
+        },
+        orderBy: { createdAt: "asc" }
+      })
+    : [];
+  const cashRegisterIds = cashRegisters.map((cashRegister) => cashRegister.id);
+  const cashRegisterSessions = storeIds.length || cashRegisterIds.length
+    ? await prisma.cashRegisterSession.findMany({
+        where: {
+          OR: [
+            { storeId: { in: storeIds } },
+            { cashRegisterId: { in: cashRegisterIds } }
+          ]
+        },
+        select: {
+          id: true,
+          cashRegisterId: true,
+          storeId: true,
+          status: true
+        },
+        orderBy: { createdAt: "asc" }
+      })
+    : [];
+  const cashRegisterSessionIds = cashRegisterSessions.map((session) => session.id);
+  const cashMovements = storeIds.length || userIds.length || cashRegisterSessionIds.length
+    ? await prisma.cashMovement.findMany({
+        where: {
+          OR: [
+            { storeId: { in: storeIds } },
+            { userId: { in: userIds } },
+            { cashRegisterSessionId: { in: cashRegisterSessionIds } }
+          ]
+        },
+        select: {
+          id: true,
+          cashRegisterSessionId: true,
+          storeId: true,
+          userId: true,
+          type: true
+        },
+        orderBy: { createdAt: "asc" }
+      })
+    : [];
 
   return {
     stores: safeStores,
@@ -343,6 +393,11 @@ async function collectQaData() {
     salePayments,
     saleEvents,
     authSessions,
+    cashRegisters,
+    cashRegisterIds,
+    cashRegisterSessions,
+    cashRegisterSessionIds,
+    cashMovements,
     blockingStores
   };
 }
@@ -362,6 +417,9 @@ function printSummary(data, applyMode) {
   console.log(`- itens de venda PDV relacionados: ${data.saleItems.length}`);
   console.log(`- pagamentos de venda PDV relacionados: ${data.salePayments.length}`);
   console.log(`- eventos de venda PDV relacionados: ${data.saleEvents.length}`);
+  console.log(`- caixas relacionados: ${data.cashRegisters.length}`);
+  console.log(`- sessoes de caixa relacionadas: ${data.cashRegisterSessions.length}`);
+  console.log(`- movimentos de caixa relacionados: ${data.cashMovements.length}`);
   console.log(`- vinculos relacionados: ${data.courierLinks.length}`);
   console.log(`- taxas por bairro relacionadas: ${data.deliveryZones.length}`);
   console.log(`- sessoes relacionadas: ${data.authSessions.length}`);
@@ -402,6 +460,14 @@ function printSummary(data, applyMode) {
     console.log("");
   }
 
+  if (data.cashRegisters.length) {
+    console.log("Caixas que serao removidos:");
+    data.cashRegisters.forEach((cashRegister) => {
+      console.log(`- ${cashRegister.id} | storeId=${cashRegister.storeId} | ${cashRegister.name}`);
+    });
+    console.log("");
+  }
+
   if (data.blockingStores.length) {
     console.log("Lojas bloqueadas para revisao manual:");
     data.blockingStores.forEach((store) => {
@@ -434,6 +500,9 @@ async function deleteQaData(data) {
     saleItems: 0,
     salePayments: 0,
     sales: 0,
+    cashMovements: 0,
+    cashRegisterSessions: 0,
+    cashRegisters: 0,
     courierLinks: 0,
     deliveryZones: 0,
     products: 0,
@@ -491,6 +560,27 @@ async function deleteQaData(data) {
       removedCounts.sales += sales.count;
     }
 
+    if (data.cashMovements.length) {
+      const cashMovements = await transaction.cashMovement.deleteMany({
+        where: { id: { in: data.cashMovements.map((movement) => movement.id) } }
+      });
+      removedCounts.cashMovements += cashMovements.count;
+    }
+
+    if (data.cashRegisterSessionIds.length) {
+      const cashRegisterSessions = await transaction.cashRegisterSession.deleteMany({
+        where: { id: { in: data.cashRegisterSessionIds } }
+      });
+      removedCounts.cashRegisterSessions += cashRegisterSessions.count;
+    }
+
+    if (data.cashRegisterIds.length) {
+      const cashRegisters = await transaction.cashRegister.deleteMany({
+        where: { id: { in: data.cashRegisterIds } }
+      });
+      removedCounts.cashRegisters += cashRegisters.count;
+    }
+
     if (data.storeIds.length) {
       const deliveryZones = await transaction.storeDeliveryZone.deleteMany({
         where: { storeId: { in: data.storeIds } }
@@ -546,6 +636,9 @@ function printApplyResult(data, removedCounts) {
   console.log(`- itens de venda PDV: ${removedCounts.saleItems}`);
   console.log(`- pagamentos de venda PDV: ${removedCounts.salePayments}`);
   console.log(`- eventos de venda PDV: ${removedCounts.saleEvents}`);
+  console.log(`- movimentos de caixa: ${removedCounts.cashMovements}`);
+  console.log(`- sessoes de caixa: ${removedCounts.cashRegisterSessions}`);
+  console.log(`- caixas: ${removedCounts.cashRegisters}`);
   console.log(`- produtos: ${removedCounts.products}`);
   console.log(`- vinculos: ${removedCounts.courierLinks}`);
   console.log(`- taxas por bairro: ${removedCounts.deliveryZones}`);

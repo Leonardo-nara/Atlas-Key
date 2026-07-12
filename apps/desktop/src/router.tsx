@@ -6,6 +6,7 @@ import { AdminAuditLogsPage } from "./pages/AdminAuditLogsPage";
 import { AdminCouriersPage } from "./pages/AdminCouriersPage";
 import { AdminStoresPage } from "./pages/AdminStoresPage";
 import { AdminUsersPage } from "./pages/AdminUsersPage";
+import { CashRegistersPage } from "./pages/CashRegistersPage";
 import { CouriersPage } from "./pages/CouriersPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { DeliveryZonesPage } from "./pages/DeliveryZonesPage";
@@ -47,6 +48,14 @@ export const appRouter = createHashRouter([
         element: (
           <RoleRoute role="STORE_ADMIN">
             <PdvPage />
+          </RoleRoute>
+        )
+      },
+      {
+        path: "cash-registers",
+        element: (
+          <RoleRoute role="STORE_ADMIN">
+            <CashRegistersPage />
           </RoleRoute>
         )
       },

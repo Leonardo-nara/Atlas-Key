@@ -5,6 +5,8 @@ import {
   NotFoundException
 } from "@nestjs/common";
 import {
+  CashMovementType,
+  CashRegisterSessionStatus,
   Prisma,
   SaleEventType,
   SalePaymentMethod,
@@ -43,6 +45,11 @@ const SALE_INCLUDE = {
   },
   payments: {
     orderBy: { createdAt: "asc" }
+  },
+  cashRegisterSession: {
+    include: {
+      cashRegister: true
+    }
   },
   events: {
     orderBy: { createdAt: "asc" },
@@ -369,6 +376,11 @@ export class SalesService {
         );
       }
 
+      const cashRegisterSession = await this.resolveOpenCashRegisterSession(
+        prisma,
+        store.id,
+        dto.cashRegisterSessionId
+      );
       const recalculatedSale = await this.recalculateSale(prisma, saleId);
       const paymentTotal = dto.payments.reduce(
         (sum, payment) => sum.add(new Prisma.Decimal(payment.amount)),
@@ -378,6 +390,13 @@ export class SalesService {
       if (!paymentTotal.equals(recalculatedSale.total)) {
         throw new BadRequestException("A soma dos pagamentos deve ser igual ao total da venda");
       }
+
+      const cashPaymentTotal = dto.payments
+        .filter((payment) => payment.method === SalePaymentMethod.CASH)
+        .reduce(
+          (sum, payment) => sum.add(new Prisma.Decimal(payment.amount)),
+          new Prisma.Decimal(0)
+        );
 
       await prisma.salePayment.deleteMany({ where: { saleId } });
       await prisma.salePayment.createMany({
@@ -394,11 +413,33 @@ export class SalesService {
       await prisma.sale.update({
         where: { id: saleId },
         data: {
+          cashRegisterSessionId: cashRegisterSession.id,
           status: SaleStatus.COMPLETED,
           paymentStatus: SalePaymentStatus.PAID,
           completedAt: new Date()
         }
       });
+
+      if (cashPaymentTotal.greaterThan(0)) {
+        await prisma.cashMovement.create({
+          data: {
+            cashRegisterSessionId: cashRegisterSession.id,
+            storeId: store.id,
+            userId: operatorUserId,
+            type: CashMovementType.SALE,
+            amount: cashPaymentTotal,
+            reason: "Venda em dinheiro",
+            saleId
+          }
+        });
+
+        await prisma.cashRegisterSession.update({
+          where: { id: cashRegisterSession.id },
+          data: {
+            expectedCashAmount: cashRegisterSession.expectedCashAmount.add(cashPaymentTotal)
+          }
+        });
+      }
 
       await prisma.saleEvent.create({
         data: {
@@ -413,6 +454,7 @@ export class SalesService {
             discountAmount: Number(recalculatedSale.discountAmount),
             surchargeAmount: Number(recalculatedSale.surchargeAmount),
             total: Number(recalculatedSale.total),
+            cashRegisterSessionId: cashRegisterSession.id,
             paymentMethods: dto.payments.map((payment) => payment.method)
           }
         }
@@ -441,6 +483,10 @@ export class SalesService {
 
       if (currentSale.status === SaleStatus.CANCELLED) {
         throw new ConflictException("Venda ja esta cancelada");
+      }
+
+      if (currentSale.status === SaleStatus.COMPLETED) {
+        throw new ConflictException("Venda finalizada nao pode ser cancelada nesta fase do caixa");
       }
 
       await prisma.sale.update({
@@ -541,6 +587,44 @@ export class SalesService {
     return sale;
   }
 
+  private async resolveOpenCashRegisterSession(
+    prisma: Pick<PrismaService, "cashRegisterSession">,
+    storeId: string,
+    cashRegisterSessionId?: string
+  ) {
+    if (cashRegisterSessionId) {
+      const session = await prisma.cashRegisterSession.findFirst({
+        where: {
+          id: cashRegisterSessionId,
+          storeId,
+          status: CashRegisterSessionStatus.OPEN
+        }
+      });
+
+      if (!session) {
+        throw new BadRequestException("Sessao de caixa aberta nao encontrada para esta loja");
+      }
+
+      return session;
+    }
+
+    const openSessions = await prisma.cashRegisterSession.findMany({
+      where: { storeId, status: CashRegisterSessionStatus.OPEN },
+      orderBy: { openedAt: "desc" },
+      take: 2
+    });
+
+    if (openSessions.length === 0) {
+      throw new BadRequestException("Abra o caixa antes de finalizar vendas");
+    }
+
+    if (openSessions.length > 1) {
+      throw new BadRequestException("Selecione a sessao de caixa para finalizar a venda");
+    }
+
+    return openSessions[0];
+  }
+
   private async recalculateSale(
     prisma: Pick<PrismaService, "sale" | "saleItem">,
     saleId: string
@@ -599,6 +683,15 @@ export class SalesService {
       discountAmount: Number(sale.discountAmount),
       surchargeAmount: Number(sale.surchargeAmount),
       total: Number(sale.total),
+      cashRegisterSession: sale.cashRegisterSession
+        ? {
+            id: sale.cashRegisterSession.id,
+            status: sale.cashRegisterSession.status,
+            cashRegister: sale.cashRegisterSession.cashRegister,
+            openedAt: sale.cashRegisterSession.openedAt,
+            closedAt: sale.cashRegisterSession.closedAt
+          }
+        : null,
       items: sale.items.map((item) => ({
         ...item,
         unitPrice: Number(item.unitPrice),

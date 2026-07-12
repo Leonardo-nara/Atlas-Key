@@ -114,6 +114,8 @@ export class OrdersService {
     });
 
     const order = await this.prisma.$transaction(async (transaction) => {
+      await this.stockService.lockProductsForOrder(transaction, productIds);
+
       const createdOrder = await transaction.order.create({
         data: {
           storeId: store.id,
@@ -272,6 +274,11 @@ export class OrdersService {
     }
 
     const order = await this.prisma.$transaction(async (transaction) => {
+      await this.stockService.lockProductsForOrder(
+        transaction,
+        normalizedItems.map((item) => item.productId)
+      );
+
       const createdOrder = await transaction.order.create({
         data: {
           storeId: store.id,

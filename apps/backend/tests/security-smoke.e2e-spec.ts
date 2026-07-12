@@ -992,4 +992,22 @@ describe("integrated stock rules", () => {
     assert.equal(Number(harness.getProduct().stockQuantity), 4);
     assert.equal(harness.movements.filter((item) => item.type === StockMovementType.DELIVERY_RELEASED).length, 1);
   });
+
+  it("bloqueia produtos em ordem deterministica antes de criar itens do pedido", async () => {
+    const harness = createStockHarness(2);
+    const lockedIds: string[] = [];
+    (harness.tx as unknown as {
+      $queryRaw: (query: { values?: unknown[] }) => Promise<Array<{ id: unknown }>>;
+    }).$queryRaw = async (query) => {
+      lockedIds.push(String(query.values?.[0]));
+      return [{ id: query.values?.[0] }];
+    };
+
+    await harness.service.lockProductsForOrder(
+      harness.tx as never,
+      ["product-b", "product-a", "product-b"]
+    );
+
+    assert.deepEqual(lockedIds, ["product-a", "product-b"]);
+  });
 });

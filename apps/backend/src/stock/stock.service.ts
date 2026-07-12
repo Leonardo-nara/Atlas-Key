@@ -242,6 +242,12 @@ export class StockService {
     await this.consume(tx, storeId, actorUserId, items, StockMovementType.PDV_SALE, { saleId });
   }
 
+  async lockProductsForOrder(tx: StockTransaction, productIds: string[]) {
+    for (const productId of [...new Set(productIds)].sort()) {
+      await this.lockProduct(tx, productId);
+    }
+  }
+
   async reserveForOrder(tx: StockTransaction, storeId: string, actorUserId: string, orderId: string, items: StockItem[]) {
     await this.consume(tx, storeId, actorUserId, items, StockMovementType.DELIVERY_RESERVED, { orderId });
   }

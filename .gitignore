@@ -36,6 +36,8 @@ yarn-error.log*
 .env.*.local
 .netlify/
 .demo-local/
+.qa-reports-manifest.json
+apps/backend/.qa-reports-manifest.json
 
 # Sistema
 .DS_Store

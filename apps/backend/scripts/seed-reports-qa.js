@@ -28,6 +28,12 @@ const IDS = {
   productA3: "qa_reports_product_a_zero",
   productA4: "qa_reports_product_a_no_control",
   productB1: "qa_reports_product_b_unique",
+  productBPlus: "qa_reports_product_b_plus",
+  productBMinus: "qa_reports_product_b_minus",
+  productBAt: "qa_reports_product_b_at",
+  productBTab: "qa_reports_product_b_tab",
+  productBCr: "qa_reports_product_b_cr",
+  productBLf: "qa_reports_product_b_lf",
   saleCompletedA: "qa_reports_sale_a_completed",
   saleDraftA: "qa_reports_sale_a_draft",
   saleYesterdayA: "qa_reports_sale_a_yesterday",
@@ -108,15 +114,30 @@ async function main() {
         product(IDS.productA2, IDS.storeA, "Produto Estoque Baixo", "Relatorios", 20, 2, 5, true),
         product(IDS.productA3, IDS.storeA, "Produto Estoque Zerado", "Relatorios", 15, 0, 1, true),
         product(IDS.productA4, IDS.storeA, "Produto Sem Controle", "Relatorios", 8, 0, 0, false),
-        product(IDS.productB1, IDS.storeB, "=Produto Exclusivo Loja B", "Relatorios", 999, 10, 1, true)
+        product(IDS.productB1, IDS.storeB, "=Produto Exclusivo Loja B", "Relatorios", 999, 10, 1, true),
+        product(IDS.productBPlus, IDS.storeB, "+Produto Loja B", "Relatorios", 1, 1, 1, true),
+        product(IDS.productBMinus, IDS.storeB, "-Produto Loja B", "Relatorios", 1, 1, 1, true),
+        product(IDS.productBAt, IDS.storeB, "@Produto Loja B", "Relatorios", 1, 1, 1, true),
+        product(IDS.productBTab, IDS.storeB, "\tProduto Loja B", "Relatorios", 1, 1, 1, true),
+        product(IDS.productBCr, IDS.storeB, "\rProduto Loja B", "Relatorios", 1, 1, 1, true),
+        product(IDS.productBLf, IDS.storeB, "\nProduto Loja B", "Relatorios", 1, 1, 1, true)
       ]
     });
+    const formulaDraftSales = [
+      ["qa_reports_sale_b_plus", "+Cliente Loja B"],
+      ["qa_reports_sale_b_minus", "-Cliente Loja B"],
+      ["qa_reports_sale_b_at", "@Cliente Loja B"],
+      ["qa_reports_sale_b_tab", "\tCliente Loja B"],
+      ["qa_reports_sale_b_cr", "\rCliente Loja B"],
+      ["qa_reports_sale_b_lf", "\nCliente Loja B"]
+    ];
     await tx.sale.createMany({
       data: [
         sale(IDS.saleCompletedA, IDS.storeA, IDS.storeAOwner, "Cliente QA A \"aspas\"", "COMPLETED", 100, 100, today, today, "PENDING"),
         sale(IDS.saleDraftA, IDS.storeA, IDS.storeAOwner, "Cliente QA Draft", "DRAFT", 50, 50, today, null, "PENDING"),
         sale(IDS.saleYesterdayA, IDS.storeA, IDS.storeAOwner, "Cliente QA Ontem", "COMPLETED", 60, 60, yesterday, yesterday, "PAID"),
-        sale(IDS.saleB, IDS.storeB, IDS.storeBOwner, "=Cliente Loja B Exclusivo", "COMPLETED", 999, 999, today, today, "PAID")
+        sale(IDS.saleB, IDS.storeB, IDS.storeBOwner, "=Cliente Loja B Exclusivo", "COMPLETED", 999, 999, today, today, "PAID"),
+        ...formulaDraftSales.map(([id, name]) => sale(id, IDS.storeB, IDS.storeBOwner, name, "DRAFT", 0, 0, today, null, "PENDING"))
       ]
     });
     await tx.saleItem.createMany({

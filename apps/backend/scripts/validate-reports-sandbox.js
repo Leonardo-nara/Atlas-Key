@@ -98,10 +98,16 @@ async function main() {
   }
 
   const salesCsvB = await getCsv(apiUrl, "/reports/sales.csv?period=today", storeB.accessToken);
-  for (const expected of ["'=Cliente", "\"'=Produto", "\"'+", "\"'-", "\"'@", "\"'\t", "\"'\r", "\"'\n"]) {
-    checkMetric(checks, `CSV injection ${JSON.stringify(expected)}`, true, salesCsvB.text.includes(expected));
+  for (const expected of ["\"'=Cliente", "\"'+Cliente", "\"'-Cliente", "\"'@Cliente", "\"'\tCliente", "\"'\rCliente", "\"'\nCliente"]) {
+    checkMetric(checks, `CSV vendas injection ${JSON.stringify(expected)}`, true, salesCsvB.text.includes(expected));
   }
   ensureNoSensitiveData(checks, "sales csv B", salesCsvB.text);
+
+  const productsCsvB = await getCsv(apiUrl, "/reports/products.csv?period=today", storeB.accessToken);
+  for (const expected of ["\"'=Produto", "\"'+Produto", "\"'-Produto", "\"'@Produto", "\"'\tProduto", "\"'\rProduto", "\"'\nProduto"]) {
+    checkMetric(checks, `CSV produtos injection ${JSON.stringify(expected)}`, true, productsCsvB.text.includes(expected));
+  }
+  ensureNoSensitiveData(checks, "products csv B", productsCsvB.text);
 
   const failures = checks.filter((check) => !check.ok);
   console.table(checks.map((check) => ({ check: check.name, expected: check.expected, returned: check.returned, ok: check.ok })));

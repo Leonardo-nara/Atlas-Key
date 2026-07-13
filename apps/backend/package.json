@@ -12,6 +12,7 @@
     "prisma:seed:prod": "node prisma/seed.js",
     "qa:cleanup": "dotenv -e ../../.env -- node scripts/cleanup-qa-data.js",
     "qa:cleanup:prod": "node scripts/cleanup-qa-data.js",
+    "demo:cleanup:prod": "node scripts/cleanup-demo-store.js",
     "admin:create": "dotenv -e ../../.env -- node scripts/create-platform-admin.js",
     "admin:create:prod": "node scripts/create-platform-admin.js",
     "admin:reset-password": "dotenv -e ../../.env -- node scripts/reset-platform-admin-password.js",

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
 import { dashboardService } from "../features/dashboard/dashboard-service";
 import { ApiError } from "../lib/http";
@@ -137,6 +138,9 @@ function StoreDashboardView({ dashboard }: { dashboard: StoreDashboard }) {
       <p className="dashboard-updated-at">
         Atualizado em {formatDateTime(dashboard.generatedAt)}
       </p>
+      <Link className="secondary-button dashboard-report-link" to="/reports">
+        Ver relatórios
+      </Link>
     </div>
   );
 }

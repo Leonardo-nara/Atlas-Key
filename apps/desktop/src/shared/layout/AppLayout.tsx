@@ -11,6 +11,7 @@ const navigationItems = [
   { to: "/cash-registers", label: "Caixa" },
   { to: "/products", label: "Produtos" },
   { to: "/stock", label: "Estoque" },
+  { to: "/reports", label: "Relatórios" },
   { to: "/orders", label: "Pedidos" },
   { to: "/couriers", label: "Motoboys" },
   { to: "/delivery-zones", label: "Taxas por bairro" },

@@ -28,6 +28,8 @@ import { RolesGuard } from "../src/common/guards/roles.guard";
 import { OrdersController } from "../src/orders/orders.controller";
 import { OrdersService } from "../src/orders/orders.service";
 import { PaymentGatewayService } from "../src/orders/payment-gateway.service";
+import { ReportsController } from "../src/reports/reports.controller";
+import { ReportsService } from "../src/reports/reports.service";
 import { SalesController } from "../src/sales/sales.controller";
 import { SalesService } from "../src/sales/sales.service";
 import { PaymentWebhooksController } from "../src/webhooks/payment-webhooks.controller";
@@ -292,6 +294,35 @@ const stockServiceMock = {
   getSummary: () => ({ controlledProducts: 0, availableProducts: 0, lowStockProducts: 0, outOfStockProducts: 0 })
 };
 
+const reportsServiceMock = {
+  overview: (_userId: string, _role: UserRole, query: { period?: string; dateFrom?: string; dateTo?: string }) => {
+    if (query.period === "custom" && (!query.dateFrom || !query.dateTo || query.dateFrom > query.dateTo)) {
+      throw new BadRequestException("Periodo personalizado invalido");
+    }
+
+    return {
+      sales: {
+        soldAmount: 10,
+        paidAmount: 5,
+        pendingAmount: 5,
+        averageTicket: 10
+      }
+    };
+  },
+  sales: () => ({ items: [], page: 1, limit: 25, total: 0, totalPages: 1 }),
+  products: () => ({ items: [] }),
+  payments: () => ({ items: [] }),
+  cash: () => ({ items: [], page: 1, limit: 25, total: 0, totalPages: 1 }),
+  stock: () => ({ items: [], page: 1, limit: 25, total: 0, totalPages: 1 }),
+  salesCsv: () => ({
+    fileName: "relatorio-vendas.csv",
+    content: "\uFEFF\"Cliente\"\r\n\"'=2+2\""
+  }),
+  productsCsv: () => ({ fileName: "relatorio-produtos.csv", content: "\uFEFF\"Produto\"" }),
+  cashCsv: () => ({ fileName: "relatorio-caixa.csv", content: "\uFEFF\"Caixa\"" }),
+  stockCsv: () => ({ fileName: "relatorio-estoque.csv", content: "\uFEFF\"Estoque\"" })
+};
+
 @Module({
   imports: [
     PassportModule,
@@ -307,6 +338,7 @@ const stockServiceMock = {
     StockController,
     StoresController,
     AdminController,
+    ReportsController,
     PaymentWebhooksController
   ],
   providers: [
@@ -317,6 +349,7 @@ const stockServiceMock = {
     { provide: SalesService, useValue: salesServiceMock },
     { provide: CashRegistersService, useValue: cashRegistersServiceMock },
     { provide: PaymentGatewayService, useValue: paymentGatewayServiceMock },
+    { provide: ReportsService, useValue: reportsServiceMock },
     { provide: StoresService, useValue: storesServiceMock }
     ,{ provide: StockService, useValue: stockServiceMock }
   ]
@@ -413,6 +446,9 @@ describe("backend smoke/security routes", () => {
     await expectStatus("/stock/summary", 401);
     await expectStatus("/stock/products/product-1/settings", 401, { method: "PATCH" });
     await expectStatus("/stock/products/product-1/movements", 401, { method: "POST" });
+    await expectStatus("/reports/overview", 401);
+    await expectStatus("/reports/sales", 401);
+    await expectStatus("/reports/products.csv", 401);
     await expectStatus("/webhooks/payments/asaas", 401, {
       method: "POST",
       body: JSON.stringify({ event: "PAYMENT_RECEIVED", payment: { id: "pay_1" } })
@@ -471,6 +507,27 @@ describe("backend smoke/security routes", () => {
       token: "client",
       body: JSON.stringify({ payments: [{ method: "CASH", amount: 10 }] })
     });
+  });
+
+  it("bloqueia relatorios para platform admin, cliente e motoboy", async () => {
+    for (const token of ["platform", "client", "courier"] as const) {
+      await expectStatus("/reports/overview", 403, { token });
+      await expectStatus("/reports/sales", 403, { token });
+      await expectStatus("/reports/sales.csv", 403, { token });
+    }
+
+    await expectStatus("/reports/overview", 200, { token: "store" });
+  });
+
+  it("valida filtros de relatorio e protege CSV contra formula", async () => {
+    await expectStatus("/reports/overview?period=custom&dateFrom=2026-07-10&dateTo=2026-07-01", 400, {
+      token: "store"
+    });
+
+    const response = await request("/reports/sales.csv", { token: "store" });
+    assert.equal(response.status, 200);
+    const csv = await response.text();
+    assert.match(csv, /"'=2\+2"/);
   });
 
   it("nao permite acesso de loja a comprovante fora do escopo da loja", async () => {

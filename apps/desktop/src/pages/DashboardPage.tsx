@@ -1,15 +1,22 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
 import { dashboardService } from "../features/dashboard/dashboard-service";
 import { ApiError } from "../lib/http";
 import { PageHeader } from "../shared/ui/PageHeader";
-import type { AdminDashboard, StoreDashboard } from "../types/api";
+import type { AdminDashboard, StoreDashboard, StoreReadiness } from "../types/api";
 import { useAuth } from "../features/auth/auth-context";
 
 type DashboardState =
-  | { status: "idle" | "loading"; store: null; admin: null; error: null }
-  | { status: "success"; store: StoreDashboard | null; admin: AdminDashboard | null; error: null }
-  | { status: "error"; store: null; admin: null; error: string };
+  | { status: "idle" | "loading"; store: null; readiness: null; admin: null; error: null }
+  | {
+      status: "success";
+      store: StoreDashboard | null;
+      readiness: StoreReadiness | null;
+      admin: AdminDashboard | null;
+      error: null;
+    }
+  | { status: "error"; store: null; readiness: null; admin: null; error: string };
 
 export function DashboardPage() {
   const { token, user, store } = useAuth();
@@ -17,6 +24,7 @@ export function DashboardPage() {
   const [state, setState] = useState<DashboardState>({
     status: "idle",
     store: null,
+    readiness: null,
     admin: null,
     error: null
   });
@@ -29,7 +37,7 @@ export function DashboardPage() {
     const currentToken = token;
     const currentUser = user;
     let isActive = true;
-    setState({ status: "loading", store: null, admin: null, error: null });
+    setState({ status: "loading", store: null, readiness: null, admin: null, error: null });
 
     async function loadDashboard() {
       try {
@@ -40,6 +48,7 @@ export function DashboardPage() {
             setState({
               status: "success",
               store: null,
+              readiness: null,
               admin: adminDashboard,
               error: null
             });
@@ -49,12 +58,16 @@ export function DashboardPage() {
         }
 
         if (currentUser.role === "STORE_ADMIN") {
-          const storeDashboard = await dashboardService.getStoreDashboard(currentToken);
+          const [storeDashboard, storeReadiness] = await Promise.all([
+            dashboardService.getStoreDashboard(currentToken),
+            dashboardService.getStoreReadiness(currentToken)
+          ]);
 
           if (isActive) {
             setState({
               status: "success",
               store: storeDashboard,
+              readiness: storeReadiness,
               admin: null,
               error: null
             });
@@ -68,6 +81,7 @@ export function DashboardPage() {
         setState({
           status: "error",
           store: null,
+          readiness: null,
           admin: null,
           error:
             error instanceof ApiError
@@ -104,7 +118,7 @@ export function DashboardPage() {
       ) : null}
 
       {state.status === "success" && state.store ? (
-        <StoreDashboardView dashboard={state.store} />
+        <StoreDashboardView dashboard={state.store} readiness={state.readiness} />
       ) : null}
 
       {state.status === "success" && state.admin ? (
@@ -114,9 +128,22 @@ export function DashboardPage() {
   );
 }
 
-function StoreDashboardView({ dashboard }: { dashboard: StoreDashboard }) {
+function StoreDashboardView({
+  dashboard,
+  readiness
+}: {
+  dashboard: StoreDashboard;
+  readiness: StoreReadiness | null;
+}) {
+  const pendingReadinessItems = readiness?.items
+    .filter((item) => !item.completed)
+    .sort((first, second) => getCategoryPriority(first.category) - getCategoryPriority(second.category))
+    .slice(0, 4);
+
   return (
     <div className="dashboard-stack">
+      {readiness ? <ReadinessSummary readiness={readiness} pendingItems={pendingReadinessItems ?? []} /> : null}
+
       <div className="info-grid">
         <MetricCard label="Pedidos hoje" value={dashboard.ordersToday} />
         <MetricCard label="Pendentes" value={dashboard.pendingOrders} />
@@ -137,8 +164,74 @@ function StoreDashboardView({ dashboard }: { dashboard: StoreDashboard }) {
       <p className="dashboard-updated-at">
         Atualizado em {formatDateTime(dashboard.generatedAt)}
       </p>
+      <Link className="secondary-button dashboard-report-link" to="/reports">
+        Ver relatórios
+      </Link>
     </div>
   );
+}
+
+function ReadinessSummary({
+  readiness,
+  pendingItems
+}: {
+  readiness: StoreReadiness;
+  pendingItems: StoreReadiness["items"];
+}) {
+  return (
+    <section className="panel readiness-panel">
+      <div className="readiness-summary">
+        <div>
+          <span className="section-kicker">Configuração inicial</span>
+          <h2>Prepare sua empresa para operar</h2>
+          <p className="muted-text">
+            {readiness.ready
+              ? "Itens obrigatorios concluídos. Revise as recomendações para melhorar a apresentação."
+              : "Conclua os itens obrigatórios para reduzir erros no piloto."}
+          </p>
+        </div>
+        <div className="readiness-score">
+          <strong>{readiness.percentage}%</strong>
+          <span>
+            {readiness.completedRequiredItems}/{readiness.totalRequiredItems} obrigatórios
+          </span>
+        </div>
+      </div>
+
+      <div className="readiness-progress" aria-label={`Progresso obrigatorio ${readiness.percentage}%`}>
+        <span style={{ width: `${readiness.percentage}%` }} />
+      </div>
+
+      {pendingItems.length > 0 ? (
+        <div className="readiness-pending-list">
+          {pendingItems.map((item) => (
+            <Link className="readiness-pending-item" key={item.key} to={item.route}>
+              <span>{item.label}</span>
+              <small>{item.actionLabel}</small>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <div className="feedback feedback-success">
+          Nenhum item obrigatório pendente para a operação inicial.
+        </div>
+      )}
+
+      <Link className="secondary-button dashboard-report-link" to="/setup">
+        Ver configuração inicial
+      </Link>
+    </section>
+  );
+}
+
+function getCategoryPriority(category: StoreReadiness["items"][number]["category"]) {
+  const priorities = {
+    REQUIRED: 0,
+    RECOMMENDED: 1,
+    OPTIONAL: 2
+  };
+
+  return priorities[category];
 }
 
 function AdminDashboardView({ dashboard }: { dashboard: AdminDashboard }) {

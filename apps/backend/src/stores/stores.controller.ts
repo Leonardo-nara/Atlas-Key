@@ -40,6 +40,11 @@ export class StoresController {
     return this.storesService.getDashboard(user.sub, user.role);
   }
 
+  @Get("me/readiness")
+  getMyReadiness(@CurrentUser() user: AuthenticatedUser) {
+    return this.storesService.getReadiness(user.sub, user.role);
+  }
+
   @Get("me")
   getMyStore(@CurrentUser() user: AuthenticatedUser) {
     return this.storesService.getStoreProfile(user.sub, user.role);

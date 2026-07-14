@@ -77,6 +77,32 @@ export interface StoreDashboard {
   outOfStockProducts: number;
 }
 
+export type StoreReadinessCategory = "REQUIRED" | "RECOMMENDED" | "OPTIONAL";
+
+export interface StoreReadinessItem {
+  key: string;
+  label: string;
+  description: string;
+  category: StoreReadinessCategory;
+  completed: boolean;
+  actionLabel: string;
+  route: string;
+}
+
+export interface StoreReadiness {
+  storeId: string;
+  storeName: string;
+  ready: boolean;
+  percentage: number;
+  overallPercentage: number;
+  completedRequiredItems: number;
+  totalRequiredItems: number;
+  completedItems: number;
+  totalItems: number;
+  generatedAt: string;
+  items: StoreReadinessItem[];
+}
+
 export interface AdminDashboardRecentStore {
   id: string;
   name: string;
@@ -610,4 +636,157 @@ export interface AdminAuditLog {
     email: string;
     role: AuthUser["role"];
   };
+}
+
+export type ReportPeriod = "today" | "yesterday" | "7d" | "30d" | "current_month" | "custom";
+
+export interface ReportPeriodFilters {
+  period?: ReportPeriod;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+export interface ReportListFilters extends ReportPeriodFilters {
+  origin?: "DELIVERY" | "PDV";
+  status?: string;
+  paymentMethod?: string;
+  paymentStatus?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface ReportOverview {
+  store: { id: string; name: string };
+  period: { label: string; timezone: string; dateFrom: string; dateToExclusive: string };
+  generatedAt: string;
+  sales: {
+    soldAmount: number;
+    paidAmount: number;
+    pendingAmount: number;
+    cancelledAmount: number;
+    rejectedAmount: number;
+    realizedCount: number;
+    averageTicket: number;
+    deliverySoldAmount: number;
+    pdvSoldAmount: number;
+    cancelledCount: number;
+    byPaymentMethod: Array<{ method: string; amount: number; count: number }>;
+    paidByPaymentMethod: Array<{ method: string; amount: number; count: number }>;
+  };
+  operation: {
+    deliveryOrdersCreated: number;
+    deliveryOrdersInProgress: number;
+    deliveryOrdersDelivered: number;
+    deliveryOrdersCancelled: number;
+    pdvSalesCompleted: number;
+    pdvSalesCancelled: number;
+    openCashRegisters: number;
+    closedCashRegisters: number;
+    closedCashDifferenceAmount: number;
+  };
+  stock: {
+    controlledProducts: number;
+    lowStockProducts: number;
+    outOfStockProducts: number;
+    topSellingProducts: Array<{ productId: string | null; name: string; quantitySold: number; soldAmount: number }>;
+    topPhysicalOutputProducts: Array<{ productId: string; name: string; quantityMoved: number }>;
+  };
+}
+
+export interface ReportSaleRow {
+  id: string;
+  friendlyId: string;
+  origin: "DELIVERY" | "PDV";
+  occurredAt: string;
+  customerName?: string | null;
+  soldAmount: number;
+  paidAmount: number;
+  status: string;
+  paymentMethod?: string | null;
+  paymentStatus: string;
+  operator?: { id: string; name: string } | null;
+  store: { id: string; name: string };
+  cancelled: boolean;
+  completed: boolean;
+  estimated: boolean;
+}
+
+export interface ReportSalesResponse {
+  items: ReportSaleRow[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface ReportProductRow {
+  product: { id: string; name: string; category: string };
+  sku?: string | null;
+  pdvQuantitySold: number;
+  deliveryQuantitySold: number;
+  totalQuantitySold: number;
+  soldAmount: number;
+  managerialRevenue: number;
+  currentStock: number;
+  minimumStock: number;
+  stockStatus: "NO_CONTROL" | "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK";
+  estimated: boolean;
+}
+
+export interface ReportProductsResponse {
+  store: { id: string; name: string };
+  period: ReportOverview["period"];
+  items: ReportProductRow[];
+}
+
+export interface ReportCashRow {
+  id: string;
+  status: "OPEN" | "CLOSED";
+  cashRegister: { id: string; name: string };
+  openedBy?: { id: string; name: string } | null;
+  closedBy?: { id: string; name: string } | null;
+  openedAt: string;
+  closedAt?: string | null;
+  openingAmount: number;
+  cashSalesAmount: number;
+  cashInAmount: number;
+  cashOutAmount: number;
+  expectedCashAmount: number;
+  countedCashAmount?: number | null;
+  differenceAmount?: number | null;
+  openingNotes?: string | null;
+  closingNotes?: string | null;
+}
+
+export interface ReportCashResponse {
+  items: ReportCashRow[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface ReportStockRow {
+  product: { id: string; name: string; category: string };
+  stockControlEnabled: boolean;
+  currentStock: number;
+  minimumStock: number;
+  stockStatus: "NO_CONTROL" | "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK";
+  entries: number;
+  outputs: number;
+  adjustments: number;
+  deliveryReservations: number;
+  deliveryReleases: number;
+  pdvOutputs: number;
+  deliveryOutputs: number;
+  netMovement: number;
+}
+
+export interface ReportStockResponse {
+  items: ReportStockRow[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
 }

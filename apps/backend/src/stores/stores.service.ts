@@ -9,6 +9,7 @@ import {
   OrderPaymentStatus,
   OrderStatus,
   Prisma,
+  SaleStatus,
   StoreCourierLinkStatus,
   StorePixKeyType,
   StoreStatus,
@@ -153,6 +154,249 @@ export class StoresService {
       outOfStockProducts: controlledStockProducts.filter((product) =>
         product.stockQuantity.lessThanOrEqualTo(0)
       ).length
+    };
+  }
+
+  async getReadiness(ownerUserId: string, role: UserRole) {
+    const store = await this.getStoreByOwner(ownerUserId, role);
+
+    const [
+      activeProducts,
+      activeProductsWithValidPrice,
+      activeControlledProducts,
+      activeControlledProductsWithInvalidStock,
+      activeControlledOutOfStockProducts,
+      activeControlledLowStockProducts,
+      activeDeliveryZones,
+      deliveryZonesWithInvalidFee,
+      activeCouriers,
+      activeCashRegisters,
+      completedSales,
+      deliveredOrders,
+      productsWithImage
+    ] = await this.prisma.$transaction([
+      this.prisma.product.count({
+        where: { storeId: store.id, available: true }
+      }),
+      this.prisma.product.count({
+        where: {
+          storeId: store.id,
+          available: true,
+          price: { gt: new Prisma.Decimal(0) }
+        }
+      }),
+      this.prisma.product.count({
+        where: {
+          storeId: store.id,
+          available: true,
+          stockControlEnabled: true
+        }
+      }),
+      this.prisma.product.count({
+        where: {
+          storeId: store.id,
+          available: true,
+          stockControlEnabled: true,
+          OR: [
+            { stockQuantity: { lt: new Prisma.Decimal(0) } },
+            { minimumStock: { lt: new Prisma.Decimal(0) } }
+          ]
+        }
+      }),
+      this.prisma.product.count({
+        where: {
+          storeId: store.id,
+          available: true,
+          stockControlEnabled: true,
+          stockQuantity: { lte: new Prisma.Decimal(0) },
+          allowNegativeStock: false
+        }
+      }),
+      this.prisma.product.count({
+        where: {
+          storeId: store.id,
+          available: true,
+          stockControlEnabled: true,
+          AND: [
+            { stockQuantity: { gt: new Prisma.Decimal(0) } },
+            { minimumStock: { gt: new Prisma.Decimal(0) } },
+            { stockQuantity: { lte: this.prisma.product.fields.minimumStock } }
+          ]
+        }
+      }),
+      this.prisma.storeDeliveryZone.count({
+        where: { storeId: store.id, isActive: true }
+      }),
+      this.prisma.storeDeliveryZone.count({
+        where: {
+          storeId: store.id,
+          isActive: true,
+          fee: { lt: new Prisma.Decimal(0) }
+        }
+      }),
+      this.prisma.storeCourierLink.count({
+        where: {
+          storeId: store.id,
+          status: StoreCourierLinkStatus.APPROVED,
+          courier: {
+            active: true,
+            status: UserStatus.ACTIVE
+          }
+        }
+      }),
+      this.prisma.cashRegister.count({
+        where: { storeId: store.id, active: true }
+      }),
+      this.prisma.sale.count({
+        where: { storeId: store.id, status: SaleStatus.COMPLETED }
+      }),
+      this.prisma.order.count({
+        where: { storeId: store.id, status: OrderStatus.DELIVERED }
+      }),
+      this.prisma.product.count({
+        where: {
+          storeId: store.id,
+          available: true,
+          imageKey: { not: null }
+        }
+      })
+    ]);
+
+    const pixConfigured = Boolean(
+      store.pixKeyType && store.pixKey && store.pixRecipientName
+    );
+    const hasProfile = Boolean(store.name.trim() && store.address.trim());
+    const items = [
+      createReadinessItem({
+        key: "STORE_PROFILE",
+        label: "Dados da empresa",
+        description: "Nome, endereco e status ativo da loja estao validos.",
+        category: "REQUIRED",
+        completed: hasProfile,
+        actionLabel: "Revisar perfil",
+        route: "/"
+      }),
+      createReadinessItem({
+        key: "ACTIVE_PRODUCT_WITH_VALID_PRICE",
+        label: "Produto ativo com preco valido",
+        description: "Cadastre pelo menos um produto disponivel com preco maior que zero.",
+        category: "REQUIRED",
+        completed: activeProductsWithValidPrice > 0,
+        actionLabel: "Abrir produtos",
+        route: "/products"
+      }),
+      createReadinessItem({
+        key: "PAYMENT_METHOD_AVAILABLE",
+        label: "Forma de pagamento operacional",
+        description: "Dinheiro e cartao na entrega estao disponiveis sem configuracao adicional.",
+        category: "REQUIRED",
+        completed: true,
+        actionLabel: "Ver pedidos",
+        route: "/orders"
+      }),
+      createReadinessItem({
+        key: "STOCK_CONFIGURED",
+        label: "Estoque configurado",
+        description: buildStockDescription(
+          activeControlledProducts,
+          activeControlledProductsWithInvalidStock,
+          activeControlledOutOfStockProducts,
+          activeControlledLowStockProducts
+        ),
+        category: "RECOMMENDED",
+        completed:
+          activeControlledProducts === 0 ||
+          activeControlledProductsWithInvalidStock === 0,
+        actionLabel: "Abrir estoque",
+        route: "/stock"
+      }),
+      createReadinessItem({
+        key: "DELIVERY_ZONES",
+        label: "Taxas por bairro",
+        description: "Cadastre regioes ativas com taxa nao negativa para facilitar entregas.",
+        category: "RECOMMENDED",
+        completed: activeDeliveryZones > 0 && deliveryZonesWithInvalidFee === 0,
+        actionLabel: "Configurar taxas",
+        route: "/delivery-zones"
+      }),
+      createReadinessItem({
+        key: "PIX_MANUAL",
+        label: "Pix manual",
+        description: store.pixEnabled
+          ? "Complete chave Pix e nome do recebedor para usar Pix manual."
+          : "Ative somente se a loja for receber Pix manualmente.",
+        category: "RECOMMENDED",
+        completed: store.pixEnabled ? pixConfigured : true,
+        actionLabel: "Configurar Pix",
+        route: "/pix-settings"
+      }),
+      createReadinessItem({
+        key: "CASH_REGISTER",
+        label: "Caixa preparado",
+        description: "Crie pelo menos um caixa ativo para vendas de balcao.",
+        category: "RECOMMENDED",
+        completed: activeCashRegisters > 0,
+        actionLabel: "Abrir caixa",
+        route: "/cash-registers"
+      }),
+      createReadinessItem({
+        key: "LINKED_COURIER",
+        label: "Motoboy vinculado",
+        description: "Tenha pelo menos um motoboy aprovado para entregas proprias.",
+        category: "RECOMMENDED",
+        completed: activeCouriers > 0,
+        actionLabel: "Gerenciar motoboys",
+        route: "/couriers"
+      }),
+      createReadinessItem({
+        key: "STORE_IMAGE",
+        label: "Foto da loja",
+        description: "Adicione uma imagem da empresa para deixar o catalogo mais profissional.",
+        category: "OPTIONAL",
+        completed: Boolean(store.profileImageKey),
+        actionLabel: "Alterar foto",
+        route: "/"
+      }),
+      createReadinessItem({
+        key: "PRODUCT_IMAGES",
+        label: "Fotos dos produtos",
+        description: "Inclua imagens nos produtos principais para melhorar a apresentacao.",
+        category: "OPTIONAL",
+        completed: activeProducts > 0 && productsWithImage > 0,
+        actionLabel: "Editar produtos",
+        route: "/products"
+      }),
+      createReadinessItem({
+        key: "TEST_OPERATION",
+        label: "Operacao testada",
+        description: "Realize uma venda de teste ou conclua um pedido para validar a rotina.",
+        category: "RECOMMENDED",
+        completed: completedSales > 0 || deliveredOrders > 0,
+        actionLabel: "Abrir PDV",
+        route: "/pdv"
+      })
+    ];
+
+    const requiredItems = items.filter((item) => item.category === "REQUIRED");
+    const completedItems = items.filter((item) => item.completed).length;
+    const completedRequiredItems = requiredItems.filter((item) => item.completed).length;
+
+    return {
+      storeId: store.id,
+      storeName: store.name,
+      ready: completedRequiredItems === requiredItems.length,
+      percentage:
+        requiredItems.length > 0
+          ? Math.round((completedRequiredItems / requiredItems.length) * 100)
+          : 100,
+      overallPercentage:
+        items.length > 0 ? Math.round((completedItems / items.length) * 100) : 100,
+      completedItems,
+      totalItems: items.length,
+      completedRequiredItems,
+      totalRequiredItems: requiredItems.length,
+      generatedAt: new Date(),
+      items
     };
   }
 
@@ -478,6 +722,45 @@ function getTodayRange(reference = new Date()) {
   startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
 
   return { startOfToday, startOfTomorrow };
+}
+
+type ReadinessCategory = "REQUIRED" | "RECOMMENDED" | "OPTIONAL";
+
+function buildStockDescription(
+  controlledProducts: number,
+  invalidConfiguredProducts: number,
+  outOfStockProducts: number,
+  lowStockProducts: number
+) {
+  if (controlledProducts === 0) {
+    return "Nenhum produto usa controle de estoque. Isso nao bloqueia a operacao inicial.";
+  }
+
+  if (invalidConfiguredProducts > 0) {
+    return "Revise produtos com controle de estoque e valores negativos de saldo ou minimo.";
+  }
+
+  if (outOfStockProducts > 0) {
+    return "Ha produtos sem estoque. Revise se devem continuar disponiveis.";
+  }
+
+  if (lowStockProducts > 0) {
+    return "Ha produtos com estoque baixo. Planeje reposicao para evitar indisponibilidade.";
+  }
+
+  return "Produtos com controle de estoque possuem configuracao valida.";
+}
+
+function createReadinessItem(item: {
+  key: string;
+  label: string;
+  description: string;
+  category: ReadinessCategory;
+  completed: boolean;
+  actionLabel: string;
+  route: string;
+}) {
+  return item;
 }
 
 function isUniqueConstraintError(error: unknown) {

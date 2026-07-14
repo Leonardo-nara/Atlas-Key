@@ -568,6 +568,201 @@ p {
   font-size: 0.9rem;
 }
 
+.dashboard-report-link {
+  justify-self: start;
+  text-decoration: none;
+}
+
+.readiness-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.readiness-summary {
+  align-items: flex-start;
+  display: flex;
+  gap: 18px;
+  justify-content: space-between;
+}
+
+.readiness-summary h2 {
+  margin: 6px 0 8px;
+}
+
+.readiness-score {
+  align-items: flex-end;
+  color: var(--rp-text-muted);
+  display: grid;
+  gap: 4px;
+  min-width: 120px;
+  text-align: right;
+}
+
+.readiness-score strong {
+  color: var(--rp-primary-strong);
+  font-size: clamp(2rem, 5vw, 3.4rem);
+  line-height: 0.95;
+}
+
+.readiness-progress {
+  background: rgba(18, 50, 77, 0.08);
+  border-radius: 999px;
+  height: 12px;
+  overflow: hidden;
+}
+
+.readiness-progress span {
+  background: linear-gradient(90deg, var(--rp-primary), var(--rp-primary-strong));
+  border-radius: inherit;
+  display: block;
+  height: 100%;
+  min-width: 8px;
+}
+
+.readiness-pending-list,
+.readiness-checklist {
+  display: grid;
+  gap: 12px;
+}
+
+.readiness-pending-list {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.readiness-pending-item,
+.readiness-check-item {
+  border: 1px solid var(--rp-line);
+  border-radius: 18px;
+  background: var(--rp-surface-muted);
+}
+
+.readiness-pending-item {
+  color: var(--rp-text);
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  text-decoration: none;
+}
+
+.readiness-pending-item span {
+  font-weight: 900;
+}
+
+.readiness-pending-item small {
+  color: var(--rp-primary-strong);
+  font-weight: 800;
+}
+
+.readiness-check-item {
+  align-items: center;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding: 16px;
+}
+
+.readiness-check-item p {
+  color: var(--rp-text-muted);
+  line-height: 1.5;
+  margin-top: 5px;
+}
+
+.readiness-check-icon {
+  border-radius: 16px;
+  display: grid;
+  font-weight: 900;
+  height: 42px;
+  place-items: center;
+  width: 42px;
+}
+
+.readiness-check-done .readiness-check-icon {
+  background: var(--rp-success-soft);
+  color: var(--rp-success);
+}
+
+.readiness-check-pending .readiness-check-icon {
+  background: var(--rp-warning-soft);
+  color: var(--rp-warning);
+}
+
+.report-filter-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  align-items: end;
+}
+
+.report-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.report-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.report-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--rp-line);
+}
+
+.report-line:last-child {
+  border-bottom: 0;
+}
+
+.report-bar {
+  margin: 12px 0;
+}
+
+.report-bar-track {
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(30, 144, 255, 0.12);
+}
+
+.report-bar-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--rp-primary), var(--rp-primary-strong));
+}
+
+.report-table {
+  margin-top: 18px;
+  overflow-x: auto;
+}
+
+.report-table table {
+  width: 100%;
+  min-width: 860px;
+  border-collapse: collapse;
+}
+
+.report-table th,
+.report-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--rp-line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.report-table th {
+  color: var(--rp-text-muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
 .orders-grid {
   grid-template-columns: minmax(420px, 500px) minmax(0, 1fr);
   align-items: start;
@@ -1392,6 +1587,7 @@ p {
   .page-header,
   .panel-heading,
   .dashboard-recent-row,
+  .readiness-summary,
   .sidebar-footer,
   .product-image-upload,
   .product-image-upload-actions {
@@ -1409,6 +1605,7 @@ p {
   .table-row,
   .order-summary,
   .inline-card,
+  .readiness-check-item,
   .pdv-cart-row,
   .delivery-zone-card,
   .courier-card-grid {
@@ -1428,6 +1625,7 @@ p {
   }
 
   .dashboard-recent-meta,
+  .readiness-score,
   .dashboard-updated-at {
     align-items: flex-start;
     text-align: left;

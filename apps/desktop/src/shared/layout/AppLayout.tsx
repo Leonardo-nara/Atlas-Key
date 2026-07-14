@@ -7,10 +7,12 @@ import { toMediaUrl } from "../../lib/media-url";
 
 const navigationItems = [
   { to: "/", label: "Visao geral", end: true },
+  { to: "/setup", label: "Configuração inicial" },
   { to: "/pdv", label: "PDV" },
   { to: "/cash-registers", label: "Caixa" },
   { to: "/products", label: "Produtos" },
   { to: "/stock", label: "Estoque" },
+  { to: "/reports", label: "Relatórios" },
   { to: "/orders", label: "Pedidos" },
   { to: "/couriers", label: "Motoboys" },
   { to: "/delivery-zones", label: "Taxas por bairro" },

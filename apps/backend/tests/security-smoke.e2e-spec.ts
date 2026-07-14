@@ -172,8 +172,12 @@ const storesServiceMock = {
     activeCouriers: 0
   }),
   getReadiness: () => ({
+    storeId: "store-1",
     ready: false,
     percentage: 50,
+    overallPercentage: 50,
+    completedRequiredItems: 1,
+    totalRequiredItems: 2,
     completedItems: 1,
     totalItems: 2,
     items: []
@@ -532,6 +536,12 @@ describe("backend smoke/security routes", () => {
     await expectStatus("/stores/me/readiness", 403, { token: "client" });
     await expectStatus("/stores/me/readiness", 403, { token: "courier" });
     await expectStatus("/stores/me/readiness", 200, { token: "store" });
+
+    const response = await request("/stores/me/readiness?storeId=store-b", { token: "store" });
+    assert.equal(response.status, 200);
+    const payload = await response.json() as { storeId?: string; pixKey?: string };
+    assert.equal(payload.storeId, "store-1");
+    assert.equal("pixKey" in payload, false);
   });
 
   it("valida filtros de relatorio e protege CSV contra formula", async () => {

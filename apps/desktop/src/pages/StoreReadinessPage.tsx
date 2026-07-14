@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { useAuth } from "../features/auth/auth-context";
@@ -13,7 +13,7 @@ type ReadinessState =
   | { status: "error"; data: null; error: string };
 
 const categoryLabels: Record<StoreReadinessCategory, string> = {
-  REQUIRED: "Obrigatório",
+  REQUIRED: "Obrigatorio",
   RECOMMENDED: "Recomendado",
   OPTIONAL: "Opcional"
 };
@@ -28,44 +28,43 @@ export function StoreReadinessPage() {
     error: null
   });
 
-  useEffect(() => {
+  const loadReadiness = useCallback(async () => {
     if (!token) {
       return;
     }
 
-    const currentToken = token;
-    let isActive = true;
     setState({ status: "loading", data: null, error: null });
 
-    async function loadReadiness() {
-      try {
-        const readiness = await dashboardService.getStoreReadiness(currentToken);
+    try {
+      const readiness = await dashboardService.getStoreReadiness(token);
+      setState({ status: "success", data: readiness, error: null });
+    } catch (error) {
+      setState({
+        status: "error",
+        data: null,
+        error:
+          error instanceof ApiError
+            ? error.message
+            : "Nao foi possivel carregar a configuracao inicial."
+      });
+    }
+  }, [token]);
 
-        if (isActive) {
-          setState({ status: "success", data: readiness, error: null });
-        }
-      } catch (error) {
-        if (!isActive) {
-          return;
-        }
+  useEffect(() => {
+    void loadReadiness();
+  }, [loadReadiness]);
 
-        setState({
-          status: "error",
-          data: null,
-          error:
-            error instanceof ApiError
-              ? error.message
-              : "Não foi possível carregar a configuração inicial."
-        });
-      }
+  useEffect(() => {
+    function handleFocus() {
+      void loadReadiness();
     }
 
-    void loadReadiness();
+    window.addEventListener("focus", handleFocus);
 
     return () => {
-      isActive = false;
+      window.removeEventListener("focus", handleFocus);
     };
-  }, [token]);
+  }, [loadReadiness]);
 
   const groupedItems = useMemo(() => {
     if (!state.data) {
@@ -83,8 +82,13 @@ export function StoreReadinessPage() {
   return (
     <section className="page-section">
       <PageHeader
-        title="Configuração inicial"
+        title="Configuracao inicial"
         description="Checklist operacional para preparar a loja antes do piloto com clientes."
+        action={
+          <button className="secondary-button" onClick={() => void loadReadiness()} type="button">
+            Atualizar
+          </button>
+        }
       />
 
       {state.status === "loading" ? (
@@ -100,21 +104,20 @@ export function StoreReadinessPage() {
           <section className="panel readiness-panel">
             <div className="readiness-summary">
               <div>
-                <span className="section-kicker">Prontidão operacional</span>
-                <h2>{state.data.ready ? "Empresa pronta para operar" : "Ainda existem pendências"}</h2>
+                <span className="section-kicker">Prontidao operacional</span>
+                <h2>{state.data.ready ? "Empresa pronta para operar" : "Ainda existem pendencias"}</h2>
                 <p className="muted-text">
-                  {state.data.requiredCompletedItems}/{state.data.requiredTotalItems} itens obrigatórios concluídos.
-                  A loja só é considerada pronta quando todos os obrigatórios estiverem completos.
+                  {state.data.completedRequiredItems}/{state.data.totalRequiredItems} itens obrigatorios concluidos.
+                  A loja so e considerada pronta quando todos os obrigatorios estiverem completos.
                 </p>
               </div>
               <div className="readiness-score">
                 <strong>{state.data.percentage}%</strong>
-                <span>
-                  {state.data.completedItems}/{state.data.totalItems} itens
-                </span>
+                <span>obrigatorios</span>
+                <small>{state.data.overallPercentage}% geral</small>
               </div>
             </div>
-            <div className="readiness-progress" aria-label={`Progresso ${state.data.percentage}%`}>
+            <div className="readiness-progress" aria-label={`Progresso obrigatorio ${state.data.percentage}%`}>
               <span style={{ width: `${state.data.percentage}%` }} />
             </div>
           </section>
@@ -137,10 +140,10 @@ export function StoreReadinessPage() {
                     key={item.key}
                   >
                     <div className="readiness-check-icon" aria-hidden="true">
-                      {item.completed ? "✓" : "!"}
+                      {item.completed ? "OK" : "!"}
                     </div>
                     <div>
-                      <strong>{item.title}</strong>
+                      <strong>{item.label}</strong>
                       <p>{item.description}</p>
                     </div>
                     <Link className="secondary-button" to={item.route}>
@@ -159,7 +162,7 @@ export function StoreReadinessPage() {
 
 function getCategoryTitle(category: StoreReadinessCategory) {
   const titles: Record<StoreReadinessCategory, string> = {
-    REQUIRED: "Itens necessários para operar",
+    REQUIRED: "Itens necessarios para operar",
     RECOMMENDED: "Melhorias recomendadas para o piloto",
     OPTIONAL: "Itens opcionais"
   };

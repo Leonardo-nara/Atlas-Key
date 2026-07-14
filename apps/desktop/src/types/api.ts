@@ -81,7 +81,7 @@ export type StoreReadinessCategory = "REQUIRED" | "RECOMMENDED" | "OPTIONAL";
 
 export interface StoreReadinessItem {
   key: string;
-  title: string;
+  label: string;
   description: string;
   category: StoreReadinessCategory;
   completed: boolean;
@@ -94,10 +94,11 @@ export interface StoreReadiness {
   storeName: string;
   ready: boolean;
   percentage: number;
+  overallPercentage: number;
+  completedRequiredItems: number;
+  totalRequiredItems: number;
   completedItems: number;
   totalItems: number;
-  requiredCompletedItems: number;
-  requiredTotalItems: number;
   generatedAt: string;
   items: StoreReadinessItem[];
 }

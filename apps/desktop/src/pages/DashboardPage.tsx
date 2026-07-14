@@ -137,6 +137,7 @@ function StoreDashboardView({
 }) {
   const pendingReadinessItems = readiness?.items
     .filter((item) => !item.completed)
+    .sort((first, second) => getCategoryPriority(first.category) - getCategoryPriority(second.category))
     .slice(0, 4);
 
   return (
@@ -192,12 +193,12 @@ function ReadinessSummary({
         <div className="readiness-score">
           <strong>{readiness.percentage}%</strong>
           <span>
-            {readiness.completedItems}/{readiness.totalItems} itens
+            {readiness.completedRequiredItems}/{readiness.totalRequiredItems} obrigatórios
           </span>
         </div>
       </div>
 
-      <div className="readiness-progress" aria-label={`Progresso ${readiness.percentage}%`}>
+      <div className="readiness-progress" aria-label={`Progresso obrigatorio ${readiness.percentage}%`}>
         <span style={{ width: `${readiness.percentage}%` }} />
       </div>
 
@@ -205,7 +206,7 @@ function ReadinessSummary({
         <div className="readiness-pending-list">
           {pendingItems.map((item) => (
             <Link className="readiness-pending-item" key={item.key} to={item.route}>
-              <span>{item.title}</span>
+              <span>{item.label}</span>
               <small>{item.actionLabel}</small>
             </Link>
           ))}
@@ -221,6 +222,16 @@ function ReadinessSummary({
       </Link>
     </section>
   );
+}
+
+function getCategoryPriority(category: StoreReadiness["items"][number]["category"]) {
+  const priorities = {
+    REQUIRED: 0,
+    RECOMMENDED: 1,
+    OPTIONAL: 2
+  };
+
+  return priorities[category];
 }
 
 function AdminDashboardView({ dashboard }: { dashboard: AdminDashboard }) {

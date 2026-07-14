@@ -162,10 +162,13 @@ export class StoresService {
 
     const [
       activeProducts,
-      productsWithoutValidPrice,
+      activeProductsWithValidPrice,
       activeControlledProducts,
       activeControlledProductsWithInvalidStock,
+      activeControlledOutOfStockProducts,
+      activeControlledLowStockProducts,
       activeDeliveryZones,
+      deliveryZonesWithInvalidFee,
       activeCouriers,
       activeCashRegisters,
       completedSales,
@@ -179,7 +182,7 @@ export class StoresService {
         where: {
           storeId: store.id,
           available: true,
-          price: { lte: new Prisma.Decimal(0) }
+          price: { gt: new Prisma.Decimal(0) }
         }
       }),
       this.prisma.product.count({
@@ -200,8 +203,36 @@ export class StoresService {
           ]
         }
       }),
+      this.prisma.product.count({
+        where: {
+          storeId: store.id,
+          available: true,
+          stockControlEnabled: true,
+          stockQuantity: { lte: new Prisma.Decimal(0) },
+          allowNegativeStock: false
+        }
+      }),
+      this.prisma.product.count({
+        where: {
+          storeId: store.id,
+          available: true,
+          stockControlEnabled: true,
+          AND: [
+            { stockQuantity: { gt: new Prisma.Decimal(0) } },
+            { minimumStock: { gt: new Prisma.Decimal(0) } },
+            { stockQuantity: { lte: this.prisma.product.fields.minimumStock } }
+          ]
+        }
+      }),
       this.prisma.storeDeliveryZone.count({
         where: { storeId: store.id, isActive: true }
+      }),
+      this.prisma.storeDeliveryZone.count({
+        where: {
+          storeId: store.id,
+          isActive: true,
+          fee: { lt: new Prisma.Decimal(0) }
+        }
       }),
       this.prisma.storeCourierLink.count({
         where: {
@@ -237,37 +268,42 @@ export class StoresService {
     const hasProfile = Boolean(store.name.trim() && store.address.trim());
     const items = [
       createReadinessItem({
-        key: "store-profile",
-        title: "Perfil da empresa",
-        description: "Nome e endereco da loja preenchidos para identificacao no painel.",
+        key: "STORE_PROFILE",
+        label: "Dados da empresa",
+        description: "Nome, endereco e status ativo da loja estao validos.",
         category: "REQUIRED",
         completed: hasProfile,
         actionLabel: "Revisar perfil",
         route: "/"
       }),
       createReadinessItem({
-        key: "active-product",
-        title: "Catalogo com produto ativo",
-        description: "Cadastre pelo menos um produto disponivel para venda.",
+        key: "ACTIVE_PRODUCT_WITH_VALID_PRICE",
+        label: "Produto ativo com preco valido",
+        description: "Cadastre pelo menos um produto disponivel com preco maior que zero.",
         category: "REQUIRED",
-        completed: activeProducts > 0,
+        completed: activeProductsWithValidPrice > 0,
         actionLabel: "Abrir produtos",
         route: "/products"
       }),
       createReadinessItem({
-        key: "valid-product-prices",
-        title: "Precos validos",
-        description: "Produtos ativos precisam ter preco maior que zero.",
+        key: "PAYMENT_METHOD_AVAILABLE",
+        label: "Forma de pagamento operacional",
+        description: "Dinheiro e cartao na entrega estao disponiveis sem configuracao adicional.",
         category: "REQUIRED",
-        completed: activeProducts > 0 && productsWithoutValidPrice === 0,
-        actionLabel: "Conferir produtos",
-        route: "/products"
+        completed: true,
+        actionLabel: "Ver pedidos",
+        route: "/orders"
       }),
       createReadinessItem({
-        key: "stock-configured",
-        title: "Estoque configurado",
-        description: "Produtos com controle de estoque devem ter saldo e minimo validos.",
-        category: "REQUIRED",
+        key: "STOCK_CONFIGURED",
+        label: "Estoque configurado",
+        description: buildStockDescription(
+          activeControlledProducts,
+          activeControlledProductsWithInvalidStock,
+          activeControlledOutOfStockProducts,
+          activeControlledLowStockProducts
+        ),
+        category: "RECOMMENDED",
         completed:
           activeControlledProducts === 0 ||
           activeControlledProductsWithInvalidStock === 0,
@@ -275,73 +311,64 @@ export class StoresService {
         route: "/stock"
       }),
       createReadinessItem({
-        key: "delivery-zones",
-        title: "Taxas por bairro",
-        description: "Cadastre pelo menos uma regiao ativa para sugerir taxa de entrega.",
-        category: "REQUIRED",
-        completed: activeDeliveryZones > 0,
+        key: "DELIVERY_ZONES",
+        label: "Taxas por bairro",
+        description: "Cadastre regioes ativas com taxa nao negativa para facilitar entregas.",
+        category: "RECOMMENDED",
+        completed: activeDeliveryZones > 0 && deliveryZonesWithInvalidFee === 0,
         actionLabel: "Configurar taxas",
         route: "/delivery-zones"
       }),
       createReadinessItem({
-        key: "basic-payment-methods",
-        title: "Formas basicas de pagamento",
-        description: "Dinheiro e cartao na entrega estao disponiveis no sistema.",
-        category: "REQUIRED",
-        completed: true,
-        actionLabel: "Ver pedidos",
-        route: "/orders"
-      }),
-      createReadinessItem({
-        key: "pix-manual",
-        title: "Pix manual",
+        key: "PIX_MANUAL",
+        label: "Pix manual",
         description: store.pixEnabled
           ? "Complete chave Pix e nome do recebedor para usar Pix manual."
           : "Ative somente se a loja for receber Pix manualmente.",
-        category: store.pixEnabled ? "REQUIRED" : "RECOMMENDED",
+        category: "RECOMMENDED",
         completed: store.pixEnabled ? pixConfigured : true,
         actionLabel: "Configurar Pix",
         route: "/pix-settings"
       }),
       createReadinessItem({
-        key: "cash-register",
-        title: "Caixa preparado",
-        description: "Crie pelo menos um caixa ativo para vendas de balcão.",
-        category: "REQUIRED",
+        key: "CASH_REGISTER",
+        label: "Caixa preparado",
+        description: "Crie pelo menos um caixa ativo para vendas de balcao.",
+        category: "RECOMMENDED",
         completed: activeCashRegisters > 0,
         actionLabel: "Abrir caixa",
         route: "/cash-registers"
       }),
       createReadinessItem({
-        key: "linked-courier",
-        title: "Motoboy vinculado",
-        description: "Tenha pelo menos um motoboy aprovado para entregas próprias.",
+        key: "LINKED_COURIER",
+        label: "Motoboy vinculado",
+        description: "Tenha pelo menos um motoboy aprovado para entregas proprias.",
         category: "RECOMMENDED",
         completed: activeCouriers > 0,
         actionLabel: "Gerenciar motoboys",
         route: "/couriers"
       }),
       createReadinessItem({
-        key: "store-image",
-        title: "Foto da loja",
+        key: "STORE_IMAGE",
+        label: "Foto da loja",
         description: "Adicione uma imagem da empresa para deixar o catalogo mais profissional.",
-        category: "RECOMMENDED",
+        category: "OPTIONAL",
         completed: Boolean(store.profileImageKey),
         actionLabel: "Alterar foto",
         route: "/"
       }),
       createReadinessItem({
-        key: "product-images",
-        title: "Fotos dos produtos",
+        key: "PRODUCT_IMAGES",
+        label: "Fotos dos produtos",
         description: "Inclua imagens nos produtos principais para melhorar a apresentacao.",
-        category: "RECOMMENDED",
+        category: "OPTIONAL",
         completed: activeProducts > 0 && productsWithImage > 0,
         actionLabel: "Editar produtos",
         route: "/products"
       }),
       createReadinessItem({
-        key: "test-operation",
-        title: "Operacao testada",
+        key: "TEST_OPERATION",
+        label: "Operacao testada",
         description: "Realize uma venda de teste ou conclua um pedido para validar a rotina.",
         category: "RECOMMENDED",
         completed: completedSales > 0 || deliveredOrders > 0,
@@ -351,22 +378,23 @@ export class StoresService {
     ];
 
     const requiredItems = items.filter((item) => item.category === "REQUIRED");
-    const scoredItems = items.filter((item) => item.category !== "OPTIONAL");
-    const completedItems = scoredItems.filter((item) => item.completed).length;
-    const requiredCompletedItems = requiredItems.filter((item) => item.completed).length;
+    const completedItems = items.filter((item) => item.completed).length;
+    const completedRequiredItems = requiredItems.filter((item) => item.completed).length;
 
     return {
       storeId: store.id,
       storeName: store.name,
-      ready: requiredCompletedItems === requiredItems.length,
+      ready: completedRequiredItems === requiredItems.length,
       percentage:
-        scoredItems.length > 0
-          ? Math.round((completedItems / scoredItems.length) * 100)
+        requiredItems.length > 0
+          ? Math.round((completedRequiredItems / requiredItems.length) * 100)
           : 100,
+      overallPercentage:
+        items.length > 0 ? Math.round((completedItems / items.length) * 100) : 100,
       completedItems,
-      totalItems: scoredItems.length,
-      requiredCompletedItems,
-      requiredTotalItems: requiredItems.length,
+      totalItems: items.length,
+      completedRequiredItems,
+      totalRequiredItems: requiredItems.length,
       generatedAt: new Date(),
       items
     };
@@ -698,9 +726,34 @@ function getTodayRange(reference = new Date()) {
 
 type ReadinessCategory = "REQUIRED" | "RECOMMENDED" | "OPTIONAL";
 
+function buildStockDescription(
+  controlledProducts: number,
+  invalidConfiguredProducts: number,
+  outOfStockProducts: number,
+  lowStockProducts: number
+) {
+  if (controlledProducts === 0) {
+    return "Nenhum produto usa controle de estoque. Isso nao bloqueia a operacao inicial.";
+  }
+
+  if (invalidConfiguredProducts > 0) {
+    return "Revise produtos com controle de estoque e valores negativos de saldo ou minimo.";
+  }
+
+  if (outOfStockProducts > 0) {
+    return "Ha produtos sem estoque. Revise se devem continuar disponiveis.";
+  }
+
+  if (lowStockProducts > 0) {
+    return "Ha produtos com estoque baixo. Planeje reposicao para evitar indisponibilidade.";
+  }
+
+  return "Produtos com controle de estoque possuem configuracao valida.";
+}
+
 function createReadinessItem(item: {
   key: string;
-  title: string;
+  label: string;
   description: string;
   category: ReadinessCategory;
   completed: boolean;

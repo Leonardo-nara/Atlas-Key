@@ -38,6 +38,8 @@ yarn-error.log*
 .demo-local/
 .qa-reports-manifest.json
 apps/backend/.qa-reports-manifest.json
+.qa-readiness-manifest.json
+apps/backend/.qa-readiness-manifest.json
 
 # Sistema
 .DS_Store

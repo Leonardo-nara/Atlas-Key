@@ -44,6 +44,7 @@ export function ReportsPage() {
   const [stock, setStock] = useState<ReportStockResponse | null>(null);
   const [state, setState] = useState<ReportsState>({ status: "idle", error: null });
   const [downloadState, setDownloadState] = useState<string | null>(null);
+  const closedCashSession = cash?.items.find((session) => session.status === "CLOSED");
 
   useEffect(() => {
     if (!token) return;
@@ -116,7 +117,9 @@ export function ReportsPage() {
       const anchor = document.createElement("a");
       anchor.href = url;
       anchor.download = file.fileName;
+      document.body.appendChild(anchor);
       anchor.click();
+      anchor.remove();
       URL.revokeObjectURL(url);
     } catch {
       setState({ status: "error", error: "Não foi possível exportar o CSV." });
@@ -199,10 +202,16 @@ export function ReportsPage() {
           <div className="info-grid">
             <MetricCard label="Total vendido" value={formatCurrency(overview.sales.soldAmount)} />
             <MetricCard label="Total recebido" value={formatCurrency(overview.sales.paidAmount)} />
+            <MetricCard label="Quantidade realizada" value={overview.sales.realizedCount} />
             <MetricCard label="Delivery" value={formatCurrency(overview.sales.deliverySoldAmount)} />
             <MetricCard label="PDV" value={formatCurrency(overview.sales.pdvSoldAmount)} />
             <MetricCard label="Ticket médio" value={formatCurrency(overview.sales.averageTicket)} />
             <MetricCard label="Pagamentos pendentes" value={formatCurrency(overview.sales.pendingAmount)} />
+            <MetricCard label="Caixa esperado" value={formatCurrency(closedCashSession?.expectedCashAmount ?? 0)} />
+            <MetricCard
+              label="Saldo contado"
+              value={closedCashSession?.countedCashAmount != null ? formatCurrency(closedCashSession.countedCashAmount) : "Não informado"}
+            />
             <MetricCard label="Diferenças de caixa" value={formatCurrency(overview.operation.closedCashDifferenceAmount)} />
             <MetricCard label="Estoque baixo" value={overview.stock.lowStockProducts} />
             <MetricCard label="Sem estoque" value={overview.stock.outOfStockProducts} />
@@ -297,8 +306,14 @@ export function ReportsPage() {
         <SimplePanel title="Sessões de caixa" empty={!cash || cash.items.length === 0}>
           {cash?.items.slice(0, 6).map((session) => (
             <div className="report-line" key={session.id}>
-              <span>{session.cashRegister.name} · {session.status === "OPEN" ? "Aberto" : "Fechado"}</span>
-              <strong>{formatCurrency(session.expectedCashAmount)}</strong>
+              <span>
+                {session.cashRegister.name} · {session.status === "OPEN" ? "Aberto" : "Fechado"}
+                {session.countedCashAmount != null ? ` · contado ${formatCurrency(session.countedCashAmount)}` : ""}
+              </span>
+              <strong>
+                esperado {formatCurrency(session.expectedCashAmount)}
+                {session.differenceAmount != null ? ` · diferença ${formatCurrency(session.differenceAmount)}` : ""}
+              </strong>
             </div>
           ))}
         </SimplePanel>

@@ -141,10 +141,11 @@ describe("reports service calculations", () => {
     const sevenDays = await service.overview("owner-a", UserRole.STORE_ADMIN, { period: ReportPeriod.SEVEN_DAYS });
     const thirtyDays = await service.overview("owner-a", UserRole.STORE_ADMIN, { period: ReportPeriod.THIRTY_DAYS });
     const currentMonth = await service.overview("owner-a", UserRole.STORE_ADMIN, { period: ReportPeriod.CURRENT_MONTH });
+    const todayDate = atLocalNoon(new Date());
     const custom = await service.overview("owner-a", UserRole.STORE_ADMIN, {
       period: ReportPeriod.CUSTOM,
-      dateFrom: isoDate(addDays(new Date(), -1)),
-      dateTo: isoDate(new Date())
+      dateFrom: isoDate(addDays(todayDate, -1)),
+      dateTo: isoDate(todayDate)
     });
 
     assert.equal(today.sales.soldAmount, 180);
@@ -246,8 +247,8 @@ function createReportsService() {
 
 function buildFixture() {
   const today = atLocalNoon(new Date());
-  const yesterday = atLocalNoon(addDays(new Date(), -1));
-  const old = atLocalNoon(addDays(new Date(), -40));
+  const yesterday = addDays(today, -1);
+  const old = addDays(today, -40);
   const stores = [
     { id: "store-a", name: "QA_REPORTS_STORE_A" },
     { id: "store-b", name: "QA_REPORTS_STORE_B" }
@@ -522,7 +523,15 @@ function decimal(value: number) {
 }
 
 function atLocalNoon(value: Date) {
-  return new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate(), 15, 0, 0));
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(value);
+  const byType = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+
+  return new Date(Date.UTC(Number(byType.year), Number(byType.month) - 1, Number(byType.day), 15, 0, 0));
 }
 
 function addDays(value: Date, days: number) {

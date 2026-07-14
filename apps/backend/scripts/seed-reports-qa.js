@@ -90,7 +90,7 @@ async function main() {
     const passwordHashPlatform = await bcrypt.hash(passwordPlatform, 10);
     const now = new Date();
     const today = atSaoPauloNoon(now);
-    const yesterday = atSaoPauloNoon(addDays(now, -1));
+    const yesterday = addDays(today, -1);
 
     await tx.user.createMany({
       data: [
@@ -320,7 +320,15 @@ function stockMovement(id, storeId, productId, createdByUserId, type, direction,
 }
 
 function atSaoPauloNoon(value) {
-  return new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate(), 15, 0, 0));
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(value);
+  const byType = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+
+  return new Date(Date.UTC(Number(byType.year), Number(byType.month) - 1, Number(byType.day), 15, 0, 0));
 }
 
 function addDays(value, days) {

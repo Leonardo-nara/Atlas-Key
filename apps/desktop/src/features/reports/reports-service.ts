@@ -23,15 +23,23 @@ function toQuery(filters: ReportPeriodFilters | ReportListFilters) {
   return serialized ? `?${serialized}` : "";
 }
 
+function toPeriodFilters(filters: ReportPeriodFilters | ReportListFilters): ReportPeriodFilters {
+  return {
+    period: filters.period,
+    dateFrom: filters.dateFrom,
+    dateTo: filters.dateTo
+  };
+}
+
 export const reportsService = {
   overview(token: string, filters: ReportPeriodFilters) {
-    return http<ReportOverview>(`/reports/overview${toQuery(filters)}`, { token });
+    return http<ReportOverview>(`/reports/overview${toQuery(toPeriodFilters(filters))}`, { token });
   },
   sales(token: string, filters: ReportListFilters) {
     return http<ReportSalesResponse>(`/reports/sales${toQuery(filters)}`, { token });
   },
   products(token: string, filters: ReportPeriodFilters) {
-    return http<ReportProductsResponse>(`/reports/products${toQuery(filters)}`, { token });
+    return http<ReportProductsResponse>(`/reports/products${toQuery(toPeriodFilters(filters))}`, { token });
   },
   cash(token: string, filters: ReportListFilters) {
     return http<ReportCashResponse>(`/reports/cash${toQuery(filters)}`, { token });
@@ -40,7 +48,8 @@ export const reportsService = {
     return http<ReportStockResponse>(`/reports/stock${toQuery(filters)}`, { token });
   },
   async downloadCsv(token: string, type: "sales" | "products" | "cash" | "stock", filters: ReportListFilters) {
-    const response = await fetch(`${env.apiUrl}/reports/${type}.csv${toQuery(filters)}`, {
+    const queryFilters = type === "products" ? toPeriodFilters(filters) : filters;
+    const response = await fetch(`${env.apiUrl}/reports/${type}.csv${toQuery(queryFilters)}`, {
       headers: { Authorization: `Bearer ${token}` }
     });
 

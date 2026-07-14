@@ -87,7 +87,7 @@ async function main() {
   addCheck("pix manual", await getProtected(apiUrl, token, "/stores/me/pix-settings"));
   addCheck("caixas", await getProtected(apiUrl, token, "/cash-registers"));
   addCheck("estoque", await getProtected(apiUrl, token, "/stock/summary"));
-  addCheck("relatorio resumo", await getProtected(apiUrl, token, "/reports/summary"));
+  addCheck("relatorio resumo", await getProtected(apiUrl, token, "/reports/overview"));
 
   const adminAttempt = await getProtected(apiUrl, token, "/admin/stores");
   if (adminAttempt.status !== 403) {

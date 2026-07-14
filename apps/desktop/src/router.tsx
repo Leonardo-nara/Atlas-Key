@@ -17,6 +17,7 @@ import { PixSettingsPage } from "./pages/PixSettingsPage";
 import { ProductsPage } from "./pages/ProductsPage";
 import { ReportsPage } from "./pages/ReportsPage";
 import { StockPage } from "./pages/StockPage";
+import { StoreReadinessPage } from "./pages/StoreReadinessPage";
 import { ProtectedRoute } from "./shared/routing/ProtectedRoute";
 import { AppLayout } from "./shared/layout/AppLayout";
 
@@ -36,6 +37,14 @@ export const appRouter = createHashRouter([
       {
         index: true,
         element: <HomeRoute />
+      },
+      {
+        path: "setup",
+        element: (
+          <RoleRoute role="STORE_ADMIN">
+            <StoreReadinessPage />
+          </RoleRoute>
+        )
       },
       {
         path: "products",

@@ -7,6 +7,7 @@ import { toMediaUrl } from "../../lib/media-url";
 
 const navigationItems = [
   { to: "/", label: "Visao geral", end: true },
+  { to: "/setup", label: "Configuração inicial" },
   { to: "/pdv", label: "PDV" },
   { to: "/cash-registers", label: "Caixa" },
   { to: "/products", label: "Produtos" },

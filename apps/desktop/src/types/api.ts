@@ -77,6 +77,31 @@ export interface StoreDashboard {
   outOfStockProducts: number;
 }
 
+export type StoreReadinessCategory = "REQUIRED" | "RECOMMENDED" | "OPTIONAL";
+
+export interface StoreReadinessItem {
+  key: string;
+  title: string;
+  description: string;
+  category: StoreReadinessCategory;
+  completed: boolean;
+  actionLabel: string;
+  route: string;
+}
+
+export interface StoreReadiness {
+  storeId: string;
+  storeName: string;
+  ready: boolean;
+  percentage: number;
+  completedItems: number;
+  totalItems: number;
+  requiredCompletedItems: number;
+  requiredTotalItems: number;
+  generatedAt: string;
+  items: StoreReadinessItem[];
+}
+
 export interface AdminDashboardRecentStore {
   id: string;
   name: string;

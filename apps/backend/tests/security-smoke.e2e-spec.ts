@@ -171,6 +171,13 @@ const storesServiceMock = {
     activeProducts: 0,
     activeCouriers: 0
   }),
+  getReadiness: () => ({
+    ready: false,
+    percentage: 50,
+    completedItems: 1,
+    totalItems: 2,
+    items: []
+  }),
   getStoreByOwner: () => ({ id: "store-1", name: "Loja", address: "Rua", active: true }),
   listDeliveryZones: () => [],
   getPixSettings: () => ({ pixEnabled: false }),
@@ -434,6 +441,7 @@ describe("backend smoke/security routes", () => {
     await expectStatus("/admin/audit-logs", 401);
     await expectStatus("/admin/dashboard", 401);
     await expectStatus("/stores/me/dashboard", 401);
+    await expectStatus("/stores/me/readiness", 401);
     await expectStatus("/sales", 401);
     await expectStatus("/sales/sale-1/items", 401, { method: "POST" });
     await expectStatus("/sales/sale-1/complete", 401, { method: "POST" });
@@ -517,6 +525,13 @@ describe("backend smoke/security routes", () => {
     }
 
     await expectStatus("/reports/overview", 200, { token: "store" });
+  });
+
+  it("protege checklist de configuracao inicial por role", async () => {
+    await expectStatus("/stores/me/readiness", 403, { token: "platform" });
+    await expectStatus("/stores/me/readiness", 403, { token: "client" });
+    await expectStatus("/stores/me/readiness", 403, { token: "courier" });
+    await expectStatus("/stores/me/readiness", 200, { token: "store" });
   });
 
   it("valida filtros de relatorio e protege CSV contra formula", async () => {

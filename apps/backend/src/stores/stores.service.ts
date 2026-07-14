@@ -9,6 +9,7 @@ import {
   OrderPaymentStatus,
   OrderStatus,
   Prisma,
+  SaleStatus,
   StoreCourierLinkStatus,
   StorePixKeyType,
   StoreStatus,
@@ -153,6 +154,221 @@ export class StoresService {
       outOfStockProducts: controlledStockProducts.filter((product) =>
         product.stockQuantity.lessThanOrEqualTo(0)
       ).length
+    };
+  }
+
+  async getReadiness(ownerUserId: string, role: UserRole) {
+    const store = await this.getStoreByOwner(ownerUserId, role);
+
+    const [
+      activeProducts,
+      productsWithoutValidPrice,
+      activeControlledProducts,
+      activeControlledProductsWithInvalidStock,
+      activeDeliveryZones,
+      activeCouriers,
+      activeCashRegisters,
+      completedSales,
+      deliveredOrders,
+      productsWithImage
+    ] = await this.prisma.$transaction([
+      this.prisma.product.count({
+        where: { storeId: store.id, available: true }
+      }),
+      this.prisma.product.count({
+        where: {
+          storeId: store.id,
+          available: true,
+          price: { lte: new Prisma.Decimal(0) }
+        }
+      }),
+      this.prisma.product.count({
+        where: {
+          storeId: store.id,
+          available: true,
+          stockControlEnabled: true
+        }
+      }),
+      this.prisma.product.count({
+        where: {
+          storeId: store.id,
+          available: true,
+          stockControlEnabled: true,
+          OR: [
+            { stockQuantity: { lt: new Prisma.Decimal(0) } },
+            { minimumStock: { lt: new Prisma.Decimal(0) } }
+          ]
+        }
+      }),
+      this.prisma.storeDeliveryZone.count({
+        where: { storeId: store.id, isActive: true }
+      }),
+      this.prisma.storeCourierLink.count({
+        where: {
+          storeId: store.id,
+          status: StoreCourierLinkStatus.APPROVED,
+          courier: {
+            active: true,
+            status: UserStatus.ACTIVE
+          }
+        }
+      }),
+      this.prisma.cashRegister.count({
+        where: { storeId: store.id, active: true }
+      }),
+      this.prisma.sale.count({
+        where: { storeId: store.id, status: SaleStatus.COMPLETED }
+      }),
+      this.prisma.order.count({
+        where: { storeId: store.id, status: OrderStatus.DELIVERED }
+      }),
+      this.prisma.product.count({
+        where: {
+          storeId: store.id,
+          available: true,
+          imageKey: { not: null }
+        }
+      })
+    ]);
+
+    const pixConfigured = Boolean(
+      store.pixKeyType && store.pixKey && store.pixRecipientName
+    );
+    const hasProfile = Boolean(store.name.trim() && store.address.trim());
+    const items = [
+      createReadinessItem({
+        key: "store-profile",
+        title: "Perfil da empresa",
+        description: "Nome e endereco da loja preenchidos para identificacao no painel.",
+        category: "REQUIRED",
+        completed: hasProfile,
+        actionLabel: "Revisar perfil",
+        route: "/"
+      }),
+      createReadinessItem({
+        key: "active-product",
+        title: "Catalogo com produto ativo",
+        description: "Cadastre pelo menos um produto disponivel para venda.",
+        category: "REQUIRED",
+        completed: activeProducts > 0,
+        actionLabel: "Abrir produtos",
+        route: "/products"
+      }),
+      createReadinessItem({
+        key: "valid-product-prices",
+        title: "Precos validos",
+        description: "Produtos ativos precisam ter preco maior que zero.",
+        category: "REQUIRED",
+        completed: activeProducts > 0 && productsWithoutValidPrice === 0,
+        actionLabel: "Conferir produtos",
+        route: "/products"
+      }),
+      createReadinessItem({
+        key: "stock-configured",
+        title: "Estoque configurado",
+        description: "Produtos com controle de estoque devem ter saldo e minimo validos.",
+        category: "REQUIRED",
+        completed:
+          activeControlledProducts === 0 ||
+          activeControlledProductsWithInvalidStock === 0,
+        actionLabel: "Abrir estoque",
+        route: "/stock"
+      }),
+      createReadinessItem({
+        key: "delivery-zones",
+        title: "Taxas por bairro",
+        description: "Cadastre pelo menos uma regiao ativa para sugerir taxa de entrega.",
+        category: "REQUIRED",
+        completed: activeDeliveryZones > 0,
+        actionLabel: "Configurar taxas",
+        route: "/delivery-zones"
+      }),
+      createReadinessItem({
+        key: "basic-payment-methods",
+        title: "Formas basicas de pagamento",
+        description: "Dinheiro e cartao na entrega estao disponiveis no sistema.",
+        category: "REQUIRED",
+        completed: true,
+        actionLabel: "Ver pedidos",
+        route: "/orders"
+      }),
+      createReadinessItem({
+        key: "pix-manual",
+        title: "Pix manual",
+        description: store.pixEnabled
+          ? "Complete chave Pix e nome do recebedor para usar Pix manual."
+          : "Ative somente se a loja for receber Pix manualmente.",
+        category: store.pixEnabled ? "REQUIRED" : "RECOMMENDED",
+        completed: store.pixEnabled ? pixConfigured : true,
+        actionLabel: "Configurar Pix",
+        route: "/pix-settings"
+      }),
+      createReadinessItem({
+        key: "cash-register",
+        title: "Caixa preparado",
+        description: "Crie pelo menos um caixa ativo para vendas de balcão.",
+        category: "REQUIRED",
+        completed: activeCashRegisters > 0,
+        actionLabel: "Abrir caixa",
+        route: "/cash-registers"
+      }),
+      createReadinessItem({
+        key: "linked-courier",
+        title: "Motoboy vinculado",
+        description: "Tenha pelo menos um motoboy aprovado para entregas próprias.",
+        category: "RECOMMENDED",
+        completed: activeCouriers > 0,
+        actionLabel: "Gerenciar motoboys",
+        route: "/couriers"
+      }),
+      createReadinessItem({
+        key: "store-image",
+        title: "Foto da loja",
+        description: "Adicione uma imagem da empresa para deixar o catalogo mais profissional.",
+        category: "RECOMMENDED",
+        completed: Boolean(store.profileImageKey),
+        actionLabel: "Alterar foto",
+        route: "/"
+      }),
+      createReadinessItem({
+        key: "product-images",
+        title: "Fotos dos produtos",
+        description: "Inclua imagens nos produtos principais para melhorar a apresentacao.",
+        category: "RECOMMENDED",
+        completed: activeProducts > 0 && productsWithImage > 0,
+        actionLabel: "Editar produtos",
+        route: "/products"
+      }),
+      createReadinessItem({
+        key: "test-operation",
+        title: "Operacao testada",
+        description: "Realize uma venda de teste ou conclua um pedido para validar a rotina.",
+        category: "RECOMMENDED",
+        completed: completedSales > 0 || deliveredOrders > 0,
+        actionLabel: "Abrir PDV",
+        route: "/pdv"
+      })
+    ];
+
+    const requiredItems = items.filter((item) => item.category === "REQUIRED");
+    const scoredItems = items.filter((item) => item.category !== "OPTIONAL");
+    const completedItems = scoredItems.filter((item) => item.completed).length;
+    const requiredCompletedItems = requiredItems.filter((item) => item.completed).length;
+
+    return {
+      storeId: store.id,
+      storeName: store.name,
+      ready: requiredCompletedItems === requiredItems.length,
+      percentage:
+        scoredItems.length > 0
+          ? Math.round((completedItems / scoredItems.length) * 100)
+          : 100,
+      completedItems,
+      totalItems: scoredItems.length,
+      requiredCompletedItems,
+      requiredTotalItems: requiredItems.length,
+      generatedAt: new Date(),
+      items
     };
   }
 
@@ -478,6 +694,20 @@ function getTodayRange(reference = new Date()) {
   startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
 
   return { startOfToday, startOfTomorrow };
+}
+
+type ReadinessCategory = "REQUIRED" | "RECOMMENDED" | "OPTIONAL";
+
+function createReadinessItem(item: {
+  key: string;
+  title: string;
+  description: string;
+  category: ReadinessCategory;
+  completed: boolean;
+  actionLabel: string;
+  route: string;
+}) {
+  return item;
 }
 
 function isUniqueConstraintError(error: unknown) {

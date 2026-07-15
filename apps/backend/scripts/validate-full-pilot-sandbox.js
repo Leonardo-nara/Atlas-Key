@@ -34,6 +34,14 @@ function money(value) {
   return Number(value);
 }
 
+function listFromBody(body) {
+  if (Array.isArray(body)) return body;
+  if (Array.isArray(body?.items)) return body.items;
+  if (Array.isArray(body?.data)) return body.data;
+  if (Array.isArray(body?.results)) return body.results;
+  return [];
+}
+
 function median(values) {
   const sorted = [...values].sort((a, b) => a - b);
   return sorted[Math.floor(sorted.length / 2)] ?? 0;
@@ -89,21 +97,22 @@ async function main() {
 
   const products = await api(apiUrl, storeToken, "GET", "/products");
   expectOk("products", products);
-  assert(products.body.every((item) => item.name.startsWith(PREFIX)), "Produto fora do prefixo QA");
-  assert(!products.body.some((item) => item.storeId === credentials.ids.storeB), "Produto da Store B vazou para Store A");
+  const productItems = listFromBody(products.body);
+  assert(productItems.every((item) => item.name.startsWith(PREFIX)), "Produto fora do prefixo QA");
+  assert(!productItems.some((item) => item.storeId === credentials.ids.storeB), "Produto da Store B vazou para Store A");
   add("produtos e isolamento");
 
   const catalogStores = await api(apiUrl, null, "GET", `/catalog/stores?search=${PREFIX}`);
   expectOk("catalog stores", catalogStores);
-  assert(catalogStores.body.some((item) => item.id === credentials.ids.storeA), "Store A ausente do catalogo");
+  assert(listFromBody(catalogStores.body).some((item) => item.id === credentials.ids.storeA), "Store A ausente do catalogo");
   const catalogProducts = await api(apiUrl, null, "GET", `/catalog/stores/${credentials.ids.storeA}/products`);
   expectOk("catalog products", catalogProducts);
-  assert(catalogProducts.body.some((item) => item.name.includes("PRODUTO_ZERADO") && item.stockAvailable === false), "Produto zerado nao foi marcado indisponivel");
+  assert(listFromBody(catalogProducts.body).some((item) => item.name.includes("PRODUTO_ZERADO") && item.stockAvailable === false), "Produto zerado nao foi marcado indisponivel");
   add("catalogo cliente");
 
   const zones = await api(apiUrl, storeToken, "GET", "/stores/me/delivery-zones");
   expectOk("delivery zones", zones);
-  assert(zones.body.length >= 3, "Taxas por bairro insuficientes");
+  assert(listFromBody(zones.body).length >= 3, "Taxas por bairro insuficientes");
   const negativeZone = await api(apiUrl, storeToken, "POST", "/stores/me/delivery-zones", {
     name: `${PREFIX}NEGATIVA`,
     district: "Bairro Erro",
@@ -112,8 +121,8 @@ async function main() {
   expectStatus("taxa negativa", negativeZone, 400);
   add("taxas");
 
-  const normal = products.body.find((item) => item.name.includes("PRODUTO_NORMAL"));
-  const low = products.body.find((item) => item.name.includes("PRODUTO_ESTOQUE_BAIXO"));
+  const normal = productItems.find((item) => item.name.includes("PRODUTO_NORMAL"));
+  const low = productItems.find((item) => item.name.includes("PRODUTO_ESTOQUE_BAIXO"));
   assert(normal && low, "Produtos principais nao encontrados");
 
   const deliveryOrder = await api(apiUrl, clientToken, "POST", "/orders/client", {
@@ -139,7 +148,7 @@ async function main() {
   expectOk("confirma pedido", confirmOrder);
   const available = await api(apiUrl, courierToken, "GET", "/orders/available");
   expectOk("pedidos disponiveis courier", available);
-  assert(available.body.items.some((item) => item.id === deliveryOrder.body.id), "Pedido confirmado nao apareceu para motoboy");
+  assert(listFromBody(available.body).some((item) => item.id === deliveryOrder.body.id), "Pedido confirmado nao apareceu para motoboy");
   const accepted = await api(apiUrl, courierToken, "PATCH", `/orders/${deliveryOrder.body.id}/accept`);
   expectOk("motoboy aceita", accepted);
   expectOk("pedido saiu", await api(apiUrl, courierToken, "PATCH", `/orders/${deliveryOrder.body.id}/status`, { status: "picked_up" }));
@@ -229,7 +238,7 @@ async function main() {
 
   const bProducts = await api(apiUrl, storeBToken, "GET", "/products");
   expectOk("Store B products", bProducts);
-  assert(bProducts.body.every((item) => item.storeId !== credentials.ids.storeA), "Store B viu produtos da Store A");
+  assert(listFromBody(bProducts.body).every((item) => item.storeId !== credentials.ids.storeA), "Store B viu produtos da Store A");
   expectStatus("Store B nao acessa sale A", await api(apiUrl, storeBToken, "GET", `/sales/${sale.body.id}`), 404);
   add("isolamento A/B");
 

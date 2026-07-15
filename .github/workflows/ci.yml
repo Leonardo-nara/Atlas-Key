@@ -58,7 +58,7 @@ jobs:
           cache: pnpm
 
       - name: Install backend workspace
-        run: pnpm install --filter @deliveries/backend... --frozen-lockfile --prefer-offline
+        run: pnpm install --filter @deliveries/backend... --frozen-lockfile --prefer-offline --ignore-scripts --child-concurrency=1 --network-concurrency=4
 
       - name: Backend validation
         run: |
@@ -118,7 +118,7 @@ jobs:
           cache: pnpm
 
       - name: Install backend workspace
-        run: pnpm install --filter @deliveries/backend... --frozen-lockfile --prefer-offline
+        run: pnpm install --filter @deliveries/backend... --frozen-lockfile --prefer-offline --ignore-scripts --child-concurrency=1 --network-concurrency=4
 
       - name: Run backend e2e
         run: pnpm --filter @deliveries/backend test:e2e

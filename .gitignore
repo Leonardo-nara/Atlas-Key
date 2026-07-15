@@ -37,6 +37,7 @@ yarn-error.log*
 .netlify/
 .demo-local/
 .android-local/
+.tools/
 .qa-reports-manifest.json
 apps/backend/.qa-reports-manifest.json
 .qa-readiness-manifest.json

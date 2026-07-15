@@ -55,7 +55,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
 
       - name: Install backend workspace
         run: pnpm install --filter @deliveries/backend... --frozen-lockfile --prefer-offline --ignore-scripts --child-concurrency=1 --network-concurrency=4
@@ -117,7 +116,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
 
       - name: Install backend workspace
         run: pnpm install --filter @deliveries/backend... --frozen-lockfile --prefer-offline --ignore-scripts --child-concurrency=1 --network-concurrency=4
@@ -143,7 +141,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
 
       - name: Install desktop workspace
         run: pnpm install --filter @deliveries/desktop... --frozen-lockfile --prefer-offline
@@ -172,7 +169,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
 
       - name: Install mobile workspace
         run: pnpm install --filter @deliveries/mobile... --frozen-lockfile --prefer-offline

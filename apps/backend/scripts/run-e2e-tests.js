@@ -35,7 +35,7 @@ runPnpm(["exec", "prisma", "migrate", "reset", "--force", "--skip-seed"]);
 runPnpm(["build:test"]);
 run("node", [
   "--test",
-  "--test-isolation=none",
+  "--test-concurrency=1",
   "dist-test/tests/ownership-real.e2e-spec.js"
 ]);
 

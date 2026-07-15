@@ -14,6 +14,7 @@ import { InternalMetricsController } from "./common/observability/internal-metri
 import { InternalSentryTestController } from "./common/observability/internal-sentry-test.controller";
 import { StorageModule } from "./common/storage/storage.module";
 import { OrdersModule } from "./orders/orders.module";
+import { NotificationsModule } from "./notifications/notifications.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { ProductsModule } from "./products/products.module";
 import { RealtimeModule } from "./realtime/realtime.module";
@@ -57,6 +58,7 @@ import { WebhooksModule } from "./webhooks/webhooks.module";
     ReportsModule,
     SalesModule,
     StockModule,
+    NotificationsModule,
     OrdersModule,
     WebhooksModule
   ],

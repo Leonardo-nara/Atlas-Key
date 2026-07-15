@@ -6,6 +6,7 @@ import type {
 } from "@deliveries/shared-types";
 import type { Server } from "socket.io";
 
+import { NotificationsService } from "../notifications/notifications.service";
 import { OrdersRealtimeGateway } from "./orders-realtime.gateway";
 import {
   ORDER_SOCKET_EVENTS,
@@ -29,7 +30,10 @@ interface BroadcastableOrder {
 
 @Injectable()
 export class OrdersRealtimeService {
-  constructor(private readonly gateway: OrdersRealtimeGateway) {}
+  constructor(
+    private readonly gateway: OrdersRealtimeGateway,
+    private readonly notificationsService: NotificationsService
+  ) {}
 
   emitOrderCreated(order: BroadcastableOrder) {
     this.emitToRooms(ORDER_SOCKET_EVENTS.CREATED, order, [
@@ -84,6 +88,7 @@ export class OrdersRealtimeService {
     }
 
     emitter.emit(event, payload);
+    this.notificationsService.notifyOrderEvent(event, order);
   }
 
   private toSnapshot(order: BroadcastableOrder): RealtimeOrderSnapshot {

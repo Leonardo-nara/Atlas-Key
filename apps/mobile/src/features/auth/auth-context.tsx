@@ -17,6 +17,7 @@ import {
   setStoredTokens
 } from "../../lib/storage";
 import type { AuthUser } from "../../types/api";
+import { notificationsService } from "../notifications/notifications-service";
 import { authService } from "./auth-service";
 
 interface AuthContextValue {
@@ -65,6 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loginError, setLoginError] = useState<string | null>(null);
 
   useEffect(() => {
+    notificationsService.configureForegroundPresentation();
     void bootstrapSession();
   }, []);
 
@@ -82,6 +84,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => setAuthSessionListeners({});
   }, []);
+
+  useEffect(() => {
+    if (!token || !user) {
+      return;
+    }
+
+    void notificationsService.registerDevice(token);
+  }, [token, user?.id]);
 
   async function bootstrapSession() {
     const storedAccessToken = await getStoredAccessToken();
@@ -261,8 +271,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function logout() {
     const tokenToRevoke = refreshToken ?? (await getStoredRefreshToken());
+    const accessTokenToRemove = token;
 
     try {
+      if (accessTokenToRemove) {
+        await notificationsService.unregisterAll(accessTokenToRemove);
+      }
+
       if (tokenToRevoke) {
         await authService.logout(tokenToRevoke);
       }
@@ -278,6 +293,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
+      await notificationsService.unregisterAll(token);
       await authService.logoutAll(token);
     } finally {
       await clearSession();

@@ -1,12 +1,13 @@
 import { Module } from "@nestjs/common";
 
 import { AuthModule } from "../auth/auth.module";
+import { NotificationsModule } from "../notifications/notifications.module";
 import { PrismaModule } from "../prisma/prisma.module";
 import { OrdersRealtimeGateway } from "./orders-realtime.gateway";
 import { OrdersRealtimeService } from "./orders-realtime.service";
 
 @Module({
-  imports: [AuthModule, PrismaModule],
+  imports: [AuthModule, PrismaModule, NotificationsModule],
   providers: [OrdersRealtimeGateway, OrdersRealtimeService],
   exports: [OrdersRealtimeService]
 })

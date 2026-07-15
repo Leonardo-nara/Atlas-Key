@@ -2,11 +2,14 @@ import { Logger, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import {
   ConnectedSocket,
+  OnGatewayInit,
   OnGatewayConnection,
   OnGatewayDisconnect,
   WebSocketGateway,
   WebSocketServer
 } from "@nestjs/websockets";
+import { createAdapter } from "@socket.io/redis-adapter";
+import { createClient } from "redis";
 import type { Server, Socket } from "socket.io";
 
 import type { AuthenticatedUser } from "../common/authenticated-user.interface";
@@ -39,7 +42,7 @@ type SocketAuthPayload = AuthenticatedUser;
   transports: ["websocket"]
 })
 export class OrdersRealtimeGateway
-  implements OnGatewayConnection, OnGatewayDisconnect
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
   @WebSocketServer()
   server!: Server;
@@ -50,6 +53,10 @@ export class OrdersRealtimeGateway
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService
   ) {}
+
+  afterInit(server: Server) {
+    void this.configureRedisAdapter(server);
+  }
 
   async handleConnection(@ConnectedSocket() client: Socket) {
     try {
@@ -151,5 +158,51 @@ export class OrdersRealtimeGateway
     }
 
     return null;
+  }
+
+  private async configureRedisAdapter(server: Server) {
+    const redisUrl = process.env.REDIS_URL?.trim();
+
+    if (!redisUrl) {
+      structuredLog(this.logger, "log", {
+        event: "realtime_redis_adapter_skipped",
+        reason: "REDIS_URL ausente; usando realtime em memoria"
+      });
+      return;
+    }
+
+    try {
+      const publisher = createClient({ url: redisUrl });
+      const subscriber = publisher.duplicate();
+
+      publisher.on("error", (error) => {
+        structuredLog(this.logger, "warn", {
+          event: "realtime_redis_publisher_error",
+          message: error.message
+        });
+      });
+
+      subscriber.on("error", (error) => {
+        structuredLog(this.logger, "warn", {
+          event: "realtime_redis_subscriber_error",
+          message: error.message
+        });
+      });
+
+      await Promise.all([publisher.connect(), subscriber.connect()]);
+      server.adapter(createAdapter(publisher, subscriber));
+
+      structuredLog(this.logger, "log", {
+        event: "realtime_redis_adapter_enabled"
+      });
+    } catch (error) {
+      structuredLog(this.logger, "warn", {
+        event: "realtime_redis_adapter_failed",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Falha desconhecida ao configurar Redis"
+      });
+    }
   }
 }

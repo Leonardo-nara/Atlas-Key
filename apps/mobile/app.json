@@ -29,7 +29,8 @@
         {
           "configureAndroidBackup": true
         }
-      ]
+      ],
+      "expo-notifications"
     ],
     "extra": {
       "eas": {

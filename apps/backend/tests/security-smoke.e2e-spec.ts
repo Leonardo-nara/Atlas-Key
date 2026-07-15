@@ -27,6 +27,8 @@ import { JwtAuthGuard } from "../src/common/guards/jwt-auth.guard";
 import { RolesGuard } from "../src/common/guards/roles.guard";
 import { OrdersController } from "../src/orders/orders.controller";
 import { OrdersService } from "../src/orders/orders.service";
+import { NotificationsController } from "../src/notifications/notifications.controller";
+import { NotificationsService } from "../src/notifications/notifications.service";
 import { PaymentGatewayService } from "../src/orders/payment-gateway.service";
 import { ReportsController } from "../src/reports/reports.controller";
 import { ReportsService } from "../src/reports/reports.service";
@@ -305,6 +307,13 @@ const stockServiceMock = {
   getSummary: () => ({ controlledProducts: 0, availableProducts: 0, lowStockProducts: 0, outOfStockProducts: 0 })
 };
 
+const notificationsServiceMock = {
+  listDevices: () => [],
+  registerDevice: () => ({ id: "device-1", platform: "android", appProfile: "mobile" }),
+  removeDevice: () => ({ message: "Dispositivo removido das notificacoes." }),
+  removeAllDevices: () => ({ message: "Dispositivos removidos das notificacoes." })
+};
+
 const reportsServiceMock = {
   overview: (_userId: string, _role: UserRole, query: { period?: string; dateFrom?: string; dateTo?: string }) => {
     if (query.period === "custom" && (!query.dateFrom || !query.dateTo || query.dateFrom > query.dateTo)) {
@@ -350,6 +359,7 @@ const reportsServiceMock = {
     StoresController,
     AdminController,
     ReportsController,
+    NotificationsController,
     PaymentWebhooksController
   ],
   providers: [
@@ -361,7 +371,8 @@ const reportsServiceMock = {
     { provide: CashRegistersService, useValue: cashRegistersServiceMock },
     { provide: PaymentGatewayService, useValue: paymentGatewayServiceMock },
     { provide: ReportsService, useValue: reportsServiceMock },
-    { provide: StoresService, useValue: storesServiceMock }
+    { provide: StoresService, useValue: storesServiceMock },
+    { provide: NotificationsService, useValue: notificationsServiceMock }
     ,{ provide: StockService, useValue: stockServiceMock }
   ]
 })
@@ -458,12 +469,39 @@ describe("backend smoke/security routes", () => {
     await expectStatus("/stock/summary", 401);
     await expectStatus("/stock/products/product-1/settings", 401, { method: "PATCH" });
     await expectStatus("/stock/products/product-1/movements", 401, { method: "POST" });
+    await expectStatus("/notifications/devices", 401);
+    await expectStatus("/notifications/devices", 401, { method: "POST" });
+    await expectStatus("/notifications/devices/device-1", 401, { method: "DELETE" });
     await expectStatus("/reports/overview", 401);
     await expectStatus("/reports/sales", 401);
     await expectStatus("/reports/products.csv", 401);
     await expectStatus("/webhooks/payments/asaas", 401, {
       method: "POST",
       body: JSON.stringify({ event: "PAYMENT_RECEIVED", payment: { id: "pay_1" } })
+    });
+  });
+
+  it("permite somente usuario autenticado registrar dispositivo proprio", async () => {
+    await expectStatus("/notifications/devices", 200, { token: "client" });
+    await expectStatus("/notifications/devices", 201, {
+      method: "POST",
+      token: "client",
+      body: JSON.stringify({
+        token: "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxxxx]",
+        platform: "android"
+      })
+    });
+    await expectStatus("/notifications/devices", 400, {
+      method: "POST",
+      token: "client",
+      body: JSON.stringify({
+        token: "curto",
+        platform: "android"
+      })
+    });
+    await expectStatus("/notifications/devices/device-1", 200, {
+      method: "DELETE",
+      token: "client"
     });
   });
 

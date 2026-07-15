@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches:
+      - main
+      - "codex/**"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate monorepo
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.7.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Secret pattern scan
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git grep -n -I -E '(sk-[A-Za-z0-9]|sk-proj|sntrys_|rnd_[A-Za-z0-9]|AKIA[0-9A-Z]{16}|BEGIN (RSA|OPENSSH|PRIVATE) KEY|SENTRY_DSN=https://[^<[:space:]]+@)' -- . ':!pnpm-lock.yaml'; then
+            echo "Potential secret pattern found. Review output without exposing values."
+            exit 1
+          fi
+          if git grep -n -I -E '(ASAAS_API_KEY|DATABASE_URL|JWT_SECRET|PAYMENT_PROOF_S3_SECRET_ACCESS_KEY)=[^<[:space:]]{12,}' -- . ':!pnpm-lock.yaml' ':!.env.example' ':!.env.production.example' ':!docs/**'; then
+            echo "Potential secret pattern found. Review output without exposing values."
+            exit 1
+          fi
+
+      - name: Backend
+        run: |
+          pnpm --filter @deliveries/backend prisma:generate
+          pnpm --filter @deliveries/backend test
+          pnpm --filter @deliveries/backend typecheck
+          pnpm --filter @deliveries/backend lint
+          pnpm --filter @deliveries/backend build
+
+      - name: Desktop
+        run: |
+          pnpm --filter @deliveries/desktop typecheck
+          pnpm --filter @deliveries/desktop lint
+          pnpm --filter @deliveries/desktop build
+
+      - name: Mobile
+        run: |
+          pnpm --filter @deliveries/mobile typecheck
+          pnpm --filter @deliveries/mobile lint
+          pnpm --filter @deliveries/mobile build
+          pnpm --filter @deliveries/mobile config:check
+
+      - name: Diff check
+        run: git diff --check

@@ -17,7 +17,7 @@ railway logs --service rotapronta-api
 Baseline aprovado para piloto:
 
 ```text
-v1.0.0-pilot-ready
+v1.0.2-operational-qa
 ```
 
 ## 2. Validar saude
@@ -108,3 +108,44 @@ Durante o piloto controlado:
 - `PAYMENT_GATEWAY_ENABLED` deve permanecer ausente ou `false`.
 - `PAYMENT_GATEWAY_PROVIDER` deve permanecer ausente ou vazio.
 - Webhook de pagamento real nao deve ser ativado sem fase propria.
+
+## 10. RPO e RTO iniciais
+
+Valores operacionais propostos ate ensaio formal:
+
+- RPO alvo: ate 24 horas para banco se depender apenas de backup gerenciado diario; ajustar conforme plano Railway contratado.
+- RTO alvo: ate 4 horas para restaurar API e painel em ambiente conhecido, assumindo acesso ao Railway/Netlify/GitHub.
+- Storage R2: exigir versionamento ou procedimento equivalente antes de escala nacional.
+
+Esses valores so devem ser considerados oficiais depois de um ensaio de restauracao em sandbox.
+
+## 11. Ensaio de restauracao seguro
+
+Nunca restaurar sobre producao.
+
+Procedimento recomendado:
+
+1. Criar banco Postgres isolado.
+2. Restaurar snapshot/dump da producao ou amostra sanitizada.
+3. Apontar servico sandbox temporario para o banco restaurado.
+4. Rodar migrations pendentes apenas se o objetivo for validar upgrade.
+5. Validar health, login de usuario teste sanitizado e rotas protegidas.
+6. Descartar ambiente restaurado ao final.
+
+Registrar:
+
+- origem do backup;
+- horario do backup;
+- duracao da restauracao;
+- falhas encontradas;
+- RPO/RTO real medido;
+- responsavel tecnico.
+
+## 12. Rollback com migration
+
+Antes de voltar codigo:
+
+1. Verificar se migrations aplicadas sao backward-compatible.
+2. Se a migration removeu coluna/tabela, parar e preparar plano especifico.
+3. Preferir hotfix forward quando dados ja foram migrados.
+4. Nunca executar `reset`, `truncate` ou rollback manual em producao sem backup recente e aprovacao explicita.

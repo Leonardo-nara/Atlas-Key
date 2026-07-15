@@ -69,6 +69,8 @@ jobs:
           pnpm --filter @deliveries/backend build
 
       - name: Validate Prisma migrations
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/rotapronta_ci?schema=public
         run: pnpm --filter @deliveries/backend exec prisma validate --schema prisma/schema.prisma
 
       - name: Dependency audit

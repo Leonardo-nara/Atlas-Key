@@ -3,6 +3,7 @@ import {
   IsEmail,
   IsOptional,
   IsString,
+  IsTimeZone,
   MaxLength,
   MinLength
 } from "class-validator";
@@ -50,4 +51,11 @@ export class CreateAdminStoreDto {
   @IsString()
   @MaxLength(20)
   ownerPhone?: string;
+
+  @Transform(trimString)
+  @IsOptional()
+  @IsString()
+  @IsTimeZone()
+  @MaxLength(80)
+  timezone?: string;
 }

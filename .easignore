@@ -2,6 +2,8 @@
 # needed by pnpm workspaces and exclude unrelated app/build artifacts.
 .git
 .codex-runtime
+.android-local
+.demo-local
 .expo
 **/.expo
 node_modules
@@ -25,6 +27,15 @@ coverage
 **/coverage
 *.tsbuildinfo
 *.log
+_tmp_*
+*.tmp
+*.bak
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.mp4
+*.mov
 
 .env
 .env.local

@@ -34,13 +34,19 @@ Antes de Play Store:
 Necessario:
 
 1. Conta Apple Developer paga.
-2. Bundle ID definitivo.
+2. Bundle ID definitivo. Preparado tecnicamente como `com.deliveryplatform.courier`; revisar quando nome final for decidido.
 3. Certificados/provisioning.
 4. App Store Connect.
 5. Privacy manifest e informacoes de coleta.
 6. TestFlight.
 7. Screenshots e textos.
 8. Validacao em dispositivo iOS real.
+
+Configuracao tecnica ja preparada:
+
+- `ios.bundleIdentifier`.
+- `ios.supportsTablet=false`.
+- Descricoes `NSPhotoLibraryUsageDescription` e `NSCameraUsageDescription`.
 
 ## Protecoes recomendadas
 
@@ -67,4 +73,3 @@ pnpm --filter @deliveries/mobile build:android:production
 - Dados legais, CNPJ/CPF responsavel, e-mail suporte e politica de privacidade.
 - Textos comerciais, screenshots, icone e nome final.
 - Aceite das politicas das lojas.
-

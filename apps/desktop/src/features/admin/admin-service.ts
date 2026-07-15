@@ -15,6 +15,7 @@ interface CreateAdminStoreInput {
   ownerEmail: string;
   ownerPassword: string;
   ownerPhone?: string;
+  timezone?: string;
 }
 
 interface CreateAdminUserInput {

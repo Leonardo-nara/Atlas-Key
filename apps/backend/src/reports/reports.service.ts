@@ -14,11 +14,16 @@ import {
 } from "@prisma/client";
 
 import { UserRole } from "../common/enums/user-role.enum";
+import {
+  addDays,
+  getZonedDateParts,
+  normalizeTimeZone,
+  zonedStartOfDayToUtc
+} from "../common/timezone/timezone";
 import { PrismaService } from "../prisma/prisma.service";
 import { StoresService } from "../stores/stores.service";
 import { ReportListQueryDto, ReportOrigin, ReportPeriod, ReportPeriodQueryDto } from "./dto/report-query.dto";
 
-const OPERATIONAL_TIMEZONE = "America/Sao_Paulo";
 const MAX_PERIOD_DAYS = 366;
 const EXPORT_LIMIT = 5000;
 const DEFAULT_PAGE_LIMIT = 25;
@@ -27,6 +32,7 @@ type DateRange = {
   dateFrom: Date;
   dateToExclusive: Date;
   label: string;
+  timezone: string;
 };
 
 type SaleSummaryRow = {
@@ -56,7 +62,7 @@ export class ReportsService {
 
   async overview(ownerUserId: string, role: UserRole, query: ReportPeriodQueryDto) {
     const store = await this.storesService.getStoreByOwner(ownerUserId, role);
-    const range = resolveDateRange(query);
+    const range = resolveDateRange(query, store.timezone);
     const where = dateWhere(range);
     const [sales, orders, products, stockMovements, cashSessions] = await this.prisma.$transaction([
       this.prisma.sale.findMany({
@@ -153,7 +159,7 @@ export class ReportsService {
 
   async sales(ownerUserId: string, role: UserRole, query: ReportListQueryDto) {
     const store = await this.storesService.getStoreByOwner(ownerUserId, role);
-    const range = resolveDateRange(query);
+    const range = resolveDateRange(query, store.timezone);
     const page = query.page ?? 1;
     const limit = query.limit ?? DEFAULT_PAGE_LIMIT;
     const skip = (page - 1) * limit;
@@ -175,7 +181,7 @@ export class ReportsService {
 
   async products(ownerUserId: string, role: UserRole, query: ReportPeriodQueryDto) {
     const store = await this.storesService.getStoreByOwner(ownerUserId, role);
-    const range = resolveDateRange(query);
+    const range = resolveDateRange(query, store.timezone);
     const where = dateWhere(range);
     const [products, sales, orders] = await this.prisma.$transaction([
       this.prisma.product.findMany({ where: { storeId: store.id }, orderBy: { name: "asc" } }),
@@ -243,7 +249,7 @@ export class ReportsService {
 
   async payments(ownerUserId: string, role: UserRole, query: ReportPeriodQueryDto) {
     const store = await this.storesService.getStoreByOwner(ownerUserId, role);
-    const range = resolveDateRange(query);
+    const range = resolveDateRange(query, store.timezone);
     const where = dateWhere(range);
     const [sales, orders] = await this.prisma.$transaction([
       this.prisma.sale.findMany({
@@ -291,7 +297,7 @@ export class ReportsService {
 
   async cash(ownerUserId: string, role: UserRole, query: ReportListQueryDto) {
     const store = await this.storesService.getStoreByOwner(ownerUserId, role);
-    const range = resolveDateRange(query);
+    const range = resolveDateRange(query, store.timezone);
     const page = query.page ?? 1;
     const limit = query.limit ?? DEFAULT_PAGE_LIMIT;
     const sessionStatus = optionalEnumValue(query.status, Object.values(CashRegisterSessionStatus), "status");
@@ -327,7 +333,7 @@ export class ReportsService {
 
   async stock(ownerUserId: string, role: UserRole, query: ReportListQueryDto) {
     const store = await this.storesService.getStoreByOwner(ownerUserId, role);
-    const range = resolveDateRange(query);
+    const range = resolveDateRange(query, store.timezone);
     const products = await this.prisma.product.findMany({
       where: {
         storeId: store.id,
@@ -365,13 +371,15 @@ export class ReportsService {
   }
 
   async salesCsv(ownerUserId: string, role: UserRole, query: ReportListQueryDto) {
+    const store = await this.storesService.getStoreByOwner(ownerUserId, role);
+    const timeZone = normalizeTimeZone(store.timezone);
     const rows = await this.sales(ownerUserId, role, { ...query, page: 1, limit: EXPORT_LIMIT });
     ensureExportLimit(rows.total);
 
     return buildCsv("relatorio-vendas", [
       ["Data", "Origem", "Cliente", "Status", "Forma de pagamento", "Status pagamento", "Total vendido", "Total pago"],
       ...rows.items.map((item) => [
-        formatDatePtBr(item.occurredAt),
+        formatDatePtBr(item.occurredAt, timeZone),
         item.origin,
         item.customerName ?? "",
         item.status,
@@ -404,6 +412,8 @@ export class ReportsService {
   }
 
   async cashCsv(ownerUserId: string, role: UserRole, query: ReportListQueryDto) {
+    const store = await this.storesService.getStoreByOwner(ownerUserId, role);
+    const timeZone = normalizeTimeZone(store.timezone);
     const rows = await this.cash(ownerUserId, role, { ...query, page: 1, limit: EXPORT_LIMIT });
     ensureExportLimit(rows.total);
 
@@ -413,8 +423,8 @@ export class ReportsService {
         item.cashRegister.name,
         item.status,
         item.openedBy?.name ?? "",
-        formatDatePtBr(item.openedAt),
-        item.closedAt ? formatDatePtBr(item.closedAt) : "",
+        formatDatePtBr(item.openedAt, timeZone),
+        item.closedAt ? formatDatePtBr(item.closedAt, timeZone) : "",
         formatCsvMoney(item.openingAmount),
         formatCsvMoney(item.cashSalesAmount),
         formatCsvMoney(item.cashInAmount),
@@ -565,9 +575,10 @@ export class ReportsService {
   }
 }
 
-function resolveDateRange(query: ReportPeriodQueryDto): DateRange {
+function resolveDateRange(query: ReportPeriodQueryDto, storeTimeZone?: string | null): DateRange {
+  const timeZone = normalizeTimeZone(storeTimeZone);
   const period = query.period ?? ReportPeriod.TODAY;
-  const nowParts = getZonedDateParts(new Date());
+  const nowParts = getZonedDateParts(new Date(), timeZone);
   let fromParts = nowParts;
   let toParts = addDays(nowParts, 1);
 
@@ -593,8 +604,8 @@ function resolveDateRange(query: ReportPeriodQueryDto): DateRange {
     toParts = addDays(parseDateInput(query.dateTo), 1);
   }
 
-  const dateFrom = zonedDateStartToUtc(fromParts);
-  const dateToExclusive = zonedDateStartToUtc(toParts);
+  const dateFrom = zonedStartOfDayToUtc(fromParts, timeZone);
+  const dateToExclusive = zonedStartOfDayToUtc(toParts, timeZone);
   const days = Math.ceil((dateToExclusive.getTime() - dateFrom.getTime()) / 86_400_000);
 
   if (dateFrom >= dateToExclusive) {
@@ -608,7 +619,8 @@ function resolveDateRange(query: ReportPeriodQueryDto): DateRange {
   return {
     dateFrom,
     dateToExclusive,
-    label: period
+    label: period,
+    timezone: timeZone
   };
 }
 
@@ -631,31 +643,6 @@ function parseDateInput(value: string) {
   return { year, month, day };
 }
 
-function getZonedDateParts(date: Date) {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: OPERATIONAL_TIMEZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  }).formatToParts(date);
-
-  return {
-    year: Number(parts.find((part) => part.type === "year")?.value),
-    month: Number(parts.find((part) => part.type === "month")?.value),
-    day: Number(parts.find((part) => part.type === "day")?.value)
-  };
-}
-
-function zonedDateStartToUtc(parts: { year: number; month: number; day: number }) {
-  const utc = new Date(Date.UTC(parts.year, parts.month - 1, parts.day, 3, 0, 0, 0));
-  return utc;
-}
-
-function addDays(parts: { year: number; month: number; day: number }, days: number) {
-  const date = new Date(Date.UTC(parts.year, parts.month - 1, parts.day + days, 12, 0, 0));
-  return { year: date.getUTCFullYear(), month: date.getUTCMonth() + 1, day: date.getUTCDate() };
-}
-
 function dateWhere(range: DateRange) {
   return { gte: range.dateFrom, lt: range.dateToExclusive };
 }
@@ -663,7 +650,7 @@ function dateWhere(range: DateRange) {
 function serializeRange(range: DateRange) {
   return {
     label: range.label,
-    timezone: OPERATIONAL_TIMEZONE,
+    timezone: range.timezone,
     dateFrom: range.dateFrom.toISOString(),
     dateToExclusive: range.dateToExclusive.toISOString()
   };
@@ -922,11 +909,11 @@ function ensureExportLimit(total: number) {
   }
 }
 
-function formatDatePtBr(value: string | Date) {
+function formatDatePtBr(value: string | Date, timeZone = "America/Sao_Paulo") {
   return new Intl.DateTimeFormat("pt-BR", {
     dateStyle: "short",
     timeStyle: "short",
-    timeZone: OPERATIONAL_TIMEZONE
+    timeZone
   }).format(new Date(value));
 }
 

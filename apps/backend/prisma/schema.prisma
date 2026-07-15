@@ -333,6 +333,7 @@ model Store {
   ownerUserId String   @unique
   status      StoreStatus @default(ACTIVE)
   active      Boolean  @default(true)
+  timezone    String   @default("America/Sao_Paulo")
   profileImageKey String?
   profileImageFileName String?
   profileImageMimeType String?

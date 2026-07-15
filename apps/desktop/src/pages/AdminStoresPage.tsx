@@ -8,6 +8,13 @@ import { PageHeader } from "../shared/ui/PageHeader";
 import type { AdminStore, OperationalStatus } from "../types/api";
 
 const statusOptions: OperationalStatus[] = ["ACTIVE", "SUSPENDED", "INACTIVE"];
+const timezoneOptions = [
+  { value: "America/Sao_Paulo", label: "Brasilia/Sao Paulo" },
+  { value: "America/Manaus", label: "Manaus" },
+  { value: "America/Rio_Branco", label: "Rio Branco/Acre" },
+  { value: "America/Fortaleza", label: "Fortaleza/Recife/Salvador" },
+  { value: "America/Cuiaba", label: "Cuiaba" }
+];
 
 export function AdminStoresPage() {
   const { token } = useAuth();
@@ -27,7 +34,8 @@ export function AdminStoresPage() {
     ownerName: "",
     ownerEmail: "",
     ownerPassword: "",
-    ownerPhone: ""
+    ownerPhone: "",
+    timezone: "America/Sao_Paulo"
   });
 
   useEffect(() => {
@@ -95,7 +103,8 @@ export function AdminStoresPage() {
         ownerName: "",
         ownerEmail: "",
         ownerPassword: "",
-        ownerPhone: ""
+        ownerPhone: "",
+        timezone: "America/Sao_Paulo"
       });
       await loadStores();
     } catch (createError) {
@@ -184,6 +193,19 @@ export function AdminStoresPage() {
             value={form.ownerPhone}
           />
         </label>
+        <label>
+          Fuso horario da loja
+          <select
+            onChange={(event) => setForm({ ...form, timezone: event.target.value })}
+            value={form.timezone}
+          >
+            {timezoneOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
         <button className="primary-button" type="submit">
           Criar empresa
         </button>
@@ -243,6 +265,7 @@ export function AdminStoresPage() {
                   <td>
                     <strong>{store.name}</strong>
                     <p>{store.address}</p>
+                    <p>Fuso: {formatTimezone(store.timezone)}</p>
                     <div className="indicator-row">
                       {store.status === "SUSPENDED" ? (
                         <span className="pill dashboard-status-suspended">
@@ -311,6 +334,10 @@ function statusLabel(status: OperationalStatus) {
   }
 
   return "Inativa";
+}
+
+function formatTimezone(timezone?: string | null) {
+  return timezoneOptions.find((option) => option.value === timezone)?.label ?? timezone ?? "Brasilia/Sao Paulo";
 }
 
 function getErrorMessage(error: unknown, fallback: string) {

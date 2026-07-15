@@ -24,6 +24,7 @@ v1.0.2-operational-qa
 
 ```powershell
 curl.exe -i https://rotapronta-api-production.up.railway.app/api/health
+curl.exe -i https://rotapronta-api-production.up.railway.app/api/health/readiness
 curl.exe -i https://mototake-painel.netlify.app
 ```
 
@@ -140,6 +141,22 @@ Registrar:
 - falhas encontradas;
 - RPO/RTO real medido;
 - responsavel tecnico.
+
+## 13. Smoke de carga seguro no sandbox
+
+Nao executar carga em producao.
+
+```powershell
+$env:LOAD_TEST_API_URL="https://rotapronta-api-sandbox-production.up.railway.app/api"
+$env:LOAD_TEST_ENV_LABEL="sandbox"
+$env:LOAD_TEST_CONCURRENCY="10"
+$env:LOAD_TEST_REQUESTS_PER_ENDPOINT="40"
+pnpm --filter @deliveries/backend load:smoke:prod
+```
+
+Para 25 ou 50 usuarios concorrentes, altere apenas `LOAD_TEST_CONCURRENCY` depois de confirmar que o sandbox permaneceu saudavel.
+
+O script recusa `production` como label e falha se houver erro de rede ou resposta 5xx.
 
 ## 12. Rollback com migration
 

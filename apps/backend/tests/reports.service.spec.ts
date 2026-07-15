@@ -156,6 +156,18 @@ describe("reports service calculations", () => {
     assert.equal(custom.sales.soldAmount >= 240, true);
   });
 
+  it("usa o timezone da loja para fechar periodos que atravessam meia-noite", async () => {
+    const service = createReportsService();
+    const overview = await service.overview("owner-b", UserRole.STORE_ADMIN, {
+      period: ReportPeriod.CUSTOM,
+      dateFrom: "2026-01-01",
+      dateTo: "2026-01-01"
+    });
+
+    assert.equal(overview.period.timezone, "America/Rio_Branco");
+    assert.equal(overview.sales.deliverySoldAmount, 55);
+  });
+
   it("rejeita custom invalido, invertido e periodo acima de 366 dias", async () => {
     const service = createReportsService();
 
@@ -250,8 +262,8 @@ function buildFixture() {
   const yesterday = addDays(today, -1);
   const old = addDays(today, -40);
   const stores = [
-    { id: "store-a", name: "QA_REPORTS_STORE_A" },
-    { id: "store-b", name: "QA_REPORTS_STORE_B" }
+    { id: "store-a", name: "QA_REPORTS_STORE_A", timezone: "America/Sao_Paulo" },
+    { id: "store-b", name: "QA_REPORTS_STORE_B", timezone: "America/Rio_Branco" }
   ];
   const products = [
     product("product-a-1", "store-a", "Produto atual A", "Categoria", 4, 5, true),
@@ -293,6 +305,9 @@ function buildFixture() {
     ]),
     order("order-b-delivered", "store-b", "Cliente loja B", OrderStatus.DELIVERED, OrderPaymentMethod.PIX_MANUAL, OrderPaymentStatus.PAID, 44, today, today, [
       orderItem("product-b-1", "Loja B", 1, 44, 44)
+    ]),
+    order("order-b-rio-branco-edge", "store-b", "Cliente fuso", OrderStatus.DELIVERED, OrderPaymentMethod.CASH, OrderPaymentStatus.PAID, 55, new Date("2026-01-02T04:30:00.000Z"), new Date("2026-01-02T04:30:00.000Z"), [
+      orderItem("product-b-1", "Fuso", 1, 55, 55)
     ])
   ];
   const cashSessions = [

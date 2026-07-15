@@ -26,6 +26,7 @@
     "full-pilot:qa:seed:prod": "node scripts/seed-full-pilot-qa.js",
     "full-pilot:qa:validate:prod": "node scripts/validate-full-pilot-sandbox.js",
     "full-pilot:qa:cleanup:prod": "node scripts/cleanup-full-pilot-qa.js",
+    "load:smoke:prod": "node scripts/load-smoke.js",
     "admin:create": "dotenv -e ../../.env -- node scripts/create-platform-admin.js",
     "admin:create:prod": "node scripts/create-platform-admin.js",
     "admin:reset-password": "dotenv -e ../../.env -- node scripts/reset-platform-admin-password.js",

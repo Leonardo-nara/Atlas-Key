@@ -19,6 +19,7 @@ import {
 import { UserRole } from "../common/enums/user-role.enum";
 import { ImageStorageService } from "../common/storage/image-storage.service";
 import type { UploadedFile } from "../common/storage/uploaded-file.interface";
+import { getTodayRangeForTimeZone } from "../common/timezone/timezone";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateDeliveryZoneDto } from "./dto/create-delivery-zone.dto";
 import { UpdateDeliveryZoneDto } from "./dto/update-delivery-zone.dto";
@@ -59,7 +60,7 @@ export class StoresService {
 
   async getDashboard(ownerUserId: string, role: UserRole) {
     const store = await this.getStoreByOwner(ownerUserId, role);
-    const { startOfToday, startOfTomorrow } = getTodayRange();
+    const { startOfToday, startOfTomorrow, timeZone } = getTodayRangeForTimeZone(store.timezone);
 
     const [
       ordersToday,
@@ -137,6 +138,7 @@ export class StoresService {
     return {
       storeId: store.id,
       storeName: store.name,
+      timezone: timeZone,
       generatedAt: new Date(),
       ordersToday,
       pendingOrders,
@@ -636,6 +638,7 @@ export class StoresService {
     isActive: boolean;
     createdAt: Date;
     updatedAt: Date;
+    timezone?: string | null;
   }) {
     return {
       id: zone.id,
@@ -712,16 +715,6 @@ export function normalizeDistrict(value: string) {
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/\s+/g, " ")
     .toLowerCase();
-}
-
-function getTodayRange(reference = new Date()) {
-  const startOfToday = new Date(reference);
-  startOfToday.setHours(0, 0, 0, 0);
-
-  const startOfTomorrow = new Date(startOfToday);
-  startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
-
-  return { startOfToday, startOfTomorrow };
 }
 
 type ReadinessCategory = "REQUIRED" | "RECOMMENDED" | "OPTIONAL";

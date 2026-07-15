@@ -15,6 +15,14 @@
       "allowBackup": false,
       "permissions": []
     },
+    "ios": {
+      "bundleIdentifier": "com.deliveryplatform.courier",
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Permita acesso a fotos para anexar imagens e comprovantes quando voce escolher enviar um arquivo.",
+        "NSCameraUsageDescription": "Permita acesso a camera para capturar imagens e comprovantes quando voce escolher tirar uma foto."
+      }
+    },
     "plugins": [
       [
         "expo-secure-store",

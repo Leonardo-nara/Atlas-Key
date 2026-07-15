@@ -16,6 +16,7 @@ import {
 import * as bcrypt from "bcryptjs";
 
 import { UserRole } from "../common/enums/user-role.enum";
+import { DEFAULT_STORE_TIMEZONE, getTodayRangeForTimeZone, normalizeTimeZone } from "../common/timezone/timezone";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateAdminStoreDto } from "./dto/create-admin-store.dto";
 import { CreateAdminUserDto } from "./dto/create-admin-user.dto";
@@ -28,7 +29,7 @@ export class AdminService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getDashboard() {
-    const { startOfToday, startOfTomorrow } = getTodayRange();
+    const { startOfToday, startOfTomorrow, timeZone } = getTodayRangeForTimeZone(DEFAULT_STORE_TIMEZONE);
 
     const [
       activeStores,
@@ -94,6 +95,7 @@ export class AdminService {
 
     return {
       generatedAt: new Date(),
+      timezone: timeZone,
       activeStores,
       suspendedStores,
       inactiveStores,
@@ -225,6 +227,7 @@ export class AdminService {
         data: {
           name: dto.storeName,
           address: dto.storeAddress,
+          timezone: normalizeTimeZone(dto.timezone),
           ownerUserId: owner.id,
           status: StoreStatus.ACTIVE,
           active: true
@@ -689,6 +692,7 @@ export class AdminService {
     pixRecipientName?: string | null;
     pixInstructions?: string | null;
     pixEnabled?: boolean;
+    timezone?: string | null;
     createdAt: Date;
     updatedAt: Date;
     orders?: Array<{ createdAt: Date }>;
@@ -705,14 +709,4 @@ export class AdminService {
       imageUrl: store.profileImageKey ? `/media/stores/${store.id}/image` : null
     };
   }
-}
-
-function getTodayRange(reference = new Date()) {
-  const startOfToday = new Date(reference);
-  startOfToday.setHours(0, 0, 0, 0);
-
-  const startOfTomorrow = new Date(startOfToday);
-  startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
-
-  return { startOfToday, startOfTomorrow };
 }

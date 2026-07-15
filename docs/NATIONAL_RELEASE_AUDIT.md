@@ -163,6 +163,40 @@ Lacunas:
 
 ## Pendencias
 
+## Atualizacao da rodada de fechamento tecnico
+
+Implementado nesta rodada:
+
+- Timezone por loja no banco, com default/backfill `America/Sao_Paulo`.
+- Relatorios, CSVs e dashboard da loja usando timezone da loja.
+- Campo de timezone na criacao de empresa pelo painel admin.
+- Readiness tecnico em `/api/health/readiness` com verificacao de banco e configuracao de storage sem expor secrets.
+- Workflow agendado de health publico com abertura/atualizacao de issue de incidente.
+- CI com validacao de migrations e audit de dependencias tolerante ao endpoint npm legado 410.
+- Script de smoke/carga seguro para sandbox, recusando label de producao.
+- Preparacao iOS minima no Expo config.
+- `.easignore` reforcado para reduzir contexto de build Android/EAS.
+- Modelos tecnicos LGPD/termos marcados para revisao juridica.
+
+Validado nesta rodada:
+
+- Backend unit/smoke/security: 68/68.
+- Backend typecheck/lint/build.
+- Desktop typecheck/lint/build.
+- Mobile typecheck/lint/build/config.
+- Health producao, health sandbox e painel producao retornando 200.
+- Smoke/carga leve no sandbox sem 5xx.
+
+Nao concluido por dependencia externa/ambiente:
+
+- Branch protection real da `main`: requer permissao GitHub admin; `gh` nao esta instalado e a integracao disponivel nao expõe regras.
+- E2E real local: Docker Desktop/Postgres local indisponivel no ambiente.
+- Build Android EAS release: depende de nova execucao EAS/cloud; a rodada anterior travou em compress/upload e esta rodada apenas reduziu o contexto.
+- Push notification real: depende de credenciais/permissoes FCM/APNs/Expo e teste em dispositivo release.
+- iOS/TestFlight: depende de conta Apple Developer e credenciais.
+- WebSocket multi-instancia: depende de Redis ou servico equivalente antes de escalar replicas.
+- Restore real de backup gerenciado Railway/R2: depende de acesso/snapshot/ambiente temporario externo.
+
 ### Bloqueadores do piloto real
 
 1. Configurar GitHub branch protection e CI obrigatorio.
@@ -173,7 +207,7 @@ Lacunas:
 ### Bloqueadores do lancamento nacional
 
 1. Push notifications Android/iOS.
-2. Timezone por loja.
+2. Timezone por loja implementado nesta branch; ainda requer deploy sandbox/producao e validacao operacional controlada.
 3. Politica LGPD/termos revisados juridicamente.
 4. Publicacao Google Play e, se aplicavel, Apple App Store.
 5. Redis adapter ou arquitetura equivalente para WebSocket em escala horizontal.
@@ -209,4 +243,3 @@ Lacunas:
 | 8 | Media | Produto/Mobile | Contas lojas | Internal/closed testing | Build aprovado na loja | Reprovacao loja | Google/Apple |
 | 9 | Media | Backend | Observabilidade | Alertas ativos | API/banco/storage alertam | Incidente silencioso | Producao |
 | 10 | Media | Segurança | Auth provider | MFA admin | Admins com 2FA | Conta comprometida | Sandbox |
-

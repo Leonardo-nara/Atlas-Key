@@ -49,6 +49,7 @@ export interface Store {
   id: string;
   name: string;
   address: string;
+  timezone?: string;
   ownerUserId?: string;
   active: boolean;
   status?: "ACTIVE" | "SUSPENDED" | "INACTIVE";
@@ -64,6 +65,7 @@ export interface Store {
 export interface StoreDashboard {
   storeId: string;
   storeName: string;
+  timezone?: string;
   generatedAt: string;
   ordersToday: number;
   pendingOrders: number;

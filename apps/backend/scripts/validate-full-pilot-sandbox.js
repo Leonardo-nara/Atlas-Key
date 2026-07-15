@@ -39,6 +39,7 @@ function listFromBody(body) {
   if (Array.isArray(body?.items)) return body.items;
   if (Array.isArray(body?.data)) return body.data;
   if (Array.isArray(body?.results)) return body.results;
+  if (Array.isArray(body?.products)) return body.products;
   return [];
 }
 

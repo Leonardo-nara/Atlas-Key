@@ -280,7 +280,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    console.info("[RotaPronta desktop auth]", {
+    console.info("[Mototake desktop auth]", {
       apiUrl: env.apiUrl,
       email: nextUser.email,
       role: nextUser.role,

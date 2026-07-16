@@ -171,7 +171,7 @@ export function LoginPage() {
                   <input
                     value={storeName}
                     onChange={(event) => setStoreName(event.target.value)}
-                    placeholder="Ex.: RotaPronta Centro"
+                    placeholder="Ex.: Mototake Centro"
                   />
                 </label>
 

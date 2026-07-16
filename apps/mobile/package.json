@@ -39,8 +39,8 @@
     "socket.io-client": "^4.8.1"
   },
   "devDependencies": {
-    "@react-native-community/cli": "18.0.0",
-    "@react-native-community/cli-platform-android": "18.0.0",
+    "@react-native-community/cli": "18.0.1",
+    "@react-native-community/cli-platform-android": "18.0.1",
     "@types/react": "~19.0.10",
     "typescript": "~5.8.3"
   }

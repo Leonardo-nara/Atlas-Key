@@ -36,7 +36,25 @@
   "pnpm": {
     "overrides": {
       "@expo/config-plugins": "10.1.2",
-      "@expo/prebuild-config": "9.0.12"
+      "@expo/prebuild-config": "9.0.12",
+      "@react-native-community/cli": "18.0.1",
+      "@react-native-community/cli-clean": "18.0.1",
+      "@react-native-community/cli-config": "18.0.1",
+      "@react-native-community/cli-config-android": "18.0.1",
+      "@react-native-community/cli-config-apple": "18.0.1",
+      "@react-native-community/cli-doctor": "18.0.1",
+      "@react-native-community/cli-platform-android": "18.0.1",
+      "@react-native-community/cli-platform-apple": "18.0.1",
+      "@react-native-community/cli-platform-ios": "18.0.1",
+      "@react-native-community/cli-server-api": "18.0.1",
+      "@react-native-community/cli-tools": "18.0.1",
+      "@xmldom/xmldom": "0.8.13",
+      "defu": "6.1.7",
+      "effect": "3.22.0",
+      "fast-xml-builder": "1.3.0",
+      "shell-quote": "1.8.4",
+      "undici": "6.27.0",
+      "ws": "8.21.1"
     },
     "onlyBuiltDependencies": [
       "@nestjs/core",

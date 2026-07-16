@@ -1,4 +1,4 @@
-# Delivery Platform Monorepo
+# Mototake Monorepo
 
 Monorepo de um sistema de entregas com backend NestJS, desktop Electron para o lojista e mobile Expo para o motoboy. A base atual ja cobre autenticacao, produtos, pedidos, fluxo do courier, realtime, cancelamento e auditoria, e agora esta preparada para build, deploy e demonstracao comercial.
 

@@ -15,6 +15,12 @@ import { OrdersPage } from "./pages/OrdersPage";
 import { PdvPage } from "./pages/PdvPage";
 import { PixSettingsPage } from "./pages/PixSettingsPage";
 import { ProductsPage } from "./pages/ProductsPage";
+import {
+  AccountDeletionPage,
+  PrivacyPage,
+  SupportPage,
+  TermsPage
+} from "./pages/PublicLegalPages";
 import { ReportsPage } from "./pages/ReportsPage";
 import { StockPage } from "./pages/StockPage";
 import { StoreReadinessPage } from "./pages/StoreReadinessPage";
@@ -25,6 +31,22 @@ export const appRouter = createHashRouter([
   {
     path: "/login",
     element: <LoginPage />
+  },
+  {
+    path: "/privacy",
+    element: <PrivacyPage />
+  },
+  {
+    path: "/terms",
+    element: <TermsPage />
+  },
+  {
+    path: "/account-deletion",
+    element: <AccountDeletionPage />
+  },
+  {
+    path: "/support",
+    element: <SupportPage />
   },
   {
     path: "/",

@@ -2,9 +2,9 @@
   "name": "@deliveries/desktop",
   "version": "0.1.0",
   "private": true,
-  "productName": "Delivery Platform Desktop",
-  "description": "Painel desktop do lojista para operacao do sistema de entregas.",
-  "author": "Delivery Platform",
+  "productName": "Mototake Painel",
+  "description": "Painel web/desktop do lojista para operacao do Mototake.",
+  "author": "SouzaWorks",
   "main": "dist-electron/electron/main.js",
   "scripts": {
     "dev": "concurrently -k \"pnpm dev:renderer\" \"pnpm dev:electron\"",
@@ -37,7 +37,7 @@
     "wait-on": "^8.0.3"
   },
   "build": {
-    "appId": "com.deliveryplatform.desktop",
+    "appId": "com.souzaworks.mototake.desktop",
     "asar": true,
     "directories": {
       "output": "release",
@@ -64,7 +64,7 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "artifactName": "delivery-platform-desktop-${version}-setup.${ext}"
+      "artifactName": "mototake-painel-${version}-setup.${ext}"
     }
   }
 }

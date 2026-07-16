@@ -6,9 +6,10 @@ Este checklist prepara Android e iOS para distribuicao. Nao publicar sem aprovac
 
 - Projeto mobile: `apps/mobile`.
 - Tecnologia: Expo SDK 53 / React Native 0.79.
-- Android package: `com.deliveryplatform.courier`.
-- Nome atual: `Delivery Platform Courier`.
-- Versao: `0.1.0`.
+- Android package: `com.souzaworks.mototake`.
+- Nome atual: `Mototake`.
+- Versao: `1.0.0`.
+- versionCode atual: `1`.
 - EAS projectId: `6ebb569d-12af-4f00-8e5d-6b64a668c661`.
 - App unico atende cliente e motoboy por fluxo/role.
 - iOS nao foi validado nesta auditoria.
@@ -17,10 +18,10 @@ Este checklist prepara Android e iOS para distribuicao. Nao publicar sem aprovac
 
 Antes de Play Store:
 
-1. Definir nome final do app.
-2. Confirmar package ID definitivo.
-3. Atualizar icone e splash.
-4. Confirmar `versionCode` incremental.
+1. Confirmar nome final do app: `Mototake`.
+2. Confirmar package ID definitivo: `com.souzaworks.mototake`.
+3. Atualizar icone e splash finais.
+4. Confirmar `versionCode` incremental. Se o AAB versionCode 1 for enviado a Play Console, o proximo AAB deve usar versionCode 2.
 5. Gerar AAB production com API oficial.
 6. Instalar build release em aparelho real ou internal testing.
 7. Validar login cliente, catalogo, carrinho, pedido, comprovante e motoboy.
@@ -34,7 +35,7 @@ Antes de Play Store:
 Necessario:
 
 1. Conta Apple Developer paga.
-2. Bundle ID definitivo. Preparado tecnicamente como `com.deliveryplatform.courier`; revisar quando nome final for decidido.
+2. Bundle ID definitivo. Preparado tecnicamente como `com.souzaworks.mototake`; revisar antes de criar o app no Apple Developer.
 3. Certificados/provisioning.
 4. App Store Connect.
 5. Privacy manifest e informacoes de coleta.
@@ -71,5 +72,5 @@ pnpm --filter @deliveries/mobile build:android:production
 
 - Contas Google Play e Apple Developer.
 - Dados legais, CNPJ/CPF responsavel, e-mail suporte e politica de privacidade.
-- Textos comerciais, screenshots, icone e nome final.
+- Textos comerciais, screenshots, icone e splash finais.
 - Aceite das politicas das lojas.

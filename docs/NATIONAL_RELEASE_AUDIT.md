@@ -92,8 +92,8 @@ Backend NestJS
 ## Aplicativos
 
 - Projeto mobile unico: `apps/mobile`, Expo SDK 53, React Native 0.79.
-- Android package atual: `com.deliveryplatform.courier`.
-- App name atual: `Delivery Platform Courier`.
+- Android package atual: `com.souzaworks.mototake`.
+- App name atual: `Mototake`.
 - Versao: `0.1.0`, `versionCode=1`.
 - Build production EAS: app-bundle com API Railway.
 - iOS: plataforma suportada pelo Expo, mas sem bundle ID/certificados/build validado.

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 
 import { useAuth } from "../features/auth/auth-context";
 
@@ -171,7 +171,7 @@ export function LoginPage() {
                   <input
                     value={storeName}
                     onChange={(event) => setStoreName(event.target.value)}
-                    placeholder="Ex.: RotaPronta Centro"
+                    placeholder="Ex.: Mototake Centro"
                   />
                 </label>
 
@@ -224,6 +224,13 @@ export function LoginPage() {
                   : "Criar conta e entrar"}
             </button>
           </form>
+
+          <nav className="login-public-links" aria-label="Links publicos">
+            <Link to="/privacy">Privacidade</Link>
+            <Link to="/terms">Termos</Link>
+            <Link to="/account-deletion">Exclusao de conta</Link>
+            <Link to="/support">Suporte</Link>
+          </nav>
         </div>
       </section>
     </main>

@@ -1,22 +1,22 @@
 {
   "expo": {
-    "name": "Delivery Platform Courier",
+    "name": "Mototake",
     "slug": "delivery-platform-courier",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "assetBundlePatterns": [
       "**/*"
     ],
-    "scheme": "deliveryplatformcourier",
+    "scheme": "mototake",
     "android": {
-      "package": "com.deliveryplatform.courier",
+      "package": "com.souzaworks.mototake",
       "versionCode": 1,
       "allowBackup": false,
       "permissions": []
     },
     "ios": {
-      "bundleIdentifier": "com.deliveryplatform.courier",
+      "bundleIdentifier": "com.souzaworks.mototake",
       "supportsTablet": false,
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Permita acesso a fotos para anexar imagens e comprovantes quando voce escolher enviar um arquivo.",

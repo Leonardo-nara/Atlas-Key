@@ -1,6 +1,6 @@
 import { ActivityIndicator, View } from "react-native";
-import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "../features/auth/auth-context";
@@ -42,6 +42,10 @@ function CourierTabs() {
         },
         tabBarActiveTintColor: mobileTheme.colors.primaryStrong,
         tabBarInactiveTintColor: mobileTheme.colors.textSoft,
+        tabBarIcon: () => null,
+        tabBarIconStyle: {
+          display: "none"
+        },
         tabBarStyle: {
           height: 62 + bottomPadding,
           paddingTop: 8,
@@ -134,6 +138,10 @@ function ClientTabs() {
         },
         tabBarActiveTintColor: mobileTheme.colors.primaryStrong,
         tabBarInactiveTintColor: mobileTheme.colors.textSoft,
+        tabBarIcon: () => null,
+        tabBarIconStyle: {
+          display: "none"
+        },
         tabBarStyle: {
           height: 62 + bottomPadding,
           paddingTop: 8,

@@ -14,8 +14,8 @@ import {
 } from "../../lib/http";
 import {
   clearStoredTokens,
-  getStoredAccessToken,
   getStoredRefreshToken,
+  getStoredTokens,
   setStoredTokens
 } from "../../lib/storage";
 import { env } from "../../lib/env";
@@ -85,8 +85,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function bootstrapSession() {
-    const storedAccessToken = getStoredAccessToken();
-    const storedRefreshToken = getStoredRefreshToken();
+    const {
+      accessToken: storedAccessToken,
+      refreshToken: storedRefreshToken
+    } = await getStoredTokens();
 
     setRefreshToken(storedRefreshToken);
 

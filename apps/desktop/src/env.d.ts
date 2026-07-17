@@ -10,6 +10,14 @@ interface Window {
         isPackaged: boolean;
       }>;
     };
+    secureSession?: {
+      get: () => Promise<{
+        accessToken: string;
+        refreshToken: string;
+      } | null>;
+      set: (tokens: { accessToken: string; refreshToken: string }) => Promise<boolean>;
+      clear: () => Promise<boolean>;
+    };
     updates: {
       getState: () => Promise<UpdateState>;
       check: () => Promise<UpdateState>;

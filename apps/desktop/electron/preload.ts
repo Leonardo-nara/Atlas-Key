@@ -34,6 +34,16 @@ contextBridge.exposeInMainWorld("mototake", {
         isPackaged: boolean;
       }>
   },
+  secureSession: {
+    get: () =>
+      ipcRenderer.invoke("secure-session:get") as Promise<{
+        accessToken: string;
+        refreshToken: string;
+      } | null>,
+    set: (tokens: { accessToken: string; refreshToken: string }) =>
+      ipcRenderer.invoke("secure-session:set", tokens) as Promise<boolean>,
+    clear: () => ipcRenderer.invoke("secure-session:clear") as Promise<boolean>
+  },
   updates: {
     getState: () => ipcRenderer.invoke("updates:get-state") as Promise<UpdateState>,
     check: () => ipcRenderer.invoke("updates:check") as Promise<UpdateState>,

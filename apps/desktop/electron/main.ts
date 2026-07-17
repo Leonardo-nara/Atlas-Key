@@ -1,6 +1,7 @@
 import { app, BrowserWindow, shell } from "electron";
 import path from "node:path";
 
+import { registerSecureSessionIpc } from "./secure-session";
 import { initAutoUpdater, registerUpdaterIpc } from "./updater";
 
 const isDev = !app.isPackaged;
@@ -85,6 +86,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  registerSecureSessionIpc();
   registerUpdaterIpc();
   createWindow();
   initAutoUpdater();

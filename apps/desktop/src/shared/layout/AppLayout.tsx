@@ -4,33 +4,36 @@ import { NavLink, Outlet } from "react-router-dom";
 
 import { useAuth } from "../../features/auth/auth-context";
 import { toMediaUrl } from "../../lib/media-url";
+import { StatusBadge } from "../ui/premium";
 
 const navigationItems = [
-  { to: "/", label: "Visao geral", end: true },
-  { to: "/setup", label: "Configuração inicial" },
-  { to: "/pdv", label: "PDV" },
-  { to: "/cash-registers", label: "Caixa" },
-  { to: "/products", label: "Produtos" },
-  { to: "/stock", label: "Estoque" },
-  { to: "/reports", label: "Relatórios" },
-  { to: "/orders", label: "Pedidos" },
-  { to: "/couriers", label: "Motoboys" },
-  { to: "/delivery-zones", label: "Taxas por bairro" },
-  { to: "/pix-settings", label: "Pix manual" }
+  { to: "/", label: "Dashboard", icon: "D", end: true },
+  { to: "/setup", label: "Configuracao inicial", icon: "I" },
+  { to: "/orders", label: "Pedidos", icon: "P" },
+  { to: "/products", label: "Produtos", icon: "C" },
+  { to: "/stock", label: "Estoque", icon: "E" },
+  { to: "/pdv", label: "PDV", icon: "V" },
+  { to: "/cash-registers", label: "Caixa", icon: "X" },
+  { to: "/delivery-zones", label: "Taxas por bairro", icon: "T" },
+  { to: "/pix-settings", label: "Pix manual", icon: "M" },
+  { to: "/reports", label: "Relatorios", icon: "R" },
+  { to: "/couriers", label: "Motoboys", icon: "B" }
 ];
 
 const adminNavigationItems = [
-  { to: "/", label: "Visao geral", end: true },
-  { to: "/admin/stores", label: "Empresas" },
-  { to: "/admin/users", label: "Usuarios" },
-  { to: "/admin/couriers", label: "Motoboys" },
-  { to: "/admin/audit-logs", label: "Auditoria" }
+  { to: "/", label: "Dashboard", icon: "D", end: true },
+  { to: "/admin/stores", label: "Empresas", icon: "E" },
+  { to: "/admin/users", label: "Usuarios", icon: "U" },
+  { to: "/admin/couriers", label: "Motoboys", icon: "B" },
+  { to: "/admin/audit-logs", label: "Auditoria", icon: "A" }
 ];
 
 export function AppLayout() {
   const { user, store, logout, logoutAll, uploadStoreImage, removeStoreImage } =
     useAuth();
   const [storeImageError, setStoreImageError] = useState<string | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const isPlatformAdmin = user?.role === "PLATFORM_ADMIN";
   const isStoreAdmin = user?.role === "STORE_ADMIN";
   const activeNavigationItems = isPlatformAdmin
@@ -38,6 +41,16 @@ export function AppLayout() {
     : isStoreAdmin
       ? navigationItems
       : [];
+  const initials = isPlatformAdmin
+    ? "A"
+    : store?.name?.slice(0, 1).toUpperCase() ?? "L";
+  const shellClasses = [
+    "desktop-shell",
+    sidebarCollapsed ? "desktop-shell-collapsed" : "",
+    mobileSidebarOpen ? "desktop-shell-mobile-open" : ""
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   async function handleStoreImageChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -65,49 +78,84 @@ export function AppLayout() {
   }
 
   return (
-    <div className="desktop-shell">
+    <div className={shellClasses}>
+      <button
+        aria-label="Fechar menu"
+        className="sidebar-scrim"
+        onClick={() => setMobileSidebarOpen(false)}
+        type="button"
+      />
+
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <div className="store-avatar">
-            {isPlatformAdmin ? (
-              <span>A</span>
-            ) : store?.imageUrl ? (
-              <img
-                alt={`Imagem de ${store.name}`}
-                src={toMediaUrl(store.imageUrl) ?? undefined}
-              />
-            ) : (
-              <span>{store?.name?.slice(0, 1).toUpperCase() ?? "L"}</span>
-            )}
+          <div className="brand-row">
+            <div className="brand-mark">M</div>
+            <div className="brand-copy">
+              <strong>Mototake</strong>
+              <span>{isPlatformAdmin ? "Admin" : "Painel"}</span>
+            </div>
+            <button
+              aria-label={sidebarCollapsed ? "Expandir menu" : "Recolher menu"}
+              className="sidebar-collapse-button"
+              onClick={() => setSidebarCollapsed((current) => !current)}
+              type="button"
+            >
+              {sidebarCollapsed ? ">" : "<"}
+            </button>
           </div>
-          <p className="section-kicker">
-            {isPlatformAdmin ? "Administracao interna" : "Painel empresarial"}
-          </p>
-          <h1>{isPlatformAdmin ? "Plataforma" : store?.name ?? "Loja"}</h1>
-          <p>
-            {isPlatformAdmin
-              ? "Gerencie empresas, usuarios e motoboys com acesso restrito."
-              : store?.address || "Complete o endereco da loja quando quiser."}
-          </p>
+
+          <div className="store-profile-card">
+            <div className="store-avatar">
+              {isPlatformAdmin ? (
+                <span>A</span>
+              ) : store?.imageUrl ? (
+                <img
+                  alt={`Imagem de ${store.name}`}
+                  src={toMediaUrl(store.imageUrl) ?? undefined}
+                />
+              ) : (
+                <span>{initials}</span>
+              )}
+            </div>
+            <div className="store-profile-copy">
+              <p className="section-kicker">
+                {isPlatformAdmin ? "Administracao interna" : "Empresa"}
+              </p>
+              <h1>{isPlatformAdmin ? "Plataforma" : store?.name ?? "Loja"}</h1>
+              <p>
+                {isPlatformAdmin
+                  ? "Controle seguro da operacao."
+                  : store?.address || "Endereco nao informado."}
+              </p>
+              <StatusBadge tone={store?.status === "SUSPENDED" ? "warning" : "success"}>
+                {isPlatformAdmin
+                  ? "Acesso restrito"
+                  : store?.status === "SUSPENDED"
+                    ? "Suspensa"
+                    : "Ativa"}
+              </StatusBadge>
+            </div>
+          </div>
+
           {isStoreAdmin ? (
             <div className="store-image-actions">
-            <label className="sidebar-upload-button">
-              Alterar foto
-              <input
-                accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
-                onChange={(event) => void handleStoreImageChange(event)}
-                type="file"
-              />
-            </label>
-            {store?.imageUrl ? (
-              <button
-                className="sidebar-mini-button"
-                onClick={() => void handleRemoveStoreImage()}
-                type="button"
-              >
-                Remover
-              </button>
-            ) : null}
+              <label className="sidebar-upload-button">
+                Alterar foto
+                <input
+                  accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+                  onChange={(event) => void handleStoreImageChange(event)}
+                  type="file"
+                />
+              </label>
+              {store?.imageUrl ? (
+                <button
+                  className="sidebar-mini-button"
+                  onClick={() => void handleRemoveStoreImage()}
+                  type="button"
+                >
+                  Remover
+                </button>
+              ) : null}
             </div>
           ) : null}
           {storeImageError ? (
@@ -121,30 +169,34 @@ export function AppLayout() {
           </span>
           <p>
             {isPlatformAdmin
-              ? "Acesso administrativo para suporte, bloqueios e cadastro inicial."
-              : "Acompanhe pedidos, catalogo e vinculos com um painel mais claro para a rotina da empresa."}
+              ? "Suporte, bloqueios e cadastros iniciais."
+              : "Pedidos, catalogo, caixa e relatorios em uma rotina centralizada."}
           </p>
         </div>
 
-        <nav className="sidebar-nav">
-          {activeNavigationItems.length > 0 ? activeNavigationItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                isActive ? "nav-item nav-item-active" : "nav-item"
-              }
-            >
-              {item.label}
-            </NavLink>
-          )) : (
+        <nav className="sidebar-nav" aria-label="Menu principal">
+          {activeNavigationItems.length > 0 ? (
+            activeNavigationItems.map((item) => (
+              <NavLink
+                className={({ isActive }) =>
+                  isActive ? "nav-item nav-item-active" : "nav-item"
+                }
+                end={item.end}
+                key={item.to}
+                onClick={() => setMobileSidebarOpen(false)}
+                to={item.to}
+              >
+                <span className="nav-icon" aria-hidden="true">{item.icon}</span>
+                <span className="nav-label">{item.label}</span>
+              </NavLink>
+            ))
+          ) : (
             <span className="nav-item">Acesso indisponivel</span>
           )}
         </nav>
 
         <div className="sidebar-footer">
-          <div>
+          <div className="sidebar-user-card">
             <span className="user-chip">Sessao ativa</span>
             <p>
               <strong>{user?.name}</strong>
@@ -164,6 +216,31 @@ export function AppLayout() {
       </aside>
 
       <main className="content-area">
+        <header className="topbar">
+          <button
+            aria-label="Abrir menu"
+            className="topbar-menu-button"
+            onClick={() => setMobileSidebarOpen(true)}
+            type="button"
+          >
+            Menu
+          </button>
+          <div className="topbar-title">
+            <p className="section-kicker">Painel operacional</p>
+            <strong>{isPlatformAdmin ? "Administracao Mototake" : store?.name ?? "Mototake"}</strong>
+          </div>
+          <div className="topbar-status">
+            <span className="online-dot" aria-hidden="true" />
+            <span>Sistema online</span>
+          </div>
+          <div className="topbar-user">
+            <span>{user?.name?.slice(0, 1).toUpperCase() ?? "U"}</span>
+            <div>
+              <strong>{user?.name}</strong>
+              <small>{user?.email}</small>
+            </div>
+          </div>
+        </header>
         <Outlet />
       </main>
     </div>

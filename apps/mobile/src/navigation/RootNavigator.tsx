@@ -18,6 +18,7 @@ import { LoginScreen } from "../screens/LoginScreen";
 import { MyOrdersScreen } from "../screens/MyOrdersScreen";
 import { ProfileScreen } from "../screens/ProfileScreen";
 import { RegisterScreen } from "../screens/RegisterScreen";
+import { courierTheme } from "../components/courier-ui";
 import { mobileTheme } from "../theme";
 
 const Stack = createNativeStackNavigator();
@@ -26,47 +27,50 @@ const ClientStack = createNativeStackNavigator();
 
 function CourierTabs() {
   const insets = useSafeAreaInsets();
-  const bottomPadding = Math.max(insets.bottom, 10);
+  const bottomPadding = Math.max(insets.bottom, 12);
 
   return (
     <Tab.Navigator
       screenOptions={{
-        headerTitleAlign: "center",
-        headerShadowVisible: false,
-        headerStyle: {
-          backgroundColor: mobileTheme.colors.background
-        },
-        headerTitleStyle: {
-          color: mobileTheme.colors.text,
-          fontWeight: "800"
-        },
-        tabBarActiveTintColor: mobileTheme.colors.primaryStrong,
-        tabBarInactiveTintColor: mobileTheme.colors.textSoft,
+        headerShown: false,
+        tabBarActiveTintColor: courierTheme.colors.primary,
+        tabBarInactiveTintColor: courierTheme.colors.textMuted,
         tabBarIcon: () => null,
         tabBarIconStyle: {
           display: "none"
         },
         tabBarStyle: {
-          height: 62 + bottomPadding,
-          paddingTop: 8,
+          position: "absolute",
+          left: 14,
+          right: 14,
+          bottom: Math.max(insets.bottom, 10),
+          height: 66 + bottomPadding,
+          paddingTop: 10,
           paddingBottom: bottomPadding,
-          backgroundColor: "rgba(255,255,255,0.96)",
-          borderTopWidth: 1,
-          borderTopColor: mobileTheme.colors.border
+          backgroundColor: "rgba(13, 28, 43, 0.98)",
+          borderTopWidth: 0,
+          borderWidth: 1,
+          borderColor: courierTheme.colors.border,
+          borderRadius: 24,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 14 },
+          shadowOpacity: 0.28,
+          shadowRadius: 22,
+          elevation: 18
         },
         tabBarLabelStyle: {
           fontSize: 12,
-          fontWeight: "700"
+          fontWeight: "900"
         },
         sceneStyle: {
-          backgroundColor: mobileTheme.colors.background
+          backgroundColor: courierTheme.colors.background
         }
       }}
     >
       <Tab.Screen
         component={AvailableOrdersScreen}
         name="AvailableOrders"
-        options={{ title: "Disponíveis" }}
+        options={{ title: "Início" }}
       />
       <Tab.Screen
         component={CompaniesScreen}
@@ -76,7 +80,7 @@ function CourierTabs() {
       <Tab.Screen
         component={MyOrdersScreen}
         name="MyOrders"
-        options={{ title: "Meus pedidos" }}
+        options={{ title: "Entregas" }}
       />
       <Tab.Screen
         component={ProfileScreen}

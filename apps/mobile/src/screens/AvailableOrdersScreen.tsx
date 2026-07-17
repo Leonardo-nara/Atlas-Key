@@ -1,6 +1,6 @@
-﻿import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
-  Pressable,
+  Alert,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -8,21 +8,27 @@ import {
   View
 } from "react-native";
 
-import { OrderCard } from "../components/OrderCard";
-import { OrderTimeline } from "../components/OrderTimeline";
-import { ScreenContainer } from "../components/ScreenContainer";
-import { SectionHeader } from "../components/SectionHeader";
-import { StateCard } from "../components/StateCard";
+import { CourierDeliveryCard } from "../components/CourierDeliveryCard";
+import {
+  CourierButton,
+  CourierHeader,
+  CourierProgressTimeline,
+  CourierScreen,
+  CourierState,
+  FeedbackBanner,
+  MetricCard,
+  SectionTitle,
+  courierTheme
+} from "../components/courier-ui";
 import { useAuth } from "../features/auth/auth-context";
 import { ordersService } from "../features/orders/orders-service";
 import { useRealtime } from "../features/realtime/realtime-context";
 import { ApiError } from "../lib/http";
 import { useTabContentBottomPadding } from "../navigation/useTabContentBottomPadding";
-import { mobileTheme } from "../theme";
 import type { Order } from "../types/api";
 
 export function AvailableOrdersScreen() {
-  const { logout, token } = useAuth();
+  const { logout, token, user } = useAuth();
   const { isConnected, subscribeToOrderEvents } = useRealtime();
   const bottomPadding = useTabContentBottomPadding();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -49,7 +55,7 @@ export function AvailableOrdersScreen() {
       if (loadError instanceof ApiError && loadError.status === 401) {
         setOrders([]);
         setTotalPages(1);
-        setError("Sua sessão expirou. Entre novamente para ver os pedidos disponíveis.");
+        setError("Sua sessão expirou. Entre novamente para ver as entregas disponíveis.");
         await logout();
         return;
       }
@@ -57,7 +63,7 @@ export function AvailableOrdersScreen() {
       setError(
         loadError instanceof ApiError
           ? loadError.message
-          : "Não foi possível carregar os pedidos disponíveis."
+          : "Não foi possível carregar as entregas disponíveis."
       );
     } finally {
       setLoading(false);
@@ -80,7 +86,7 @@ export function AvailableOrdersScreen() {
           payload.order.id,
           ...current.filter((orderId) => orderId !== payload.order.id)
         ].slice(0, 8));
-        setSuccessMessage("Novo pedido disponível para entrega.");
+        setSuccessMessage("Nova entrega disponível para você.");
       }
 
       void loadOrders();
@@ -99,6 +105,20 @@ export function AvailableOrdersScreen() {
     return () => clearTimeout(timeout);
   }, [successMessage]);
 
+  function confirmAccept(orderId: string) {
+    Alert.alert(
+      "Aceitar entrega?",
+      "Você vai assumir este pedido e a empresa será avisada.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Aceitar entrega",
+          onPress: () => void handleAccept(orderId)
+        }
+      ]
+    );
+  }
+
   async function handleAccept(orderId: string) {
     if (!token) {
       return;
@@ -109,7 +129,7 @@ export function AvailableOrdersScreen() {
 
     try {
       await ordersService.accept(token, orderId);
-      setSuccessMessage("Pedido aceito com sucesso.");
+      setSuccessMessage("Entrega aceita com sucesso.");
       await loadOrders();
     } catch (acceptError) {
       if (acceptError instanceof ApiError && acceptError.status === 401) {
@@ -121,7 +141,7 @@ export function AvailableOrdersScreen() {
       setError(
         acceptError instanceof ApiError
           ? acceptError.message
-          : "Não foi possível aceitar o pedido."
+          : "Não foi possível aceitar a entrega."
       );
     } finally {
       setActingOrderId(null);
@@ -129,24 +149,34 @@ export function AvailableOrdersScreen() {
   }
 
   return (
-    <ScreenContainer>
-      <SectionHeader
-        title="Pedidos disponiveis"
+    <CourierScreen>
+      <CourierHeader
         description={
           isConnected
-            ? "Veja somente pedidos das empresas com vinculo aprovado, com atualizacao em tempo real."
-            : "Veja somente pedidos das empresas com vinculo aprovado."
+            ? "Entregas liberadas pelas empresas vinculadas aparecem em tempo real."
+            : "Puxe para atualizar enquanto o tempo real estiver indisponível."
         }
+        title={`Olá, ${user?.name?.split(" ")[0] ?? "motoboy"}`}
       />
 
+      <View style={styles.metricsRow}>
+        <MetricCard
+          detail={isConnected ? "tempo real ativo" : "atualização manual"}
+          label="Disponíveis"
+          value={`${orders.length}`}
+        />
+        <MetricCard label="Página" value={`${page}/${totalPages}`} />
+      </View>
+
       {loading ? (
-        <StateCard
-          description="Buscando pedidos liberados pelas empresas vinculadas."
-          title="Carregando pedidos disponíveis..."
-          variant="loading"
+        <CourierState
+          description="Buscando entregas confirmadas pelas lojas vinculadas."
+          loading
+          title="Carregando entregas..."
         />
       ) : (
         <ScrollView
+          contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
           refreshControl={
             <RefreshControl
               onRefresh={() => {
@@ -154,150 +184,94 @@ export function AvailableOrdersScreen() {
                 void loadOrders();
               }}
               refreshing={refreshing}
+              tintColor={courierTheme.colors.primary}
             />
           }
-          contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.connectionCard}>
-            <Text style={styles.connectionTitle}>
-              {isConnected ? "Tempo real ativo" : "Atualizacao manual"}
-            </Text>
-            <Text style={styles.connectionText}>
-              {isConnected
-                ? "Novos pedidos e mudanças entram automaticamente na lista."
-                : "Puxe para atualizar enquanto a conexão em tempo real estiver indisponível."}
-            </Text>
-          </View>
-
-          {successMessage ? <Text style={styles.successText}>{successMessage}</Text> : null}
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          {successMessage ? (
+            <FeedbackBanner message={successMessage} tone="success" />
+          ) : null}
+          {error ? <FeedbackBanner message={error} tone="danger" /> : null}
 
           {!error && orders.length === 0 ? (
-            <StateCard
-              description="Quando uma loja confirmar um pedido para entrega, ele aparecerá aqui."
-              title="Nenhum pedido disponível no momento."
+            <CourierState
+              description="Mantenha o app aberto. Quando uma loja confirmar um pedido para entrega, ele aparece aqui."
+              title="Nenhuma entrega disponível agora."
             />
           ) : null}
 
           {orders.length > 0 ? (
             <>
+              <SectionTitle
+                description="Confira rota, total, pagamento e cliente antes de assumir."
+                title="Fila de entregas"
+              />
+
               {orders.map((order) => (
                 <View key={order.id} style={styles.orderStack}>
-                  <OrderCard
-                    actionLabel={actingOrderId === order.id ? "Aceitando..." : "Aceitar pedido"}
-                    audience="courier"
+                  <CourierDeliveryCard
+                    actionLabel={
+                      actingOrderId === order.id ? "Aceitando..." : "Aceitar entrega"
+                    }
                     disabled={actingOrderId === order.id}
                     highlighted={newOrderIds.includes(order.id)}
-                    onAction={() => void handleAccept(order.id)}
+                    onAction={() => confirmAccept(order.id)}
                     order={order}
                   />
-                  <OrderTimeline audience="courier" order={order} />
+                  <CourierProgressTimeline order={order} />
                 </View>
               ))}
 
               <View style={styles.pagination}>
-                <Pressable
+                <CourierButton
                   disabled={page === 1}
+                  label="Anterior"
                   onPress={() => setPage((current) => Math.max(1, current - 1))}
-                  style={styles.pageButton}
-                >
-                  <Text style={styles.pageButtonText}>Anterior</Text>
-                </Pressable>
+                  variant="secondary"
+                />
                 <Text style={styles.pageText}>
                   Página {page} de {totalPages}
                 </Text>
-                <Pressable
+                <CourierButton
                   disabled={page >= totalPages}
+                  label="Próxima"
                   onPress={() =>
                     setPage((current) =>
                       current < totalPages ? current + 1 : current
                     )
                   }
-                  style={styles.pageButton}
-                >
-                  <Text style={styles.pageButtonText}>Próxima</Text>
-                </Pressable>
+                  variant="secondary"
+                />
               </View>
             </>
           ) : null}
         </ScrollView>
       )}
-    </ScreenContainer>
+    </CourierScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  centered: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center"
-  },
   content: {
-    paddingTop: 16,
-    gap: 16
+    gap: 18
   },
-  connectionCard: {
-    padding: 16,
-    borderRadius: mobileTheme.radii.md,
-    backgroundColor: mobileTheme.colors.surfaceStrong,
-    borderWidth: 1,
-    borderColor: mobileTheme.colors.borderStrong
-  },
-  connectionTitle: {
-    color: mobileTheme.colors.text,
-    fontWeight: "800",
-    marginBottom: 4
-  },
-  connectionText: {
-    color: mobileTheme.colors.textMuted,
-    lineHeight: 21
-  },
-  errorText: {
-    color: mobileTheme.colors.danger,
-    backgroundColor: mobileTheme.colors.dangerSoft,
-    padding: 12,
-    borderRadius: mobileTheme.radii.sm
-  },
-  successText: {
-    color: mobileTheme.colors.success,
-    backgroundColor: mobileTheme.colors.successSoft,
-    padding: 12,
-    borderRadius: mobileTheme.radii.sm
-  },
-  emptyBox: {
-    marginTop: 16,
-    padding: 18,
-    borderRadius: mobileTheme.radii.md,
-    backgroundColor: mobileTheme.colors.surface,
-    borderWidth: 1,
-    borderColor: mobileTheme.colors.border
-  },
-  emptyText: {
-    textAlign: "center",
-    color: mobileTheme.colors.textMuted,
-    lineHeight: 21
+  metricsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12
   },
   orderStack: {
-    gap: 10
+    gap: 12
   },
   pagination: {
-    marginTop: 8,
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
-    alignItems: "center"
-  },
-  pageButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: mobileTheme.radii.sm,
-    backgroundColor: mobileTheme.colors.primarySoft
-  },
-  pageButtonText: {
-    color: mobileTheme.colors.primaryStrong,
-    fontWeight: "800"
+    gap: 12
   },
   pageText: {
-    color: mobileTheme.colors.textMuted
+    color: courierTheme.colors.textMuted,
+    fontWeight: "800"
   }
 });

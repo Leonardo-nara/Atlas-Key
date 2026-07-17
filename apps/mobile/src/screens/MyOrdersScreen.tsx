@@ -1,5 +1,6 @@
-﻿import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
+  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -8,17 +9,22 @@ import {
   View
 } from "react-native";
 
-import { OrderCard } from "../components/OrderCard";
-import { OrderTimeline } from "../components/OrderTimeline";
-import { ScreenContainer } from "../components/ScreenContainer";
-import { SectionHeader } from "../components/SectionHeader";
-import { StateCard } from "../components/StateCard";
+import { CourierDeliveryCard } from "../components/CourierDeliveryCard";
+import {
+  CourierButton,
+  CourierHeader,
+  CourierProgressTimeline,
+  CourierScreen,
+  CourierState,
+  FeedbackBanner,
+  MetricCard,
+  courierTheme
+} from "../components/courier-ui";
 import { useAuth } from "../features/auth/auth-context";
 import { ordersService } from "../features/orders/orders-service";
 import { useRealtime } from "../features/realtime/realtime-context";
 import { ApiError } from "../lib/http";
 import { useTabContentBottomPadding } from "../navigation/useTabContentBottomPadding";
-import { mobileTheme } from "../theme";
 import type { Order } from "../types/api";
 
 function nextAction(order: Order) {
@@ -64,7 +70,7 @@ export function MyOrdersScreen() {
       setError(
         loadError instanceof ApiError
           ? loadError.message
-          : "Não foi possível carregar seus pedidos."
+          : "Não foi possível carregar suas entregas."
       );
     } finally {
       setLoading(false);
@@ -87,7 +93,7 @@ export function MyOrdersScreen() {
         payload.event === "orders.status_updated" ||
         payload.event === "orders.cancelled"
       ) {
-        setRealtimeMessage("Lista atualizada com o status mais recente.");
+        setRealtimeMessage("Entregas atualizadas com o status mais recente.");
       }
 
       void loadOrders();
@@ -118,6 +124,22 @@ export function MyOrdersScreen() {
     return () => clearTimeout(timeout);
   }, [realtimeMessage]);
 
+  function confirmStatusUpdate(orderId: string, status: "picked_up" | "delivered") {
+    Alert.alert(
+      "Atualizar entrega?",
+      status === "picked_up"
+        ? "Confirme que o pedido foi coletado e saiu para entrega."
+        : "Confirme somente após finalizar a entrega ao cliente.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Confirmar",
+          onPress: () => void handleStatusUpdate(orderId, status)
+        }
+      ]
+    );
+  }
+
   async function handleStatusUpdate(orderId: string, status: "picked_up" | "delivered") {
     if (!token) {
       return;
@@ -130,8 +152,8 @@ export function MyOrdersScreen() {
       await ordersService.updateStatus(token, orderId, status);
       setSuccessMessage(
         status === "picked_up"
-          ? "Pedido marcado como coletado."
-          : "Pedido marcado como entregue."
+          ? "Entrega marcada como coletada."
+          : "Entrega marcada como entregue."
       );
       await loadOrders();
     } catch (statusError) {
@@ -146,15 +168,24 @@ export function MyOrdersScreen() {
   }
 
   return (
-    <ScreenContainer>
-      <SectionHeader
-        title="Meus pedidos"
+    <CourierScreen>
+      <CourierHeader
         description={
           isConnected
-            ? "Acompanhe entregas das empresas aprovadas no seu perfil com sincronização em tempo real."
-            : "Acompanhe entregas das empresas em que você já está aprovado."
+            ? "Acompanhe suas entregas com atualização em tempo real."
+            : "Puxe para atualizar suas entregas quando precisar."
         }
+        title="Minhas entregas"
       />
+
+      <View style={styles.metricsRow}>
+        <MetricCard
+          detail={scope === "active" ? "em rota ou aceitas" : "histórico"}
+          label="Entregas"
+          value={`${orders.length}`}
+        />
+        <MetricCard label="Página" value={`${page}/${totalPages}`} />
+      </View>
 
       <View style={styles.segmented}>
         <Pressable
@@ -162,10 +193,7 @@ export function MyOrdersScreen() {
             setPage(1);
             setScope("active");
           }}
-          style={[
-            styles.segment,
-            scope === "active" ? styles.segmentActive : undefined
-          ]}
+          style={[styles.segment, scope === "active" ? styles.segmentActive : undefined]}
         >
           <Text
             style={[
@@ -173,7 +201,7 @@ export function MyOrdersScreen() {
               scope === "active" ? styles.segmentTextActive : undefined
             ]}
           >
-            Ativos
+            Ativas
           </Text>
         </Pressable>
         <Pressable
@@ -192,19 +220,20 @@ export function MyOrdersScreen() {
               scope === "completed" ? styles.segmentTextActive : undefined
             ]}
           >
-            Concluídos
+            Concluídas
           </Text>
         </Pressable>
       </View>
 
       {loading ? (
-        <StateCard
-          description="Atualizando sua lista de entregas."
-          title="Carregando seus pedidos..."
-          variant="loading"
+        <CourierState
+          description="Atualizando sua lista operacional."
+          loading
+          title="Carregando entregas..."
         />
       ) : (
         <ScrollView
+          contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
           refreshControl={
             <RefreshControl
               onRefresh={() => {
@@ -212,25 +241,28 @@ export function MyOrdersScreen() {
                 void loadOrders();
               }}
               refreshing={refreshing}
+              tintColor={courierTheme.colors.primary}
             />
           }
-          contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
           showsVerticalScrollIndicator={false}
         >
-          {successMessage ? <Text style={styles.successText}>{successMessage}</Text> : null}
-          {realtimeMessage ? <Text style={styles.infoText}>{realtimeMessage}</Text> : null}
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          {successMessage ? (
+            <FeedbackBanner message={successMessage} tone="success" />
+          ) : null}
+          {realtimeMessage ? <FeedbackBanner message={realtimeMessage} /> : null}
+          {error ? <FeedbackBanner message={error} tone="danger" /> : null}
+
           {orders.length === 0 ? (
-            <StateCard
+            <CourierState
               description={
                 scope === "active"
-                  ? "Novas entregas aceitas aparecerão nesta lista."
-                  : "Os pedidos finalizados aparecerão aqui para consulta."
+                  ? "Entregas aceitas ou em rota aparecerão nesta lista."
+                  : "Entregas finalizadas ficam disponíveis para consulta."
               }
               title={
                 scope === "active"
-                  ? "Você ainda não tem pedidos ativos."
-                  : "Nenhum pedido concluído por enquanto."
+                  ? "Nenhuma entrega ativa agora."
+                  : "Nenhuma entrega concluída ainda."
               }
             />
           ) : (
@@ -240,142 +272,99 @@ export function MyOrdersScreen() {
 
                 return (
                   <View key={order.id} style={styles.orderStack}>
-                    <OrderCard
+                    <CourierDeliveryCard
                       actionLabel={
                         actingOrderId === order.id
                           ? "Atualizando..."
                           : action?.label
                       }
-                      audience="courier"
                       disabled={!action || actingOrderId === order.id}
                       onAction={
                         action
-                          ? () => void handleStatusUpdate(order.id, action.status)
+                          ? () => confirmStatusUpdate(order.id, action.status)
                           : undefined
                       }
                       order={order}
                     />
-                    <OrderTimeline audience="courier" order={order} />
+                    <CourierProgressTimeline order={order} />
                   </View>
                 );
               })}
 
               <View style={styles.pagination}>
-                <Pressable
+                <CourierButton
                   disabled={page === 1}
+                  label="Anterior"
                   onPress={() => setPage((current) => Math.max(1, current - 1))}
-                  style={styles.pageButton}
-                >
-                  <Text style={styles.pageButtonText}>Anterior</Text>
-                </Pressable>
+                  variant="secondary"
+                />
                 <Text style={styles.pageText}>
                   Página {page} de {totalPages}
                 </Text>
-                <Pressable
+                <CourierButton
                   disabled={page >= totalPages}
+                  label="Próxima"
                   onPress={() =>
                     setPage((current) =>
                       current < totalPages ? current + 1 : current
                     )
                   }
-                  style={styles.pageButton}
-                >
-                  <Text style={styles.pageButtonText}>Próxima</Text>
-                </Pressable>
+                  variant="secondary"
+                />
               </View>
             </>
           )}
         </ScrollView>
       )}
-    </ScreenContainer>
+    </CourierScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  centered: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center"
+  metricsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12
   },
   segmented: {
     flexDirection: "row",
-    backgroundColor: mobileTheme.colors.surfaceStrong,
-    borderRadius: mobileTheme.radii.sm,
-    padding: 4,
-    gap: 4,
+    gap: 6,
+    padding: 5,
+    borderRadius: 18,
+    backgroundColor: courierTheme.colors.surface,
     borderWidth: 1,
-    borderColor: mobileTheme.colors.border
+    borderColor: courierTheme.colors.border
   },
   segment: {
     flex: 1,
-    paddingVertical: 10,
-    borderRadius: 12,
-    alignItems: "center"
+    alignItems: "center",
+    borderRadius: 14,
+    paddingVertical: 12
   },
   segmentActive: {
-    backgroundColor: mobileTheme.colors.primaryStrong
+    backgroundColor: courierTheme.colors.primary
   },
   segmentText: {
-    color: mobileTheme.colors.textMuted,
-    fontWeight: "800"
+    color: courierTheme.colors.textMuted,
+    fontWeight: "900"
   },
   segmentTextActive: {
-    color: "#ffffff"
+    color: "#03111E"
   },
   content: {
-    paddingTop: 16,
-    gap: 16
-  },
-  errorText: {
-    color: mobileTheme.colors.danger,
-    backgroundColor: mobileTheme.colors.dangerSoft,
-    padding: 12,
-    borderRadius: mobileTheme.radii.sm
-  },
-  successText: {
-    color: mobileTheme.colors.success,
-    backgroundColor: mobileTheme.colors.successSoft,
-    padding: 12,
-    borderRadius: mobileTheme.radii.sm
-  },
-  infoText: {
-    color: mobileTheme.colors.primaryStrong,
-    backgroundColor: mobileTheme.colors.primarySoft,
-    padding: 12,
-    borderRadius: mobileTheme.radii.sm
-  },
-  emptyBox: {
-    marginTop: 16,
-    padding: 18,
-    borderRadius: mobileTheme.radii.md,
-    backgroundColor: mobileTheme.colors.surface,
-    borderWidth: 1,
-    borderColor: mobileTheme.colors.border
-  },
-  emptyText: {
-    textAlign: "center",
-    color: mobileTheme.colors.textMuted
+    gap: 18
   },
   orderStack: {
-    gap: 10
+    gap: 12
   },
   pagination: {
-    marginTop: 8,
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
-    alignItems: "center"
-  },
-  pageButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: mobileTheme.radii.sm,
-    backgroundColor: mobileTheme.colors.primarySoft
-  },
-  pageButtonText: {
-    color: mobileTheme.colors.primaryStrong,
-    fontWeight: "800"
+    gap: 12
   },
   pageText: {
-    color: mobileTheme.colors.textMuted
+    color: courierTheme.colors.textMuted,
+    fontWeight: "800"
   }
 });

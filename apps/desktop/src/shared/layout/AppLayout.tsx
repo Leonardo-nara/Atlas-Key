@@ -1,10 +1,12 @@
 import type { ChangeEvent } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 
 import { useAuth } from "../../features/auth/auth-context";
 import { toMediaUrl } from "../../lib/media-url";
 import { StatusBadge } from "../ui/premium";
+
+const SIDEBAR_COLLAPSED_KEY = "mototake:sidebar-collapsed";
 
 const navigationItems = [
   { to: "/", label: "Dashboard", icon: "D", end: true },
@@ -14,7 +16,7 @@ const navigationItems = [
   { to: "/stock", label: "Estoque", icon: "E" },
   { to: "/pdv", label: "PDV", icon: "V" },
   { to: "/cash-registers", label: "Caixa", icon: "X" },
-  { to: "/delivery-zones", label: "Taxas por bairro", icon: "T" },
+  { to: "/delivery-zones", label: "Taxas de entrega", icon: "T" },
   { to: "/pix-settings", label: "Pix manual", icon: "M" },
   { to: "/reports", label: "Relatorios", icon: "R" },
   { to: "/couriers", label: "Motoboys", icon: "B" }
@@ -32,7 +34,9 @@ export function AppLayout() {
   const { user, store, logout, logoutAll, uploadStoreImage, removeStoreImage } =
     useAuth();
   const [storeImageError, setStoreImageError] = useState<string | null>(null);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true";
+  });
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const isPlatformAdmin = user?.role === "PLATFORM_ADMIN";
   const isStoreAdmin = user?.role === "STORE_ADMIN";
@@ -51,6 +55,10 @@ export function AppLayout() {
   ]
     .filter(Boolean)
     .join(" ");
+
+  useEffect(() => {
+    window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(sidebarCollapsed));
+  }, [sidebarCollapsed]);
 
   async function handleStoreImageChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];

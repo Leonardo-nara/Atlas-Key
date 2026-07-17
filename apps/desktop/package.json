@@ -1,6 +1,6 @@
 {
   "name": "@deliveries/desktop",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "productName": "Mototake",
   "description": "Painel desktop Mototake para operacao de pedidos, PDV, caixa e estoque.",
@@ -16,12 +16,14 @@
     "dist": "pnpm build && electron-builder",
     "dist:win": "pnpm build && electron-builder --win nsis",
     "dist:dir": "pnpm build && electron-builder --dir",
+    "release:win": "pnpm build && electron-builder --win nsis --publish always",
     "lint": "eslint \"src/**/*.{ts,tsx}\" \"electron/**/*.ts\" vite.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.electron.json --noEmit",
     "clean": "if exist dist rmdir /s /q dist & if exist dist-electron rmdir /s /q dist-electron"
   },
   "dependencies": {
     "@deliveries/shared-types": "workspace:*",
+    "electron-updater": "^6.8.9",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-router-dom": "^7.6.3",
@@ -64,7 +66,19 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "deleteAppDataOnUninstall": false,
       "artifactName": "Mototake-Setup-${version}.${ext}"
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Leonardo-nara",
+        "repo": "mototake-desktop-releases",
+        "releaseType": "release",
+        "channel": "latest",
+        "publishAutoUpdate": true
+      }
+    ]
   }
 }

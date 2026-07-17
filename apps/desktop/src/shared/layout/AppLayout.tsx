@@ -3,7 +3,9 @@ import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 
 import { useAuth } from "../../features/auth/auth-context";
+import { useDesktopUpdates } from "../../features/updates/useDesktopUpdates";
 import { toMediaUrl } from "../../lib/media-url";
+import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { StatusBadge } from "../ui/premium";
 
 const SIDEBAR_COLLAPSED_KEY = "mototake:sidebar-collapsed";
@@ -19,6 +21,7 @@ const navigationItems = [
   { to: "/delivery-zones", label: "Taxas de entrega", icon: "T" },
   { to: "/pix-settings", label: "Pix manual", icon: "M" },
   { to: "/reports", label: "Relatorios", icon: "R" },
+  { to: "/settings", label: "Configuracoes", icon: "S" },
   { to: "/couriers", label: "Motoboys", icon: "B" }
 ];
 
@@ -27,7 +30,8 @@ const adminNavigationItems = [
   { to: "/admin/stores", label: "Empresas", icon: "E" },
   { to: "/admin/users", label: "Usuarios", icon: "U" },
   { to: "/admin/couriers", label: "Motoboys", icon: "B" },
-  { to: "/admin/audit-logs", label: "Auditoria", icon: "A" }
+  { to: "/admin/audit-logs", label: "Auditoria", icon: "A" },
+  { to: "/settings", label: "Configuracoes", icon: "S" }
 ];
 
 export function AppLayout() {
@@ -38,6 +42,9 @@ export function AppLayout() {
     return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true";
   });
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [updateNoticeDismissed, setUpdateNoticeDismissed] = useState(false);
+  const [showUpdateConfirm, setShowUpdateConfirm] = useState(false);
+  const { isDesktop, updateState, installUpdate } = useDesktopUpdates();
   const isPlatformAdmin = user?.role === "PLATFORM_ADMIN";
   const isStoreAdmin = user?.role === "STORE_ADMIN";
   const activeNavigationItems = isPlatformAdmin
@@ -84,6 +91,9 @@ export function AppLayout() {
       setStoreImageError("Nao foi possivel remover a foto da loja.");
     }
   }
+
+  const shouldShowUpdateNotice =
+    isDesktop && updateState.status === "downloaded" && !updateNoticeDismissed;
 
   return (
     <div className={shellClasses}>
@@ -249,8 +259,45 @@ export function AppLayout() {
             </div>
           </div>
         </header>
+        {shouldShowUpdateNotice ? (
+          <div className="update-ready-banner">
+            <div>
+              <strong>Uma nova versão do Mototake está pronta.</strong>
+              <span>Versão {updateState.version} baixada em segundo plano.</span>
+            </div>
+            <div className="row-actions">
+              <button
+                className="primary-button"
+                onClick={() => setShowUpdateConfirm(true)}
+                type="button"
+              >
+                Atualizar e reiniciar
+              </button>
+              <button
+                className="ghost-button"
+                onClick={() => setUpdateNoticeDismissed(true)}
+                type="button"
+              >
+                Depois
+              </button>
+            </div>
+          </div>
+        ) : null}
         <Outlet />
       </main>
+
+      {showUpdateConfirm ? (
+        <ConfirmDialog
+          confirmLabel="Atualizar e reiniciar"
+          description="A nova versão do Mototake foi baixada e está pronta para instalação."
+          onCancel={() => {
+            setShowUpdateConfirm(false);
+            setUpdateNoticeDismissed(true);
+          }}
+          onConfirm={() => void installUpdate()}
+          title="Atualização pronta"
+        />
+      ) : null}
     </div>
   );
 }

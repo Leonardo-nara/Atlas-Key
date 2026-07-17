@@ -1104,6 +1104,51 @@ p {
   color: var(--rp-warning);
 }
 
+.update-ready-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+  padding: 16px 18px;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at top left, rgba(56, 189, 248, 0.18), transparent 34%),
+    var(--rp-surface-elevated);
+  box-shadow: var(--rp-shadow-soft);
+}
+
+.update-ready-banner > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.update-ready-banner span {
+  color: var(--rp-text-muted);
+  font-size: 0.92rem;
+}
+
+.update-settings-card {
+  display: grid;
+  gap: 20px;
+}
+
+.update-status-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.update-progress-card {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--rp-line);
+  border-radius: 18px;
+  background: var(--rp-surface-muted);
+}
+
 .screen-state,
 .empty-state {
   display: grid;
@@ -2847,8 +2892,14 @@ p {
   }
 
   .dashboard-metric-grid,
-  .dashboard-bottom-grid {
+  .dashboard-bottom-grid,
+  .update-status-grid {
     grid-template-columns: 1fr;
+  }
+
+  .update-ready-banner {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .donut-layout,

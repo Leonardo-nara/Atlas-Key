@@ -1,6 +1,8 @@
 import { app, BrowserWindow, shell } from "electron";
 import path from "node:path";
 
+import { initAutoUpdater, registerUpdaterIpc } from "./updater";
+
 const isDev = !app.isPackaged;
 const bundledRendererPath = path.join(__dirname, "../../dist/index.html");
 const allowedExternalOrigins = new Set([
@@ -83,7 +85,9 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  registerUpdaterIpc();
   createWindow();
+  initAutoUpdater();
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {

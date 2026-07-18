@@ -21,6 +21,7 @@ const seedStartedPath = path.join(generatedDir, "seed-started.json");
 
 const state = {
   prefix: qaSlug,
+  runId,
   storeName: `${qaSlug} Loja`,
   storeOwnerName: `${qaSlug} Operador`,
   storeEmail: `${qaSlug.toLowerCase()}-store@example.test`,

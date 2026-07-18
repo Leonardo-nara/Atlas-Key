@@ -64,9 +64,14 @@ export function ClientStoresScreen() {
           placeholder="Digite o nome da empresa"
           placeholderTextColor={mobileTheme.colors.textSoft}
           style={styles.searchInput}
+          testID="client-store-search"
           value={search}
         />
-        <Pressable onPress={() => void loadStores(search)} style={styles.searchButton}>
+        <Pressable
+          onPress={() => void loadStores(search)}
+          style={styles.searchButton}
+          testID="client-store-search-submit"
+        >
           <Text style={styles.searchButtonText}>Pesquisar</Text>
         </Pressable>
       </View>
@@ -90,6 +95,7 @@ export function ClientStoresScreen() {
         stores.map((store) => (
           <Pressable
             key={store.id}
+            accessibilityLabel={`Abrir empresa ${store.name}`}
             onPress={() =>
               navigation.navigate("ClientStoreProducts", {
                 storeId: store.id,
@@ -100,6 +106,7 @@ export function ClientStoresScreen() {
               styles.storeCard,
               pressed ? styles.storeCardPressed : undefined
             ]}
+            testID="client-store-card"
           >
             {store.imageUrl ? (
               <Image

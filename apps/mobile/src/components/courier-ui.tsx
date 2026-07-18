@@ -113,14 +113,22 @@ export function CourierHeader({
 export function CourierCard({
   children,
   highlighted = false,
-  style
+  style,
+  testID,
+  accessibilityLabel
 }: {
   children: ReactNode;
   highlighted?: boolean;
   style?: StyleProp<ViewStyle>;
+  testID?: string;
+  accessibilityLabel?: string;
 }) {
   return (
-    <View style={[styles.card, highlighted ? styles.cardHighlighted : undefined, style]}>
+    <View
+      accessibilityLabel={accessibilityLabel}
+      style={[styles.card, highlighted ? styles.cardHighlighted : undefined, style]}
+      testID={testID}
+    >
       {children}
     </View>
   );
@@ -159,15 +167,20 @@ export function CourierButton({
   label,
   onPress,
   disabled,
-  variant = "primary"
+  variant = "primary",
+  testID,
+  accessibilityLabel
 }: {
   label: string;
   onPress?: () => void;
   disabled?: boolean;
   variant?: "primary" | "secondary" | "danger";
+  testID?: string;
+  accessibilityLabel?: string;
 }) {
   return (
     <Pressable
+      accessibilityLabel={accessibilityLabel ?? label}
       accessibilityRole="button"
       disabled={disabled}
       onPress={onPress}
@@ -177,6 +190,7 @@ export function CourierButton({
         pressed && !disabled ? styles.buttonPressed : undefined,
         disabled ? styles.buttonDisabled : undefined
       ]}
+      testID={testID}
     >
       <Text style={[styles.buttonText, styles[`buttonText_${variant}`]]}>{label}</Text>
     </Pressable>

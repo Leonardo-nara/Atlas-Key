@@ -1,0 +1,92 @@
+name: courier-e2e-android
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        type: string
+        required: true
+        description: Identificador QA sem segredo para isolar dados desta execucao.
+
+defaults:
+  tools:
+    node: 22.14.0
+    pnpm: 10.7.0
+
+jobs:
+  static_checks:
+    name: Validacoes estaticas mobile
+    runs_on: linux-medium
+    environment: preview
+    defaults:
+      run:
+        working_directory: ../..
+    env:
+      EXPO_PUBLIC_API_URL: https://rotapronta-api-sandbox-production.up.railway.app/api
+      EXPO_PUBLIC_SOCKET_URL: https://rotapronta-api-sandbox-production.up.railway.app
+    steps:
+      - uses: eas/checkout
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck mobile
+        run: pnpm --filter @deliveries/mobile typecheck
+      - name: Lint mobile
+        run: pnpm --filter @deliveries/mobile lint
+      - name: Build mobile
+        run: pnpm --filter @deliveries/mobile build
+      - name: Config check mobile
+        run: pnpm --filter @deliveries/mobile config:check
+      - name: Expo doctor
+        run: cd apps/mobile && pnpm dlx expo-doctor
+      - name: Garantir API sandbox
+        run: |
+          cd apps/mobile
+          pnpm dlx expo config --type public | grep -q "rotapronta-api-sandbox-production.up.railway.app"
+
+  build_android:
+    name: Build Android E2E
+    needs: [static_checks]
+    type: build
+    environment: preview
+    params:
+      platform: android
+      profile: courier-e2e
+
+  maestro_courier:
+    name: Maestro Android courier/client
+    needs: [build_android]
+    type: maestro
+    environment: preview
+    runs_on: linux-large-nested-virtualization
+    env:
+      MOTOTAKE_E2E_API_URL: https://rotapronta-api-sandbox-production.up.railway.app/api
+      MOTOTAKE_E2E_PREFIX: QA_COURIER_UI_CLOUD_${{ inputs.run_id }}
+      MOTOTAKE_E2E_RUN_ID: ${{ inputs.run_id }}
+      EXPO_PUBLIC_API_URL: https://rotapronta-api-sandbox-production.up.railway.app/api
+      EXPO_PUBLIC_SOCKET_URL: https://rotapronta-api-sandbox-production.up.railway.app
+      MAESTRO_APP_ID: com.souzaworks.mototake
+    params:
+      build_id: ${{ needs.build_android.outputs.build_id }}
+      flow_path: .maestro/courier/generated
+      retries: 1
+      record_screen: true
+      android_system_image_package: system-images;android-35;default;x86_64
+      device_identifier: pixel_6
+    hooks:
+      before_maestro_tests:
+        - name: Preparar dados QA e flows Maestro
+          run: |
+            if [ -z "$DATABASE_URL" ]; then
+              echo "DATABASE_URL sandbox ausente; abortando antes de criar dados QA."
+              exit 1
+            fi
+            corepack enable
+            cd ../..
+            pnpm install --frozen-lockfile
+            cd apps/mobile
+            node scripts/prepare-courier-e2e.mjs
+      after_maestro_tests:
+        - name: Limpar dados QA no Railway Sandbox
+          run: |
+            cd ../..
+            node apps/mobile/scripts/cleanup-courier-e2e.mjs

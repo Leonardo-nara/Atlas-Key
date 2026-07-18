@@ -70,31 +70,40 @@ export function RegisterScreen() {
             title="Conta de acesso"
           />
 
-          <Field label="Nome completo" value={name} onChangeText={setName} />
+          <Field
+            label="Nome completo"
+            value={name}
+            onChangeText={setName}
+            testID="courier-register-name"
+          />
           <Field
             autoCapitalize="none"
             keyboardType="email-address"
             label="Email"
             value={email}
             onChangeText={setEmail}
+            testID="courier-register-email"
           />
           <Field
             keyboardType="phone-pad"
             label="Telefone"
             value={phone}
             onChangeText={setPhone}
+            testID="courier-register-phone"
           />
           <Field
             label="Senha"
             secureTextEntry
             value={password}
             onChangeText={setPassword}
+            testID="courier-register-password"
           />
           <Field
             label="Confirmar senha"
             secureTextEntry
             value={confirmPassword}
             onChangeText={setConfirmPassword}
+            testID="courier-register-confirm-password"
           />
 
           {loginError || localError ? (
@@ -105,10 +114,12 @@ export function RegisterScreen() {
             disabled={isRegistering}
             label={isRegistering ? "Criando conta..." : "Criar conta"}
             onPress={() => void handleRegister()}
+            testID="courier-register-submit"
           />
           <CourierButton
             label="Já tenho conta"
             onPress={() => navigation.goBack()}
+            testID="courier-register-back"
             variant="secondary"
           />
         </CourierCard>
@@ -123,7 +134,8 @@ function Field({
   onChangeText,
   secureTextEntry,
   keyboardType,
-  autoCapitalize
+  autoCapitalize,
+  testID
 }: {
   label: string;
   value: string;
@@ -131,6 +143,7 @@ function Field({
   secureTextEntry?: boolean;
   keyboardType?: "default" | "email-address" | "phone-pad";
   autoCapitalize?: "none" | "sentences" | "words" | "characters";
+  testID?: string;
 }) {
   return (
     <View style={styles.field}>
@@ -142,6 +155,7 @@ function Field({
         placeholderTextColor={courierTheme.colors.textMuted}
         secureTextEntry={secureTextEntry}
         style={styles.input}
+        testID={testID}
         value={value}
       />
     </View>

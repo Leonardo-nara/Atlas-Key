@@ -214,7 +214,7 @@ export function CompaniesScreen() {
               const imageUrl = store.imageUrl ? toMediaUrl(store.imageUrl) : null;
 
               return (
-                <CourierCard key={store.id}>
+                <CourierCard key={store.id} testID="courier-company-card">
                   {imageUrl ? (
                     <Image source={{ uri: imageUrl }} style={styles.storeImage} />
                   ) : (
@@ -244,6 +244,7 @@ export function CompaniesScreen() {
                         : buildActionLabel(store)
                     }
                     onPress={() => void handleRequest(store.id)}
+                    testID="courier-request-company"
                   />
                 </CourierCard>
               );
@@ -262,7 +263,7 @@ export function CompaniesScreen() {
             />
           ) : (
             sortedLinks.map((link) => (
-              <CourierCard key={link.id} style={styles.linkCard}>
+              <CourierCard key={link.id} style={styles.linkCard} testID="courier-link-card">
                 <View style={styles.storeHeader}>
                   <View style={styles.storeCopy}>
                     <Text style={styles.storeName}>{link.store.name}</Text>

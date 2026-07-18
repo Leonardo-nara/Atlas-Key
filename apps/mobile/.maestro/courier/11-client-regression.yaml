@@ -1,0 +1,36 @@
+appId: com.souzaworks.mototake
+---
+- clearState
+- launchApp
+- tapOn:
+    id: login-mode-client
+- tapOn:
+    id: login-email
+- inputText: "__CLIENTEMAIL__"
+- tapOn:
+    id: login-password
+- inputText: "__PASSWORD__"
+- tapOn:
+    id: login-submit
+- assertVisible:
+    id: client-tab-stores
+- tapOn:
+    id: client-store-search
+- inputText: "__STORENAME__"
+- tapOn:
+    id: client-store-search-submit
+- tapOn:
+    id: client-store-card
+- assertVisible:
+    id: client-product-card
+- tapOn:
+    id: client-product-add
+- tapOn:
+    id: client-tab-cart
+- tapOn:
+    id: client-fulfillment-pickup
+- tapOn:
+    id: client-payment-CASH
+- tapOn:
+    id: client-checkout-submit
+- assertVisible: "Pedido enviado.*|Pedidos enviados.*"

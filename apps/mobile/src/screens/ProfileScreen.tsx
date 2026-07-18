@@ -137,16 +137,24 @@ export function ProfileScreen() {
             onPress={() =>
               navigation.navigate("CompleteProfile", { forceCompletion: false })
             }
+            testID="courier-profile-edit"
           />
           <CourierButton
             label="Atualizar dados"
             onPress={() => void refreshProfile()}
+            testID="courier-profile-refresh"
             variant="secondary"
           />
-          <CourierButton label="Sair" onPress={() => void logout()} variant="secondary" />
+          <CourierButton
+            label="Sair"
+            onPress={() => void logout()}
+            testID="courier-logout"
+            variant="secondary"
+          />
           <CourierButton
             label="Sair de todos os dispositivos"
             onPress={confirmLogoutAll}
+            testID="courier-logout-all"
             variant="danger"
           />
         </CourierCard>

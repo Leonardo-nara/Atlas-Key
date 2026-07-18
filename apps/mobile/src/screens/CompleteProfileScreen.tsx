@@ -158,27 +158,32 @@ export function CompleteProfileScreen() {
             label="Nome completo"
             value={form.name}
             onChangeText={(value) => setField("name", value)}
+            testID="courier-profile-name"
           />
           <Field
             label="Telefone"
             value={form.phone}
             onChangeText={(value) => setField("phone", value)}
+            testID="courier-profile-phone"
           />
           <Field
             label="Cidade"
             value={form.city}
             onChangeText={(value) => setField("city", value)}
+            testID="courier-profile-city"
           />
           <Field
             autoCapitalize="characters"
             label="Placa"
             value={form.plate}
             onChangeText={(value) => setField("plate", value.toUpperCase())}
+            testID="courier-profile-plate"
           />
           <Field
             label="Modelo do veículo"
             value={form.vehicleModel}
             onChangeText={(value) => setField("vehicleModel", value)}
+            testID="courier-profile-vehicle-model"
           />
 
           <View style={styles.field}>
@@ -190,11 +195,13 @@ export function CompleteProfileScreen() {
                 return (
                   <Pressable
                     key={option.value}
+                    accessibilityLabel={`Tipo de veículo ${option.label}`}
                     onPress={() => setField("vehicleType", option.value)}
                     style={[
                       styles.optionButton,
                       selected ? styles.optionSelected : undefined
                     ]}
+                    testID={`courier-profile-vehicle-${option.value}`}
                   >
                     <Text
                       style={[
@@ -222,6 +229,7 @@ export function CompleteProfileScreen() {
             label="URL da foto de perfil (opcional)"
             value={form.profilePhotoUrl}
             onChangeText={(value) => setField("profilePhotoUrl", value)}
+            testID="courier-profile-photo-url"
           />
           <ImageUploadActions
             hasImage={Boolean(form.profilePhotoUrl)}
@@ -252,6 +260,7 @@ export function CompleteProfileScreen() {
             label="URL da foto do veículo (opcional)"
             value={form.vehiclePhotoUrl}
             onChangeText={(value) => setField("vehiclePhotoUrl", value)}
+            testID="courier-profile-vehicle-photo-url"
           />
           <ImageUploadActions
             hasImage={Boolean(form.vehiclePhotoUrl)}
@@ -275,10 +284,16 @@ export function CompleteProfileScreen() {
                 : "Salvar perfil"
           }
           onPress={() => void handleSave()}
+          testID="courier-profile-save"
         />
 
         {!forceCompletion ? (
-          <CourierButton label="Voltar" onPress={() => navigation.goBack()} variant="secondary" />
+          <CourierButton
+            label="Voltar"
+            onPress={() => navigation.goBack()}
+            testID="courier-profile-back"
+            variant="secondary"
+          />
         ) : null}
       </ScrollView>
     </CourierScreen>
@@ -308,12 +323,14 @@ function Field({
   label,
   value,
   onChangeText,
-  autoCapitalize
+  autoCapitalize,
+  testID
 }: {
   label: string;
   value: string;
   onChangeText: (value: string) => void;
   autoCapitalize?: "none" | "sentences" | "words" | "characters";
+  testID?: string;
 }) {
   return (
     <View style={styles.field}>
@@ -323,6 +340,7 @@ function Field({
         onChangeText={onChangeText}
         placeholderTextColor={courierTheme.colors.textMuted}
         style={styles.input}
+        testID={testID}
         value={value}
       />
     </View>

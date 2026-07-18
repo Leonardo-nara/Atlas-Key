@@ -278,6 +278,7 @@ export function MyOrdersScreen() {
                           ? "Atualizando..."
                           : action?.label
                       }
+                      actionTestID="courier-update-order-status"
                       disabled={!action || actingOrderId === order.id}
                       onAction={
                         action
@@ -285,6 +286,7 @@ export function MyOrdersScreen() {
                           : undefined
                       }
                       order={order}
+                      testID="courier-my-order-card"
                     />
                     <CourierProgressTimeline order={order} />
                   </View>

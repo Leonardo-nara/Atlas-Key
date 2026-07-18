@@ -214,10 +214,12 @@ export function AvailableOrdersScreen() {
                     actionLabel={
                       actingOrderId === order.id ? "Aceitando..." : "Aceitar entrega"
                     }
+                    actionTestID="courier-accept-order"
                     disabled={actingOrderId === order.id}
                     highlighted={newOrderIds.includes(order.id)}
                     onAction={() => confirmAccept(order.id)}
                     order={order}
+                    testID="courier-available-order-card"
                   />
                   <CourierProgressTimeline order={order} />
                 </View>

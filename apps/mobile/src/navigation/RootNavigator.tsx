@@ -70,22 +70,38 @@ function CourierTabs() {
       <Tab.Screen
         component={AvailableOrdersScreen}
         name="AvailableOrders"
-        options={{ title: "Início" }}
+        options={{
+          title: "Início",
+          tabBarAccessibilityLabel: "Aba início do motoboy",
+          tabBarButtonTestID: "courier-tab-home"
+        }}
       />
       <Tab.Screen
         component={CompaniesScreen}
         name="Companies"
-        options={{ title: "Empresas" }}
+        options={{
+          title: "Empresas",
+          tabBarAccessibilityLabel: "Aba empresas do motoboy",
+          tabBarButtonTestID: "courier-tab-companies"
+        }}
       />
       <Tab.Screen
         component={MyOrdersScreen}
         name="MyOrders"
-        options={{ title: "Entregas" }}
+        options={{
+          title: "Entregas",
+          tabBarAccessibilityLabel: "Aba entregas do motoboy",
+          tabBarButtonTestID: "courier-tab-orders"
+        }}
       />
       <Tab.Screen
         component={ProfileScreen}
         name="Profile"
-        options={{ title: "Perfil" }}
+        options={{
+          title: "Perfil",
+          tabBarAccessibilityLabel: "Aba perfil do motoboy",
+          tabBarButtonTestID: "courier-tab-profile"
+        }}
       />
     </Tab.Navigator>
   );
@@ -166,25 +182,40 @@ function ClientTabs() {
       <Tab.Screen
         component={ClientHomeStack}
         name="ClientCatalog"
-        options={{ title: "Empresas", headerShown: false }}
+        options={{
+          title: "Empresas",
+          headerShown: false,
+          tabBarAccessibilityLabel: "Aba empresas do cliente",
+          tabBarButtonTestID: "client-tab-stores"
+        }}
       />
       <Tab.Screen
         component={ClientCartScreen}
         name="ClientCart"
         options={{
           title: "Carrinho",
+          tabBarAccessibilityLabel: "Aba carrinho do cliente",
+          tabBarButtonTestID: "client-tab-cart",
           tabBarBadge: itemCount > 0 ? itemCount : undefined
         }}
       />
       <Tab.Screen
         component={ClientOrdersScreen}
         name="ClientOrders"
-        options={{ title: "Pedidos" }}
+        options={{
+          title: "Pedidos",
+          tabBarAccessibilityLabel: "Aba pedidos do cliente",
+          tabBarButtonTestID: "client-tab-orders"
+        }}
       />
       <Tab.Screen
         component={ClientProfileScreen}
         name="ClientProfile"
-        options={{ title: "Perfil" }}
+        options={{
+          title: "Perfil",
+          tabBarAccessibilityLabel: "Aba perfil do cliente",
+          tabBarButtonTestID: "client-tab-profile"
+        }}
       />
     </Tab.Navigator>
   );

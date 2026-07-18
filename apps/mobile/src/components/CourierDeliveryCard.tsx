@@ -47,7 +47,9 @@ export function CourierDeliveryCard({
   onAction,
   disabled,
   highlighted,
-  audience = "courier"
+  audience = "courier",
+  testID,
+  actionTestID
 }: {
   order: Order;
   actionLabel?: string;
@@ -55,12 +57,14 @@ export function CourierDeliveryCard({
   disabled?: boolean;
   highlighted?: boolean;
   audience?: OrderTimelineAudience;
+  testID?: string;
+  actionTestID?: string;
 }) {
   const statusLabel = getOrderStatusText(order, audience);
   const itemCount = order.items.reduce((total, item) => total + item.quantity, 0);
 
   return (
-    <CourierCard highlighted={highlighted}>
+    <CourierCard highlighted={highlighted} testID={testID}>
       <View style={styles.topRow}>
         <View style={styles.titleBlock}>
           <Text style={styles.orderNumber}>Pedido #{order.id.slice(-6).toUpperCase()}</Text>
@@ -100,6 +104,7 @@ export function CourierDeliveryCard({
           disabled={disabled}
           label={actionLabel}
           onPress={onAction}
+          testID={actionTestID}
         />
       ) : null}
     </CourierCard>

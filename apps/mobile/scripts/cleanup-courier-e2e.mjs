@@ -1,9 +1,19 @@
 import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const prefix = process.env.MOTOTAKE_E2E_PREFIX;
+const scriptDir = dirname(fileURLToPath(import.meta.url));
+const seedStartedPath = resolve(scriptDir, "..", ".maestro", "courier", "generated", "seed-started.json");
 
 if (!prefix || !prefix.startsWith("QA_COURIER_UI_CLOUD_")) {
   throw new Error("MOTOTAKE_E2E_PREFIX ausente ou invalido para limpeza QA.");
+}
+
+if (!existsSync(seedStartedPath) && !process.env.DATABASE_URL) {
+  console.log("[courier-e2e] Seed nao iniciou; limpeza QA dispensada.");
+  process.exit(0);
 }
 
 if (!process.env.DATABASE_URL) {

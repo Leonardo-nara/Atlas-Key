@@ -63,8 +63,7 @@ jobs:
 
       - name: Verify sandbox configuration
         run: |
-          cd apps/mobile
-          pnpm dlx expo config --type public | grep -q "rotapronta-api-sandbox-production.up.railway.app"
+          node -e "const eas=require('./apps/mobile/eas.json'); const env=eas.build['courier-e2e'].env; if (env.EXPO_PUBLIC_API_URL !== 'https://rotapronta-api-sandbox-production.up.railway.app/api') process.exit(1); if (env.EXPO_PUBLIC_SOCKET_URL !== 'https://rotapronta-api-sandbox-production.up.railway.app') process.exit(1);"
 
       - name: Generate native Android project
         run: pnpm --filter @deliveries/mobile exec expo prebuild --platform android --clean --no-install

@@ -17,6 +17,7 @@ const password = `Qa${runId.slice(-8).replace(/\D/g, "7")}Strong!1`;
 const rootDir = process.cwd();
 const templatesDir = path.join(rootDir, ".maestro", "courier");
 const generatedDir = path.join(templatesDir, "generated");
+const seedStartedPath = path.join(generatedDir, "seed-started.json");
 
 const state = {
   prefix: qaSlug,
@@ -36,6 +37,12 @@ const state = {
 };
 
 await assertSandboxUrl(apiUrl);
+await mkdir(generatedDir, { recursive: true });
+await writeFile(
+  seedStartedPath,
+  JSON.stringify({ prefix: qaSlug, startedAt: new Date().toISOString() }, null, 2),
+  "utf8"
+);
 const seeded = await seedSandboxData();
 await generateFlows({ ...state, ...seeded });
 
@@ -139,7 +146,6 @@ async function seedSandboxData() {
 }
 
 async function generateFlows(replacements) {
-  await mkdir(generatedDir, { recursive: true });
   const files = (await readdir(templatesDir))
     .filter((file) => file.endsWith(".yaml"))
     .sort();

@@ -421,6 +421,7 @@ export function ClientCartScreen() {
                 styles.segment,
                 fulfillmentType === "DELIVERY" ? styles.segmentActive : undefined
               ]}
+              testID="client-fulfillment-delivery"
             >
               <Text
                 style={[
@@ -437,6 +438,7 @@ export function ClientCartScreen() {
                 styles.segment,
                 fulfillmentType === "PICKUP" ? styles.segmentActive : undefined
               ]}
+              testID="client-fulfillment-pickup"
             >
               <Text
                 style={[
@@ -498,6 +500,7 @@ export function ClientCartScreen() {
                 placeholder="Rua"
                 placeholderTextColor={mobileTheme.colors.textSoft}
                 style={styles.input}
+                testID="client-address-street"
                 value={street}
               />
               <TextInput
@@ -506,6 +509,7 @@ export function ClientCartScreen() {
                 placeholder="Número"
                 placeholderTextColor={mobileTheme.colors.textSoft}
                 style={styles.input}
+                testID="client-address-number"
                 value={number}
               />
               <TextInput
@@ -513,6 +517,7 @@ export function ClientCartScreen() {
                 placeholder="Bairro"
                 placeholderTextColor={mobileTheme.colors.textSoft}
                 style={styles.input}
+                testID="client-address-district"
                 value={district}
               />
               <TextInput
@@ -520,6 +525,7 @@ export function ClientCartScreen() {
                 placeholder="Cidade"
                 placeholderTextColor={mobileTheme.colors.textSoft}
                 style={styles.input}
+                testID="client-address-city"
                 value={city}
               />
               <TextInput
@@ -527,6 +533,7 @@ export function ClientCartScreen() {
                 placeholder="Complemento"
                 placeholderTextColor={mobileTheme.colors.textSoft}
                 style={styles.input}
+                testID="client-address-complement"
                 value={complement}
               />
               <TextInput
@@ -534,6 +541,7 @@ export function ClientCartScreen() {
                 placeholder="Referência"
                 placeholderTextColor={mobileTheme.colors.textSoft}
                 style={styles.input}
+                testID="client-address-reference"
                 value={reference}
               />
               <Pressable
@@ -566,6 +574,7 @@ export function ClientCartScreen() {
                   styles.paymentOption,
                   paymentMethod === option.value ? styles.paymentOptionActive : undefined
                 ]}
+                testID={`client-payment-${option.value}`}
               >
                 <Text
                   style={[
@@ -616,6 +625,7 @@ export function ClientCartScreen() {
             placeholder="Opcional"
             placeholderTextColor={mobileTheme.colors.textSoft}
             style={styles.textArea}
+            testID="client-order-notes"
             value={notes}
           />
 
@@ -738,6 +748,7 @@ export function ClientCartScreen() {
               pressed ? styles.buttonPressed : undefined,
               submitting || groups.length === 0 ? styles.buttonDisabled : undefined
             ]}
+            testID="client-checkout-submit"
           >
             <Text style={styles.checkoutButtonText}>
               {submitting ? "Enviando..." : "Finalizar pedido"}

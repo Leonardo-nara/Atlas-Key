@@ -1,0 +1,40 @@
+appId: com.souzaworks.mototake
+---
+- clearState
+- launchApp
+- tapOn:
+    id: login-register-courier
+- tapOn:
+    id: courier-register-name
+- inputText: "__REGISTEREDCOURIERNAME__"
+- tapOn:
+    id: courier-register-email
+- inputText: "__REGISTEREDCOURIEREMAIL__"
+- tapOn:
+    id: courier-register-phone
+- inputText: "__PHONE__"
+- tapOn:
+    id: courier-register-password
+- inputText: "__PASSWORD__"
+- tapOn:
+    id: courier-register-confirm-password
+- inputText: "__PASSWORD__"
+- tapOn:
+    id: courier-register-submit
+- assertVisible:
+    id: courier-profile-city
+- tapOn:
+    id: courier-profile-city
+- inputText: "Botucatu"
+- tapOn:
+    id: courier-profile-plate
+- inputText: "QAA1B23"
+- tapOn:
+    id: courier-profile-vehicle-model
+- inputText: "Moto QA"
+- tapOn:
+    id: courier-profile-vehicle-MOTO
+- tapOn:
+    id: courier-profile-save
+- assertVisible:
+    id: courier-tab-home

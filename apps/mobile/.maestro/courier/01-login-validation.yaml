@@ -1,0 +1,13 @@
+appId: com.souzaworks.mototake
+---
+- clearState
+- launchApp
+- tapOn:
+    id: login-email
+- inputText: "nao-existe-__RUNID__@example.test"
+- tapOn:
+    id: login-password
+- inputText: "senha-invalida"
+- tapOn:
+    id: login-submit
+- assertVisible: "Credenciais.*|Não foi possível.*|Nao foi possivel.*"

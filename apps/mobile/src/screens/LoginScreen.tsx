@@ -63,11 +63,13 @@ export function LoginScreen() {
 
         <View style={styles.modeToggle}>
           <Pressable
+            accessibilityLabel="Selecionar modo motoboy"
             onPress={() => {
               setMode("courier");
               setLocalError(null);
             }}
             style={[styles.modeChip, mode === "courier" ? styles.modeChipActive : undefined]}
+            testID="login-mode-courier"
           >
             <Text
               style={[
@@ -79,11 +81,13 @@ export function LoginScreen() {
             </Text>
           </Pressable>
           <Pressable
+            accessibilityLabel="Selecionar modo cliente"
             onPress={() => {
               setMode("client");
               setLocalError(null);
             }}
             style={[styles.modeChip, mode === "client" ? styles.modeChipActive : undefined]}
+            testID="login-mode-client"
           >
             <Text
               style={[
@@ -116,6 +120,7 @@ export function LoginScreen() {
               placeholder="courier@example.com"
               placeholderTextColor={mobileTheme.colors.textSoft}
               style={styles.input}
+              testID="login-email"
               value={email}
             />
           </View>
@@ -128,6 +133,7 @@ export function LoginScreen() {
               placeholderTextColor={mobileTheme.colors.textSoft}
               secureTextEntry
               style={styles.input}
+              testID="login-password"
               value={password}
             />
           </View>
@@ -139,6 +145,7 @@ export function LoginScreen() {
           ) : null}
 
           <Pressable
+            accessibilityLabel="Entrar"
             disabled={isLoggingIn}
             onPress={() => void handleLogin()}
             style={({ pressed }) => [
@@ -146,6 +153,7 @@ export function LoginScreen() {
               pressed ? styles.buttonPressed : undefined,
               isLoggingIn ? styles.buttonDisabled : undefined
             ]}
+            testID="login-submit"
           >
             <Text style={styles.buttonText}>
               {isLoggingIn ? "Entrando..." : "Entrar"}
@@ -153,10 +161,14 @@ export function LoginScreen() {
           </Pressable>
 
           <Pressable
+            accessibilityLabel={
+              mode === "courier" ? "Criar conta de motoboy" : "Criar conta de cliente"
+            }
             onPress={() =>
               navigation.navigate(mode === "courier" ? "RegisterCourier" : "RegisterClient")
             }
             style={styles.secondaryButton}
+            testID={mode === "courier" ? "login-register-courier" : "login-register-client"}
           >
             <Text style={styles.secondaryText}>
               {mode === "courier" ? "Criar conta de motoboy" : "Criar conta de cliente"}

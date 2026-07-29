@@ -84,6 +84,7 @@ export function ClientStoreProductsScreen() {
           placeholder="Digite o nome do produto"
           placeholderTextColor={mobileTheme.colors.textSoft}
           style={styles.searchInput}
+          testID="client-product-search"
           value={search}
         />
         <Text style={styles.searchHelper}>
@@ -107,7 +108,7 @@ export function ClientStoreProductsScreen() {
         </View>
       ) : (
         products.map((product) => (
-          <View key={product.id} style={styles.productCard}>
+          <View key={product.id} style={styles.productCard} testID="client-product-card">
             {product.imageUrl ? (
               <Image
                 source={{ uri: toMediaUrl(product.imageUrl) ?? undefined }}
@@ -129,6 +130,11 @@ export function ClientStoreProductsScreen() {
               <View style={styles.productFooter}>
                 <Text style={styles.productPrice}>R$ {product.price.toFixed(2)}</Text>
                 <Pressable
+                  accessibilityLabel={
+                    product.stockAvailable === false
+                      ? `Produto indisponível ${product.name}`
+                      : `Adicionar produto ${product.name}`
+                  }
                   disabled={!store || product.stockAvailable === false}
                   onPress={() => {
                     if (store) {
@@ -140,6 +146,11 @@ export function ClientStoreProductsScreen() {
                     pressed ? styles.addButtonPressed : undefined,
                     product.stockAvailable === false ? styles.addButtonDisabled : undefined
                   ]}
+                  testID={
+                    product.stockAvailable === false
+                      ? "client-product-add-disabled"
+                      : "client-product-add"
+                  }
                 >
                   <Text style={styles.addButtonText}>
                     {product.stockAvailable === false

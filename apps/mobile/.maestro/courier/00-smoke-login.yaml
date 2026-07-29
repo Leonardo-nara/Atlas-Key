@@ -1,0 +1,12 @@
+appId: com.souzaworks.mototake
+---
+- clearState
+- launchApp
+- assertVisible:
+    id: login-email
+- assertVisible:
+    id: login-password
+- assertVisible:
+    id: login-mode-courier
+- assertVisible:
+    id: login-mode-client

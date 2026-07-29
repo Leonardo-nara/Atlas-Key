@@ -1,0 +1,23 @@
+appId: com.souzaworks.mototake
+---
+- clearState
+- launchApp
+- tapOn:
+    id: login-email
+- inputText: "__COURIEREMAIL__"
+- tapOn:
+    id: login-password
+- inputText: "__PASSWORD__"
+- tapOn:
+    id: login-submit
+- tapOn:
+    id: courier-tab-companies
+- assertVisible: "Empresas"
+- assertVisible:
+    id: courier-link-card
+- tapOn:
+    id: courier-tab-profile
+- assertVisible:
+    id: courier-profile-edit
+- assertVisible:
+    id: courier-logout

@@ -1,0 +1,16 @@
+appId: com.souzaworks.mototake
+---
+- clearState
+- launchApp
+- tapOn:
+    id: login-email
+- inputText: "__COURIEREMAIL__"
+- tapOn:
+    id: login-password
+- inputText: "__PASSWORD__"
+- tapOn:
+    id: login-submit
+- assertNotVisible: "Aprovar comprovante"
+- assertNotVisible: "Rejeitar comprovante"
+- assertNotVisible: "Marcar pagamento como pago"
+- assertNotVisible: "Chave Pix"

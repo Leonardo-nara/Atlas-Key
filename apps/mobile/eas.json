@@ -23,6 +23,17 @@
         "buildType": "apk"
       }
     },
+    "courier-e2e": {
+      "distribution": "internal",
+      "withoutCredentials": true,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://rotapronta-api-sandbox-production.up.railway.app/api",
+        "EXPO_PUBLIC_SOCKET_URL": "https://rotapronta-api-sandbox-production.up.railway.app"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
     "production": {
       "env": {
         "EXPO_PUBLIC_API_URL": "https://rotapronta-api-production.up.railway.app/api",

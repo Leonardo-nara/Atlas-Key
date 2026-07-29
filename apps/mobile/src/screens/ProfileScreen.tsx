@@ -1,14 +1,20 @@
-﻿import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Image, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
-import { ScreenContainer } from "../components/ScreenContainer";
-import { SectionHeader } from "../components/SectionHeader";
-import { mobileEnv } from "../env";
+import {
+  CourierButton,
+  CourierCard,
+  CourierHeader,
+  CourierScreen,
+  MetricCard,
+  SectionTitle,
+  StatusPill,
+  courierTheme
+} from "../components/courier-ui";
 import { useAuth } from "../features/auth/auth-context";
 import { toMediaUrl } from "../lib/media-url";
 import { useTabContentBottomPadding } from "../navigation/useTabContentBottomPadding";
-import { mobileShadow, mobileTheme } from "../theme";
 
 type AppStackParamList = {
   CourierTabs: undefined;
@@ -21,160 +27,220 @@ export function ProfileScreen() {
     useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const bottomPadding = useTabContentBottomPadding();
   const roleLabel = user?.role === "COURIER" ? "Motoboy" : user?.role;
+  const profilePhotoUrl = user?.courierProfile?.profilePhotoUrl
+    ? toMediaUrl(user.courierProfile.profilePhotoUrl)
+    : null;
+
+  function confirmLogoutAll() {
+    Alert.alert(
+      "Sair de todos os dispositivos?",
+      "Todas as sessões ativas desta conta serão encerradas.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        { text: "Sair de todos", style: "destructive", onPress: () => void logoutAll() }
+      ]
+    );
+  }
 
   return (
-    <ScreenContainer contentStyle={{ paddingBottom: bottomPadding }} scrollable>
-      <SectionHeader
+    <CourierScreen>
+      <CourierHeader
+        description="Dados operacionais, veículo, sessão e status do cadastro."
         title="Perfil"
-        description="Dados da conta autenticada e utilitários do app. Aqui você acompanha o perfil operacional e controla a sessão."
       />
 
-      <View style={styles.card}>
-        <View style={styles.statusPill}>
-          <Text style={styles.statusPillText}>
-            {user?.profileCompleted ? "Perfil pronto para operar" : "Perfil ainda incompleto"}
-          </Text>
-        </View>
-
-        <Text style={styles.label}>Nome</Text>
-        <Text style={styles.value}>{user?.name}</Text>
-
-        <Text style={styles.label}>Email</Text>
-        <Text style={styles.value}>{user?.email}</Text>
-
-        <Text style={styles.label}>Telefone</Text>
-        <Text style={styles.value}>{user?.phone}</Text>
-
-        <Text style={styles.label}>Perfil</Text>
-        <Text style={styles.value}>{roleLabel}</Text>
-
-        <Text style={styles.label}>Cidade</Text>
-        <Text style={styles.value}>{user?.courierProfile?.city ?? "Não informada"}</Text>
-
-        <Text style={styles.label}>Tipo de veículo</Text>
-        <Text style={styles.value}>{user?.courierProfile?.vehicleType ?? "Não informado"}</Text>
-
-        <Text style={styles.label}>Modelo do veículo</Text>
-        <Text style={styles.value}>{user?.courierProfile?.vehicleModel ?? "Não informado"}</Text>
-
-        <Text style={styles.label}>Placa</Text>
-        <Text style={styles.value}>{user?.courierProfile?.plate ?? "Não informada"}</Text>
-
-        <Text style={styles.label}>Perfil operacional</Text>
-        <Text style={styles.value}>
-          {user?.profileCompleted ? "Completo" : "Pendente de conclusao"}
-        </Text>
-
-        {user?.courierProfile?.profilePhotoUrl ? (
-          <>
-            <Text style={styles.label}>Foto de perfil</Text>
+      <ScrollView
+        contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
+        showsVerticalScrollIndicator={false}
+      >
+        <CourierCard style={styles.heroCard}>
+          {profilePhotoUrl ? (
             <Image
               source={{
-                uri: toMediaUrl(user.courierProfile.profilePhotoUrl) ?? "",
+                uri: profilePhotoUrl,
                 headers: token ? { Authorization: `Bearer ${token}` } : undefined
               }}
-              style={styles.imagePreview}
+              style={styles.avatar}
             />
-          </>
-        ) : null}
+          ) : (
+            <View style={styles.avatarPlaceholder}>
+              <Text style={styles.avatarInitial}>
+                {(user?.name ?? "M").slice(0, 1)}
+              </Text>
+            </View>
+          )}
+
+          <View style={styles.heroCopy}>
+            <StatusPill
+              label={
+                user?.profileCompleted
+                  ? "Pronto para operar"
+                  : "Perfil incompleto"
+              }
+              tone={user?.profileCompleted ? "success" : "warning"}
+            />
+            <Text style={styles.name}>{user?.name}</Text>
+            <Text style={styles.email}>{user?.email}</Text>
+          </View>
+        </CourierCard>
+
+        <View style={styles.metricsRow}>
+          <MetricCard label="Perfil" value={roleLabel ?? "-"} />
+          <MetricCard
+            label="Cadastro"
+            value={user?.profileCompleted ? "Completo" : "Pendente"}
+          />
+        </View>
+
+        <CourierCard>
+          <SectionTitle
+            description="Informações usadas pelas empresas durante a operação."
+            title="Dados operacionais"
+          />
+
+          <InfoRow label="Telefone" value={user?.phone ?? "Não informado"} />
+          <InfoRow
+            label="Cidade"
+            value={user?.courierProfile?.city ?? "Não informada"}
+          />
+          <InfoRow
+            label="Tipo de veículo"
+            value={user?.courierProfile?.vehicleType ?? "Não informado"}
+          />
+          <InfoRow
+            label="Modelo do veículo"
+            value={user?.courierProfile?.vehicleModel ?? "Não informado"}
+          />
+          <InfoRow
+            label="Placa"
+            value={user?.courierProfile?.plate ?? "Não informada"}
+          />
+        </CourierCard>
 
         {user?.courierProfile?.vehiclePhotoUrl ? (
-          <>
-            <Text style={styles.label}>Foto do veículo</Text>
+          <CourierCard>
+            <SectionTitle title="Foto do veículo" />
             <Image
               source={{ uri: user.courierProfile.vehiclePhotoUrl }}
-              style={styles.imagePreview}
+              style={styles.vehicleImage}
             />
-          </>
+          </CourierCard>
         ) : null}
 
-        <Text style={styles.label}>API</Text>
-        <Text style={styles.value}>{mobileEnv.apiUrl}</Text>
-      </View>
+        <CourierCard>
+          <SectionTitle
+            description="Mantenha seu cadastro atualizado antes de aceitar entregas."
+            title="Ações da conta"
+          />
+          <CourierButton
+            label="Editar perfil"
+            onPress={() =>
+              navigation.navigate("CompleteProfile", { forceCompletion: false })
+            }
+            testID="courier-profile-edit"
+          />
+          <CourierButton
+            label="Atualizar dados"
+            onPress={() => void refreshProfile()}
+            testID="courier-profile-refresh"
+            variant="secondary"
+          />
+          <CourierButton
+            label="Sair"
+            onPress={() => void logout()}
+            testID="courier-logout"
+            variant="secondary"
+          />
+          <CourierButton
+            label="Sair de todos os dispositivos"
+            onPress={confirmLogoutAll}
+            testID="courier-logout-all"
+            variant="danger"
+          />
+        </CourierCard>
+      </ScrollView>
+    </CourierScreen>
+  );
+}
 
-      <Pressable
-        onPress={() => navigation.navigate("CompleteProfile", { forceCompletion: false })}
-        style={styles.secondaryButton}
-      >
-        <Text style={styles.secondaryText}>Editar perfil</Text>
-      </Pressable>
-
-      <Pressable onPress={() => void refreshProfile()} style={styles.secondaryButton}>
-        <Text style={styles.secondaryText}>Atualizar perfil</Text>
-      </Pressable>
-
-      <Pressable onPress={() => void logout()} style={styles.primaryButton}>
-        <Text style={styles.primaryText}>Sair</Text>
-      </Pressable>
-
-      <Pressable onPress={() => void logoutAll()} style={styles.secondaryButton}>
-        <Text style={styles.secondaryText}>Sair de todos os dispositivos</Text>
-      </Pressable>
-    </ScreenContainer>
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.infoRow}>
+      <Text style={styles.infoLabel}>{label}</Text>
+      <Text style={styles.infoValue}>{value}</Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: mobileTheme.colors.surface,
-    borderRadius: mobileTheme.radii.lg,
-    padding: 20,
-    gap: 10,
-    borderWidth: 1,
-    borderColor: mobileTheme.colors.border,
-    ...mobileShadow
+  content: {
+    gap: 18
   },
-  statusPill: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: mobileTheme.radii.pill,
-    backgroundColor: mobileTheme.colors.primarySoft,
-    marginBottom: 4
-  },
-  statusPillText: {
-    color: mobileTheme.colors.primaryStrong,
-    fontWeight: "800",
-    fontSize: 12
-  },
-  label: {
-    fontSize: 12,
-    letterSpacing: 1.4,
-    textTransform: "uppercase",
-    color: mobileTheme.colors.primaryStrong
-  },
-  value: {
-    fontSize: 16,
-    color: mobileTheme.colors.text,
-    marginBottom: 8
-  },
-  imagePreview: {
-    width: "100%",
-    height: 180,
-    borderRadius: mobileTheme.radii.sm,
-    backgroundColor: mobileTheme.colors.surfaceStrong,
-    marginBottom: 12
-  },
-  primaryButton: {
-    backgroundColor: mobileTheme.colors.primaryStrong,
-    paddingVertical: 14,
-    borderRadius: mobileTheme.radii.sm,
+  heroCard: {
+    flexDirection: "row",
     alignItems: "center"
   },
-  primaryText: {
-    color: "#ffffff",
-    fontWeight: "800"
+  avatar: {
+    width: 76,
+    height: 76,
+    borderRadius: 24,
+    backgroundColor: courierTheme.colors.surfaceElevated
   },
-  secondaryButton: {
-    backgroundColor: mobileTheme.colors.primarySoft,
-    paddingVertical: 14,
-    borderRadius: mobileTheme.radii.sm,
+  avatarPlaceholder: {
+    width: 76,
+    height: 76,
+    borderRadius: 24,
     alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: courierTheme.colors.primarySoft,
     borderWidth: 1,
-    borderColor: mobileTheme.colors.borderStrong
+    borderColor: "rgba(56, 189, 248, 0.32)"
   },
-  secondaryText: {
-    color: mobileTheme.colors.primaryStrong,
-    fontWeight: "800"
+  avatarInitial: {
+    color: courierTheme.colors.primary,
+    fontSize: 30,
+    fontWeight: "900",
+    textTransform: "uppercase"
+  },
+  heroCopy: {
+    flex: 1,
+    gap: 6
+  },
+  name: {
+    color: courierTheme.colors.text,
+    fontSize: 22,
+    fontWeight: "900"
+  },
+  email: {
+    color: courierTheme.colors.textMuted,
+    lineHeight: 20
+  },
+  metricsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12
+  },
+  infoRow: {
+    gap: 4,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: courierTheme.colors.border
+  },
+  infoLabel: {
+    color: courierTheme.colors.textMuted,
+    fontSize: 11,
+    fontWeight: "900",
+    textTransform: "uppercase"
+  },
+  infoValue: {
+    color: courierTheme.colors.text,
+    fontSize: 16,
+    fontWeight: "700"
+  },
+  vehicleImage: {
+    width: "100%",
+    height: 180,
+    borderRadius: courierTheme.radii.md,
+    backgroundColor: courierTheme.colors.surfaceElevated
   }
 });

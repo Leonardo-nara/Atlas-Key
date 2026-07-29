@@ -18,6 +18,7 @@ import { LoginScreen } from "../screens/LoginScreen";
 import { MyOrdersScreen } from "../screens/MyOrdersScreen";
 import { ProfileScreen } from "../screens/ProfileScreen";
 import { RegisterScreen } from "../screens/RegisterScreen";
+import { courierTheme } from "../components/courier-ui";
 import { mobileTheme } from "../theme";
 
 const Stack = createNativeStackNavigator();
@@ -26,62 +27,81 @@ const ClientStack = createNativeStackNavigator();
 
 function CourierTabs() {
   const insets = useSafeAreaInsets();
-  const bottomPadding = Math.max(insets.bottom, 10);
+  const bottomPadding = Math.max(insets.bottom, 12);
 
   return (
     <Tab.Navigator
       screenOptions={{
-        headerTitleAlign: "center",
-        headerShadowVisible: false,
-        headerStyle: {
-          backgroundColor: mobileTheme.colors.background
-        },
-        headerTitleStyle: {
-          color: mobileTheme.colors.text,
-          fontWeight: "800"
-        },
-        tabBarActiveTintColor: mobileTheme.colors.primaryStrong,
-        tabBarInactiveTintColor: mobileTheme.colors.textSoft,
+        headerShown: false,
+        tabBarActiveTintColor: courierTheme.colors.primary,
+        tabBarInactiveTintColor: courierTheme.colors.textMuted,
         tabBarIcon: () => null,
         tabBarIconStyle: {
           display: "none"
         },
         tabBarStyle: {
-          height: 62 + bottomPadding,
-          paddingTop: 8,
+          position: "absolute",
+          left: 14,
+          right: 14,
+          bottom: Math.max(insets.bottom, 10),
+          height: 66 + bottomPadding,
+          paddingTop: 10,
           paddingBottom: bottomPadding,
-          backgroundColor: "rgba(255,255,255,0.96)",
-          borderTopWidth: 1,
-          borderTopColor: mobileTheme.colors.border
+          backgroundColor: "rgba(13, 28, 43, 0.98)",
+          borderTopWidth: 0,
+          borderWidth: 1,
+          borderColor: courierTheme.colors.border,
+          borderRadius: 24,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 14 },
+          shadowOpacity: 0.28,
+          shadowRadius: 22,
+          elevation: 18
         },
         tabBarLabelStyle: {
           fontSize: 12,
-          fontWeight: "700"
+          fontWeight: "900"
         },
         sceneStyle: {
-          backgroundColor: mobileTheme.colors.background
+          backgroundColor: courierTheme.colors.background
         }
       }}
     >
       <Tab.Screen
         component={AvailableOrdersScreen}
         name="AvailableOrders"
-        options={{ title: "Disponíveis" }}
+        options={{
+          title: "Início",
+          tabBarAccessibilityLabel: "Aba início do motoboy",
+          tabBarButtonTestID: "courier-tab-home"
+        }}
       />
       <Tab.Screen
         component={CompaniesScreen}
         name="Companies"
-        options={{ title: "Empresas" }}
+        options={{
+          title: "Empresas",
+          tabBarAccessibilityLabel: "Aba empresas do motoboy",
+          tabBarButtonTestID: "courier-tab-companies"
+        }}
       />
       <Tab.Screen
         component={MyOrdersScreen}
         name="MyOrders"
-        options={{ title: "Meus pedidos" }}
+        options={{
+          title: "Entregas",
+          tabBarAccessibilityLabel: "Aba entregas do motoboy",
+          tabBarButtonTestID: "courier-tab-orders"
+        }}
       />
       <Tab.Screen
         component={ProfileScreen}
         name="Profile"
-        options={{ title: "Perfil" }}
+        options={{
+          title: "Perfil",
+          tabBarAccessibilityLabel: "Aba perfil do motoboy",
+          tabBarButtonTestID: "courier-tab-profile"
+        }}
       />
     </Tab.Navigator>
   );
@@ -162,25 +182,40 @@ function ClientTabs() {
       <Tab.Screen
         component={ClientHomeStack}
         name="ClientCatalog"
-        options={{ title: "Empresas", headerShown: false }}
+        options={{
+          title: "Empresas",
+          headerShown: false,
+          tabBarAccessibilityLabel: "Aba empresas do cliente",
+          tabBarButtonTestID: "client-tab-stores"
+        }}
       />
       <Tab.Screen
         component={ClientCartScreen}
         name="ClientCart"
         options={{
           title: "Carrinho",
+          tabBarAccessibilityLabel: "Aba carrinho do cliente",
+          tabBarButtonTestID: "client-tab-cart",
           tabBarBadge: itemCount > 0 ? itemCount : undefined
         }}
       />
       <Tab.Screen
         component={ClientOrdersScreen}
         name="ClientOrders"
-        options={{ title: "Pedidos" }}
+        options={{
+          title: "Pedidos",
+          tabBarAccessibilityLabel: "Aba pedidos do cliente",
+          tabBarButtonTestID: "client-tab-orders"
+        }}
       />
       <Tab.Screen
         component={ClientProfileScreen}
         name="ClientProfile"
-        options={{ title: "Perfil" }}
+        options={{
+          title: "Perfil",
+          tabBarAccessibilityLabel: "Aba perfil do cliente",
+          tabBarButtonTestID: "client-tab-profile"
+        }}
       />
     </Tab.Navigator>
   );

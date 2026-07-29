@@ -1,7 +1,8 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Image,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -11,8 +12,15 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import type { RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
-import { ScreenContainer } from "../components/ScreenContainer";
-import { SectionHeader } from "../components/SectionHeader";
+import {
+  CourierButton,
+  CourierCard,
+  CourierHeader,
+  CourierScreen,
+  FeedbackBanner,
+  SectionTitle,
+  courierTheme
+} from "../components/courier-ui";
 import { useAuth } from "../features/auth/auth-context";
 import {
   buildCourierProfileForm,
@@ -22,7 +30,6 @@ import {
 } from "../features/courier/courier-profile";
 import { pickImageFromLibrary } from "../lib/image-picker";
 import { toMediaUrl } from "../lib/media-url";
-import { mobileShadow, mobileTheme } from "../theme";
 
 type AppStackParamList = {
   CourierTabs: undefined;
@@ -130,125 +137,166 @@ export function CompleteProfileScreen() {
   }
 
   return (
-    <ScreenContainer scrollable>
-      <SectionHeader
-        title={forceCompletion ? "Complete seu perfil" : "Editar perfil"}
-        description={
-          forceCompletion
-            ? "Antes de operar no app, complete os dados principais do seu perfil de motoboy."
-            : "Atualize seus dados operacionais sempre que precisar."
-        }
-      />
-
-      <View style={styles.card}>
-        <Field label="Nome completo" value={form.name} onChangeText={(value) => setField("name", value)} />
-        <Field label="Telefone" value={form.phone} onChangeText={(value) => setField("phone", value)} />
-        <Field label="Cidade" value={form.city} onChangeText={(value) => setField("city", value)} />
-        <Field
-          autoCapitalize="characters"
-          label="Placa"
-          value={form.plate}
-          onChangeText={(value) => setField("plate", value.toUpperCase())}
-        />
-        <Field
-          label="Modelo do veículo"
-          value={form.vehicleModel}
-          onChangeText={(value) => setField("vehicleModel", value)}
+    <CourierScreen>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <CourierHeader
+          description={
+            forceCompletion
+              ? "Complete os dados principais para liberar a operação no app."
+              : "Atualize seus dados operacionais sempre que precisar."
+          }
+          title={forceCompletion ? "Complete seu perfil" : "Editar perfil"}
         />
 
-        <View style={styles.field}>
-          <Text style={styles.label}>Tipo de veículo</Text>
-          <View style={styles.optionsRow}>
-            {courierVehicleOptions.map((option) => {
-              const selected = form.vehicleType === option.value;
-
-              return (
-                <Pressable
-                  key={option.value}
-                  onPress={() => setField("vehicleType", option.value)}
-                  style={[styles.optionButton, selected ? styles.optionSelected : undefined]}
-                >
-                  <Text style={[styles.optionText, selected ? styles.optionTextSelected : undefined]}>
-                    {option.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-
-        <Field
-          autoCapitalize="none"
-          label="URL da foto de perfil (opcional)"
-          value={form.profilePhotoUrl}
-          onChangeText={(value) => setField("profilePhotoUrl", value)}
-        />
-        <ImageUploadActions
-          hasImage={Boolean(form.profilePhotoUrl)}
-          onPick={() => void handlePickImage("profilePhotoUrl", "perfil")}
-          onRemove={() => {
-            setSelectedProfileImage(null);
-            setField("profilePhotoUrl", "");
-            void removeCourierProfileImage();
-          }}
-        />
-        {form.profilePhotoUrl ? (
-          <Image
-            source={{
-              uri: selectedProfileImage
-                ? selectedProfileImage.uri
-                : toMediaUrl(form.profilePhotoUrl) ?? form.profilePhotoUrl,
-              headers:
-                !selectedProfileImage && token
-                  ? { Authorization: `Bearer ${token}` }
-                  : undefined
-            }}
-            style={styles.previewImage}
+        <CourierCard>
+          <SectionTitle
+            description="Essas informações ajudam a empresa a identificar você e seu veículo."
+            title="Dados operacionais"
           />
-        ) : null}
 
-        <Field
-          autoCapitalize="none"
-          label="URL da foto do veículo (opcional)"
-          value={form.vehiclePhotoUrl}
-          onChangeText={(value) => setField("vehiclePhotoUrl", value)}
-        />
-        <ImageUploadActions
-          hasImage={Boolean(form.vehiclePhotoUrl)}
-          onPick={() => void handlePickImage("vehiclePhotoUrl", "veículo")}
-          onRemove={() => setField("vehiclePhotoUrl", "")}
-        />
-        {form.vehiclePhotoUrl ? (
-          <Image source={{ uri: form.vehiclePhotoUrl }} style={styles.previewImage} />
-        ) : null}
+          <Field
+            label="Nome completo"
+            value={form.name}
+            onChangeText={(value) => setField("name", value)}
+            testID="courier-profile-name"
+          />
+          <Field
+            label="Telefone"
+            value={form.phone}
+            onChangeText={(value) => setField("phone", value)}
+            testID="courier-profile-phone"
+          />
+          <Field
+            label="Cidade"
+            value={form.city}
+            onChangeText={(value) => setField("city", value)}
+            testID="courier-profile-city"
+          />
+          <Field
+            autoCapitalize="characters"
+            label="Placa"
+            value={form.plate}
+            onChangeText={(value) => setField("plate", value.toUpperCase())}
+            testID="courier-profile-plate"
+          />
+          <Field
+            label="Modelo do veículo"
+            value={form.vehicleModel}
+            onChangeText={(value) => setField("vehicleModel", value)}
+            testID="courier-profile-vehicle-model"
+          />
 
-        {error ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error}</Text>
+          <View style={styles.field}>
+            <Text style={styles.label}>Tipo de veículo</Text>
+            <View style={styles.optionsRow}>
+              {courierVehicleOptions.map((option) => {
+                const selected = form.vehicleType === option.value;
+
+                return (
+                  <Pressable
+                    key={option.value}
+                    accessibilityLabel={`Tipo de veículo ${option.label}`}
+                    onPress={() => setField("vehicleType", option.value)}
+                    style={[
+                      styles.optionButton,
+                      selected ? styles.optionSelected : undefined
+                    ]}
+                    testID={`courier-profile-vehicle-${option.value}`}
+                  >
+                    <Text
+                      style={[
+                        styles.optionText,
+                        selected ? styles.optionTextSelected : undefined
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
           </View>
-        ) : null}
+        </CourierCard>
 
-        <Pressable
+        <CourierCard>
+          <SectionTitle
+            description="Use imagens nítidas. Elas ajudam a empresa a reconhecer o motoboy certo."
+            title="Fotos"
+          />
+
+          <Field
+            autoCapitalize="none"
+            label="URL da foto de perfil (opcional)"
+            value={form.profilePhotoUrl}
+            onChangeText={(value) => setField("profilePhotoUrl", value)}
+            testID="courier-profile-photo-url"
+          />
+          <ImageUploadActions
+            hasImage={Boolean(form.profilePhotoUrl)}
+            onPick={() => void handlePickImage("profilePhotoUrl", "perfil")}
+            onRemove={() => {
+              setSelectedProfileImage(null);
+              setField("profilePhotoUrl", "");
+              void removeCourierProfileImage();
+            }}
+          />
+          {form.profilePhotoUrl ? (
+            <Image
+              source={{
+                uri: selectedProfileImage
+                  ? selectedProfileImage.uri
+                  : toMediaUrl(form.profilePhotoUrl) ?? form.profilePhotoUrl,
+                headers:
+                  !selectedProfileImage && token
+                    ? { Authorization: `Bearer ${token}` }
+                    : undefined
+              }}
+              style={styles.previewImage}
+            />
+          ) : null}
+
+          <Field
+            autoCapitalize="none"
+            label="URL da foto do veículo (opcional)"
+            value={form.vehiclePhotoUrl}
+            onChangeText={(value) => setField("vehiclePhotoUrl", value)}
+            testID="courier-profile-vehicle-photo-url"
+          />
+          <ImageUploadActions
+            hasImage={Boolean(form.vehiclePhotoUrl)}
+            onPick={() => void handlePickImage("vehiclePhotoUrl", "veículo")}
+            onRemove={() => setField("vehiclePhotoUrl", "")}
+          />
+          {form.vehiclePhotoUrl ? (
+            <Image source={{ uri: form.vehiclePhotoUrl }} style={styles.previewImage} />
+          ) : null}
+        </CourierCard>
+
+        {error ? <FeedbackBanner message={error} tone="danger" /> : null}
+
+        <CourierButton
           disabled={isSaving}
+          label={
+            isSaving
+              ? "Salvando..."
+              : forceCompletion
+                ? "Salvar e continuar"
+                : "Salvar perfil"
+          }
           onPress={() => void handleSave()}
-          style={({ pressed }) => [
-            styles.primaryButton,
-            pressed ? styles.buttonPressed : undefined,
-            isSaving ? styles.buttonDisabled : undefined
-          ]}
-        >
-          <Text style={styles.primaryText}>
-            {isSaving ? "Salvando..." : forceCompletion ? "Salvar e continuar" : "Salvar perfil"}
-          </Text>
-        </Pressable>
+          testID="courier-profile-save"
+        />
 
         {!forceCompletion ? (
-          <Pressable onPress={() => navigation.goBack()} style={styles.secondaryButton}>
-            <Text style={styles.secondaryText}>Voltar</Text>
-          </Pressable>
+          <CourierButton
+            label="Voltar"
+            onPress={() => navigation.goBack()}
+            testID="courier-profile-back"
+            variant="secondary"
+          />
         ) : null}
-      </View>
-    </ScreenContainer>
+      </ScrollView>
+    </CourierScreen>
   );
 }
 
@@ -263,13 +311,9 @@ function ImageUploadActions({
 }) {
   return (
     <View style={styles.imageActions}>
-      <Pressable onPress={onPick} style={styles.secondaryButton}>
-        <Text style={styles.secondaryText}>Escolher da galeria</Text>
-      </Pressable>
+      <CourierButton label="Escolher da galeria" onPress={onPick} variant="secondary" />
       {hasImage ? (
-        <Pressable onPress={onRemove} style={styles.ghostButton}>
-          <Text style={styles.ghostText}>Remover imagem</Text>
-        </Pressable>
+        <CourierButton label="Remover imagem" onPress={onRemove} variant="danger" />
       ) : null}
     </View>
   );
@@ -279,12 +323,14 @@ function Field({
   label,
   value,
   onChangeText,
-  autoCapitalize
+  autoCapitalize,
+  testID
 }: {
   label: string;
   value: string;
   onChangeText: (value: string) => void;
   autoCapitalize?: "none" | "sentences" | "words" | "characters";
+  testID?: string;
 }) {
   return (
     <View style={styles.field}>
@@ -292,8 +338,9 @@ function Field({
       <TextInput
         autoCapitalize={autoCapitalize}
         onChangeText={onChangeText}
-        placeholderTextColor={mobileTheme.colors.textSoft}
+        placeholderTextColor={courierTheme.colors.textMuted}
         style={styles.input}
+        testID={testID}
         value={value}
       />
     </View>
@@ -301,30 +348,26 @@ function Field({
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: mobileTheme.colors.surface,
-    borderRadius: mobileTheme.radii.lg,
-    padding: 20,
-    gap: 16,
-    borderWidth: 1,
-    borderColor: mobileTheme.colors.border,
-    ...mobileShadow
+  content: {
+    gap: 18,
+    paddingBottom: 32
   },
   field: {
     gap: 8
   },
   label: {
-    fontWeight: "700",
-    color: mobileTheme.colors.text
+    color: courierTheme.colors.text,
+    fontWeight: "800"
   },
   input: {
+    minHeight: 50,
     borderWidth: 1,
-    borderColor: mobileTheme.colors.borderStrong,
-    borderRadius: mobileTheme.radii.sm,
+    borderColor: courierTheme.colors.border,
+    borderRadius: courierTheme.radii.md,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    backgroundColor: mobileTheme.colors.surfaceMuted,
-    color: mobileTheme.colors.text
+    backgroundColor: courierTheme.colors.backgroundSecondary,
+    color: courierTheme.colors.text
   },
   optionsRow: {
     flexDirection: "row",
@@ -333,80 +376,30 @@ const styles = StyleSheet.create({
   },
   optionButton: {
     borderWidth: 1,
-    borderColor: mobileTheme.colors.borderStrong,
-    borderRadius: mobileTheme.radii.pill,
+    borderColor: courierTheme.colors.border,
+    borderRadius: courierTheme.radii.pill,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    backgroundColor: mobileTheme.colors.surfaceMuted
+    backgroundColor: courierTheme.colors.backgroundSecondary
   },
   optionSelected: {
-    backgroundColor: mobileTheme.colors.primaryStrong,
-    borderColor: mobileTheme.colors.primaryStrong
+    backgroundColor: courierTheme.colors.primary,
+    borderColor: courierTheme.colors.primary
   },
   optionText: {
-    color: mobileTheme.colors.textMuted,
-    fontWeight: "700"
+    color: courierTheme.colors.textMuted,
+    fontWeight: "800"
   },
   optionTextSelected: {
-    color: "#ffffff"
+    color: "#03111E"
   },
   previewImage: {
     width: "100%",
     height: 180,
-    borderRadius: mobileTheme.radii.sm,
-    backgroundColor: mobileTheme.colors.surfaceStrong
+    borderRadius: courierTheme.radii.md,
+    backgroundColor: courierTheme.colors.surfaceElevated
   },
   imageActions: {
     gap: 10
-  },
-  errorBox: {
-    padding: 12,
-    borderRadius: mobileTheme.radii.sm,
-    backgroundColor: mobileTheme.colors.dangerSoft
-  },
-  errorText: {
-    color: mobileTheme.colors.danger
-  },
-  primaryButton: {
-    backgroundColor: mobileTheme.colors.primaryStrong,
-    paddingVertical: 14,
-    borderRadius: mobileTheme.radii.sm,
-    alignItems: "center"
-  },
-  secondaryButton: {
-    backgroundColor: mobileTheme.colors.primarySoft,
-    paddingVertical: 14,
-    borderRadius: mobileTheme.radii.sm,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: mobileTheme.colors.borderStrong
-  },
-  buttonPressed: {
-    opacity: 0.92,
-    transform: [{ scale: 0.985 }]
-  },
-  buttonDisabled: {
-    opacity: 0.6
-  },
-  primaryText: {
-    color: "#ffffff",
-    fontWeight: "800",
-    fontSize: 16
-  },
-  secondaryText: {
-    color: mobileTheme.colors.primaryStrong,
-    fontWeight: "800"
-  },
-  ghostButton: {
-    paddingVertical: 12,
-    borderRadius: mobileTheme.radii.sm,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: mobileTheme.colors.borderStrong,
-    backgroundColor: mobileTheme.colors.surfaceMuted
-  },
-  ghostText: {
-    color: mobileTheme.colors.textMuted,
-    fontWeight: "700"
   }
 });

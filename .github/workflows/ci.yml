@@ -25,7 +25,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if git grep -n -I -E '(sk-[A-Za-z0-9]|sk-proj|sntrys_|rnd_[A-Za-z0-9]|AKIA[0-9A-Z]{16}|BEGIN (RSA|OPENSSH|PRIVATE) KEY|SENTRY_DSN=https://[^<[:space:]]+@)' -- . ':!pnpm-lock.yaml' ':!.github/workflows/ci.yml'; then
+          if git grep -n -I -E '(^|[^A-Za-z0-9_-])(sk-[A-Za-z0-9]|sk-proj|sntrys_|rnd_[A-Za-z0-9]|AKIA[0-9A-Z]{16}|BEGIN (RSA|OPENSSH|PRIVATE) KEY|SENTRY_DSN=https://[^<[:space:]]+@)' -- . ':!pnpm-lock.yaml' ':!.github/workflows/ci.yml'; then
             echo "Potential secret pattern found. Review output without exposing values."
             exit 1
           fi

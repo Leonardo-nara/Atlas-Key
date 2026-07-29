@@ -22,8 +22,8 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-if (!process.env.DATABASE_URL.includes("railway.internal")) {
-  throw new Error("DATABASE_URL nao aparenta ser do Postgres Railway interno sandbox.");
+if (!isAllowedDatabaseUrl(process.env.DATABASE_URL)) {
+  throw new Error("DATABASE_URL nao aparenta ser do Postgres sandbox/e2e permitido.");
 }
 
 const env = {
@@ -36,6 +36,16 @@ const env = {
 run("pnpm", ["--filter", "@deliveries/backend", "qa:cleanup:prod"], env);
 run("pnpm", ["--filter", "@deliveries/backend", "qa:cleanup:prod", "--", "--apply"], env);
 run("pnpm", ["--filter", "@deliveries/backend", "qa:cleanup:prod"], env);
+
+function isAllowedDatabaseUrl(value) {
+  return (
+    value.includes("railway.internal") ||
+    value.includes("localhost") ||
+    value.includes("127.0.0.1") ||
+    value.includes("e2e") ||
+    value.includes("test")
+  );
+}
 
 function run(command, args, env) {
   const result = spawnSync(command, args, {

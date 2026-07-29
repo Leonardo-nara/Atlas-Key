@@ -217,7 +217,7 @@ async function request(method, route, body, token) {
 }
 
 async function assertSandboxUrl(url) {
-  if (!url.includes("rotapronta-api-sandbox-production.up.railway.app")) {
+  if (!isAllowedE2eApiUrl(url)) {
     throw new Error(`URL de API nao permitida para E2E cloud: ${url}`);
   }
 
@@ -226,6 +226,14 @@ async function assertSandboxUrl(url) {
   if (!response.ok) {
     throw new Error(`Health do sandbox falhou com HTTP ${response.status}.`);
   }
+}
+
+function isAllowedE2eApiUrl(url) {
+  return (
+    url.includes("rotapronta-api-sandbox-production.up.railway.app") ||
+    url.startsWith("http://127.0.0.1:3000/api") ||
+    url.startsWith("http://localhost:3000/api")
+  );
 }
 
 function normalizeUrl(value) {

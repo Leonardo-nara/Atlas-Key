@@ -53,6 +53,14 @@ export interface Store {
   ownerUserId?: string;
   active: boolean;
   status?: "ACTIVE" | "SUSPENDED" | "INACTIVE";
+  slug?: string | null;
+  publicDescription?: string | null;
+  storefrontEnabled?: boolean;
+  pickupEnabled?: boolean;
+  businessHoursNote?: string | null;
+  averagePreparationMinutes?: number;
+  deliveryTimeMinMinutes?: number;
+  deliveryTimeMaxMinutes?: number;
   imageUrl?: string | null;
   profileImageFileName?: string | null;
   profileImageMimeType?: string | null;
@@ -152,6 +160,21 @@ export interface StorePixSettings {
   pixRecipientName?: string | null;
   pixInstructions?: string | null;
   pixEnabled: boolean;
+  updatedAt: string;
+}
+
+export interface StorefrontSettings {
+  storeId: string;
+  storeName: string;
+  slug?: string | null;
+  publicDescription?: string | null;
+  storefrontEnabled: boolean;
+  pickupEnabled: boolean;
+  businessHoursNote?: string | null;
+  averagePreparationMinutes: number;
+  deliveryTimeMinMinutes: number;
+  deliveryTimeMaxMinutes: number;
+  publicUrl?: string | null;
   updatedAt: string;
 }
 

@@ -86,6 +86,12 @@ enum OrderPaymentProvider {
   FUTURE_GATEWAY
 }
 
+enum OrderOrigin {
+  DESKTOP
+  MOBILE_CLIENT
+  STOREFRONT
+}
+
 enum PaymentTransactionProvider {
   STUB
   ASAAS
@@ -348,6 +354,14 @@ model Store {
   id          String   @id @default(cuid())
   name        String
   address     String
+  slug        String?  @unique
+  publicDescription String?
+  storefrontEnabled Boolean @default(false)
+  pickupEnabled Boolean @default(true)
+  businessHoursNote String?
+  averagePreparationMinutes Int @default(25)
+  deliveryTimeMinMinutes Int @default(20)
+  deliveryTimeMaxMinutes Int @default(45)
   ownerUserId String   @unique
   status      StoreStatus @default(ACTIVE)
   active      Boolean  @default(true)
@@ -613,15 +627,21 @@ model Order {
   storeId         String
   courierId       String?
   clientId        String?
+  origin          OrderOrigin @default(DESKTOP)
+  publicTrackingToken String? @unique
+  publicOrderCode String?
+  storefrontRequestId String?
   fulfillmentType OrderFulfillmentType @default(DELIVERY)
   customerName    String
   customerPhone   String
   customerAddress String
+  addressZipCode  String?
   addressStreet   String?
   addressNumber   String?
   addressDistrict String?
   addressComplement String?
   addressCity     String?
+  addressState    String?
   addressReference String?
   subtotal        Decimal     @db.Decimal(10, 2)
   suggestedDeliveryFee Decimal? @db.Decimal(10, 2)
@@ -660,6 +680,9 @@ model Order {
   @@index([storeId])
   @@index([courierId])
   @@index([clientId])
+  @@index([origin, createdAt])
+  @@index([publicOrderCode])
+  @@unique([storeId, storefrontRequestId])
   @@map("orders")
 }
 

@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - codex/mototake-courier-premium-ui
+      - codex/mototake-fast-launch-mvp
   workflow_dispatch:
     inputs:
       run_id:
@@ -16,14 +17,38 @@ jobs:
     name: Courier Android E2E Sandbox
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: mototake_courier_e2e
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d mototake_courier_e2e"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
-      EXPO_PUBLIC_API_URL: https://rotapronta-api-sandbox-production.up.railway.app/api
-      EXPO_PUBLIC_SOCKET_URL: https://rotapronta-api-sandbox-production.up.railway.app
-      MOTOTAKE_E2E_API_URL: https://rotapronta-api-sandbox-production.up.railway.app/api
+      API_PREFIX: api
+      CORS_ALLOWED_ORIGINS: http://localhost:5173,http://127.0.0.1:5173,http://10.0.2.2:3000
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/mototake_courier_e2e?schema=public
+      EXPO_PUBLIC_API_URL: http://10.0.2.2:3000/api
+      EXPO_PUBLIC_SOCKET_URL: http://10.0.2.2:3000
+      HOST: 0.0.0.0
+      JWT_ACCESS_EXPIRES_IN: 15m
+      JWT_REFRESH_EXPIRES_DAYS: 30
+      JWT_SECRET: courier-e2e-local-secret
+      MOTOTAKE_E2E_API_URL: http://127.0.0.1:3000/api
       MOTOTAKE_E2E_PREFIX: QA_COURIER_UI_CLOUD_${{ inputs.run_id || github.run_id }}
       MOTOTAKE_E2E_RUN_ID: ${{ inputs.run_id || github.run_id }}
-      DATABASE_URL: ${{ secrets.SANDBOX_DATABASE_URL }}
+      MOTOTAKE_SANDBOX_HEALTH_URL: https://rotapronta-api-sandbox-production.up.railway.app/api/health
       MAESTRO_VERSION: 2.6.1
+      NODE_ENV: production
+      PAYMENT_GATEWAY_ENABLED: "false"
+      PORT: 3000
 
     steps:
       - name: Checkout
@@ -49,8 +74,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Validate sandbox health
-        run: node -e "fetch(process.env.MOTOTAKE_E2E_API_URL + '/health').then(r => { if (!r.ok) process.exit(1); console.log('sandbox health ok'); })"
+      - name: Validate Railway sandbox health without writes
+        run: node -e "fetch(process.env.MOTOTAKE_SANDBOX_HEALTH_URL).then(r => { if (!r.ok) process.exit(1); console.log('railway sandbox health ok'); })"
 
       - name: Static checks
         run: |
@@ -61,9 +86,17 @@ jobs:
           cd apps/mobile
           pnpm dlx expo-doctor
 
-      - name: Verify sandbox configuration
+      - name: Verify emulator/backend configuration
         run: |
-          node -e "const eas=require('./apps/mobile/eas.json'); const env=eas.build['courier-e2e'].env; if (env.EXPO_PUBLIC_API_URL !== 'https://rotapronta-api-sandbox-production.up.railway.app/api') process.exit(1); if (env.EXPO_PUBLIC_SOCKET_URL !== 'https://rotapronta-api-sandbox-production.up.railway.app') process.exit(1);"
+          node -e "if (process.env.EXPO_PUBLIC_API_URL !== 'http://10.0.2.2:3000/api') process.exit(1); if (process.env.MOTOTAKE_E2E_API_URL !== 'http://127.0.0.1:3000/api') process.exit(1);"
+
+      - name: Build and start local backend
+        run: |
+          pnpm --filter @deliveries/backend prisma:generate
+          pnpm --filter @deliveries/backend prisma:deploy:prod
+          pnpm --filter @deliveries/backend build
+          pnpm --filter @deliveries/backend start > backend.log 2>&1 &
+          node -e "let n=0; const tick=()=>fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok) throw new Error('not ready')}).then(()=>console.log('local backend health ok')).catch(()=>{if(++n>60) process.exit(1); setTimeout(tick,1000)}); tick();"
 
       - name: Generate native Android project
         run: pnpm --filter @deliveries/mobile exec expo prebuild --platform android --clean --no-install
@@ -74,10 +107,6 @@ jobs:
 
       - name: Prepare QA sandbox data and Maestro flows
         run: |
-          if [ -z "$DATABASE_URL" ]; then
-            echo "SANDBOX_DATABASE_URL secret ausente; abortando antes de criar dados QA."
-            exit 1
-          fi
           node apps/mobile/scripts/prepare-courier-e2e.mjs
 
       - name: Install Maestro CLI
@@ -101,6 +130,6 @@ jobs:
         if: always()
         run: node apps/mobile/scripts/cleanup-courier-e2e.mjs
 
-      - name: Final sandbox health
+      - name: Final local backend health
         if: always()
         run: node -e "fetch(process.env.MOTOTAKE_E2E_API_URL + '/health').then(r => { if (!r.ok) process.exit(1); console.log('sandbox health ok'); })"

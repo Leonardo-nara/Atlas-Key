@@ -18,6 +18,7 @@ import { ProductsPage } from "./pages/ProductsPage";
 import { ReportsPage } from "./pages/ReportsPage";
 import { StockPage } from "./pages/StockPage";
 import { StoreReadinessPage } from "./pages/StoreReadinessPage";
+import { StorefrontSettingsPage } from "./pages/StorefrontSettingsPage";
 import { ProtectedRoute } from "./shared/routing/ProtectedRoute";
 import { AppLayout } from "./shared/layout/AppLayout";
 
@@ -67,6 +68,14 @@ export const appRouter = createHashRouter([
         element: (
           <RoleRoute role="STORE_ADMIN">
             <ReportsPage />
+          </RoleRoute>
+        )
+      },
+      {
+        path: "storefront",
+        element: (
+          <RoleRoute role="STORE_ADMIN">
+            <StorefrontSettingsPage />
           </RoleRoute>
         )
       },

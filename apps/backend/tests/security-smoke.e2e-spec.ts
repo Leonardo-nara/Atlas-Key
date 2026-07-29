@@ -37,6 +37,11 @@ import { SalesService } from "../src/sales/sales.service";
 import { PaymentWebhooksController } from "../src/webhooks/payment-webhooks.controller";
 import { StoresController } from "../src/stores/stores.controller";
 import { StoresService } from "../src/stores/stores.service";
+import {
+  StorefrontAdminController,
+  StorefrontController
+} from "../src/storefront/storefront.controller";
+import { StorefrontService } from "../src/storefront/storefront.service";
 import { StockController } from "../src/stock/stock.controller";
 import { StockService } from "../src/stock/stock.service";
 import {
@@ -191,6 +196,51 @@ const storesServiceMock = {
   createDeliveryZone: () => ({ id: "zone-created" }),
   updateDeliveryZone: () => ({ id: "zone-updated" }),
   deactivateDeliveryZone: () => ({ id: "zone-deactivated" })
+};
+
+const storefrontServiceMock = {
+  getStorefrontSettings: () => ({
+    storeId: "store-1",
+    storeName: "Loja",
+    slug: "loja",
+    storefrontEnabled: true,
+    pickupEnabled: true,
+    averagePreparationMinutes: 25,
+    deliveryTimeMinMinutes: 20,
+    deliveryTimeMaxMinutes: 45,
+    updatedAt: new Date()
+  }),
+  updateStorefrontSettings: () => ({
+    storeId: "store-1",
+    storeName: "Loja",
+    slug: "loja",
+    storefrontEnabled: true,
+    pickupEnabled: true,
+    averagePreparationMinutes: 25,
+    deliveryTimeMinMinutes: 20,
+    deliveryTimeMaxMinutes: 45,
+    updatedAt: new Date()
+  }),
+  getPublicStore: () => ({
+    status: "OPEN",
+    store: { name: "Loja", slug: "loja", pickupEnabled: true },
+    paymentOptions: { methods: ["CASH", "CARD_ON_DELIVERY", "PIX_MANUAL"] },
+    deliveryZones: [],
+    categories: [],
+    products: []
+  }),
+  getDeliveryFee: () => ({ fulfillmentType: "PICKUP", deliveryFee: 0 }),
+  checkout: (_slug: string, dto: { paymentMethod?: string }) => {
+    if (dto.paymentMethod === "ONLINE") {
+      throw new BadRequestException("Pix automatico indisponivel no momento.");
+    }
+
+    return { trackingToken: "tracking-token", order: { paymentMethod: dto.paymentMethod } };
+  },
+  getPublicOrder: () => ({
+    publicOrderCode: "MTK-TESTE",
+    statusLabel: "Aguardando confirmacao da loja"
+  })
 };
 
 const salesServiceMock = {
@@ -360,7 +410,9 @@ const reportsServiceMock = {
     AdminController,
     ReportsController,
     NotificationsController,
-    PaymentWebhooksController
+    PaymentWebhooksController,
+    StorefrontController,
+    StorefrontAdminController
   ],
   providers: [
     SmokeJwtStrategy,
@@ -372,6 +424,7 @@ const reportsServiceMock = {
     { provide: PaymentGatewayService, useValue: paymentGatewayServiceMock },
     { provide: ReportsService, useValue: reportsServiceMock },
     { provide: StoresService, useValue: storesServiceMock },
+    { provide: StorefrontService, useValue: storefrontServiceMock },
     { provide: NotificationsService, useValue: notificationsServiceMock }
     ,{ provide: StockService, useValue: stockServiceMock }
   ]
@@ -457,6 +510,7 @@ describe("backend smoke/security routes", () => {
     await expectStatus("/admin/dashboard", 401);
     await expectStatus("/stores/me/dashboard", 401);
     await expectStatus("/stores/me/readiness", 401);
+    await expectStatus("/stores/me/storefront", 401);
     await expectStatus("/sales", 401);
     await expectStatus("/sales/sale-1/items", 401, { method: "POST" });
     await expectStatus("/sales/sale-1/complete", 401, { method: "POST" });
@@ -573,7 +627,11 @@ describe("backend smoke/security routes", () => {
     await expectStatus("/stores/me/readiness", 403, { token: "platform" });
     await expectStatus("/stores/me/readiness", 403, { token: "client" });
     await expectStatus("/stores/me/readiness", 403, { token: "courier" });
+    await expectStatus("/stores/me/storefront", 403, { token: "platform" });
+    await expectStatus("/stores/me/storefront", 403, { token: "client" });
+    await expectStatus("/stores/me/storefront", 403, { token: "courier" });
     await expectStatus("/stores/me/readiness", 200, { token: "store" });
+    await expectStatus("/stores/me/storefront", 200, { token: "store" });
 
     const response = await request("/stores/me/readiness?storeId=store-b", { token: "store" });
     assert.equal(response.status, 200);
@@ -591,6 +649,22 @@ describe("backend smoke/security routes", () => {
     assert.equal(response.status, 200);
     const csv = await response.text();
     assert.match(csv, /"'=2\+2"/);
+  });
+
+  it("mantem storefront publico sem auth e bloqueia ONLINE com gateway desligado", async () => {
+    await expectStatus("/storefront/stores/loja", 200);
+    await expectStatus("/storefront/orders/tracking-token", 200);
+    await expectStatus("/storefront/stores/loja/checkout", 400, {
+      method: "POST",
+      body: JSON.stringify({
+        idempotencyKey: "storefront-test-1",
+        customerName: "Cliente Teste",
+        customerPhone: "11999998888",
+        fulfillmentType: "PICKUP",
+        paymentMethod: "ONLINE",
+        items: [{ productId: "product-1", quantity: 1 }]
+      })
+    });
   });
 
   it("nao permite acesso de loja a comprovante fora do escopo da loja", async () => {

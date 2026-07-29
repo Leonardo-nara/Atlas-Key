@@ -34,3 +34,46 @@ export interface RealtimeOrderEventPayload {
   order: RealtimeOrderSnapshot;
   occurredAt: string;
 }
+
+export type StorefrontFulfillmentType = "DELIVERY" | "PICKUP";
+export type StorefrontPaymentMethod =
+  | "CASH"
+  | "CARD_ON_DELIVERY"
+  | "PIX_MANUAL"
+  | "ONLINE";
+
+export interface StorefrontPublicProduct {
+  id: string;
+  name: string;
+  description?: string | null;
+  price: number;
+  category: string;
+  imageUrl?: string | null;
+  available: boolean;
+  availabilityLabel: string;
+}
+
+export interface StorefrontPublicStore {
+  name: string;
+  slug: string;
+  address?: string;
+  description?: string | null;
+  imageUrl?: string | null;
+  pickupEnabled: boolean;
+  businessHoursNote?: string | null;
+  estimatedWindow?: {
+    preparationMinutes: number;
+    deliveryMinMinutes: number;
+    deliveryMaxMinutes: number;
+  };
+}
+
+export interface StorefrontPublicCatalog {
+  status: "OPEN" | "UNAVAILABLE";
+  message?: string;
+  store: StorefrontPublicStore;
+  paymentOptions?: { methods: StorefrontPaymentMethod[] };
+  deliveryZones?: Array<{ district: string; name: string; fee: number }>;
+  categories?: string[];
+  products?: StorefrontPublicProduct[];
+}

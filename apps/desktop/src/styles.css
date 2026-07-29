@@ -243,6 +243,40 @@ p {
   border: 1px solid var(--rp-line);
 }
 
+.storefront-settings-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.65fr);
+  gap: var(--rp-space-5);
+  align-items: start;
+}
+
+.storefront-preview-card {
+  display: grid;
+  gap: var(--rp-space-4);
+  position: sticky;
+  top: 24px;
+}
+
+.storefront-link-box {
+  overflow-wrap: anywhere;
+  border: 1px dashed var(--rp-line-strong);
+  border-radius: var(--rp-radius-md);
+  background: rgba(56, 189, 248, 0.08);
+  color: var(--rp-primary);
+  padding: var(--rp-space-3);
+  font-weight: 800;
+}
+
+.storefront-qr {
+  width: 220px;
+  height: 220px;
+  border-radius: var(--rp-radius-lg);
+  border: 1px solid rgba(56, 189, 248, 0.24);
+  background: var(--rp-text);
+  padding: 12px;
+  justify-self: center;
+}
+
 .mode-chip {
   border: 0;
   padding: 10px 14px;

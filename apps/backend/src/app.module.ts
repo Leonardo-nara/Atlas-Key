@@ -22,6 +22,7 @@ import { ReportsModule } from "./reports/reports.module";
 import { SalesModule } from "./sales/sales.module";
 import { StoreCourierLinksModule } from "./store-courier-links/store-courier-links.module";
 import { StoresModule } from "./stores/stores.module";
+import { StorefrontModule } from "./storefront/storefront.module";
 import { StockModule } from "./stock/stock.module";
 import { UsersModule } from "./users/users.module";
 import { WebhooksModule } from "./webhooks/webhooks.module";
@@ -52,6 +53,7 @@ import { WebhooksModule } from "./webhooks/webhooks.module";
     AuthModule,
     UsersModule,
     StoresModule,
+    StorefrontModule,
     StoreCourierLinksModule,
     RealtimeModule,
     ProductsModule,

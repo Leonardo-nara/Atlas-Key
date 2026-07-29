@@ -14,6 +14,7 @@ const navigationItems = [
   { to: "/orders", label: "Pedidos", icon: "P" },
   { to: "/products", label: "Produtos", icon: "C" },
   { to: "/stock", label: "Estoque", icon: "E" },
+  { to: "/storefront", label: "Loja online", icon: "O" },
   { to: "/pdv", label: "PDV", icon: "V" },
   { to: "/cash-registers", label: "Caixa", icon: "X" },
   { to: "/delivery-zones", label: "Taxas de entrega", icon: "T" },

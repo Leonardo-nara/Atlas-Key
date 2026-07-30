@@ -96,7 +96,7 @@ jobs:
           pnpm --filter @deliveries/backend prisma:deploy:prod
           pnpm --filter @deliveries/backend build
           NODE_ENV=production pnpm --filter @deliveries/backend start > backend.log 2>&1 &
-          node -e "let n=0; const tick=()=>fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok) throw new Error('not ready')}).then(()=>console.log('local backend health ok')).catch(()=>{if(++n>60) process.exit(1); setTimeout(tick,1000)}); tick();"
+          node -e "let n=0; const tick=()=>fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok) throw new Error('not ready')}).then(()=>console.log('local backend health ok')).catch(()=>{if(++n>120){require('node:fs').existsSync('backend.log')&&console.error(require('node:fs').readFileSync('backend.log','utf8')); process.exit(1);} setTimeout(tick,1000)}); tick();"
 
       - name: Generate native Android project
         run: pnpm --filter @deliveries/mobile exec expo prebuild --platform android --clean --no-install

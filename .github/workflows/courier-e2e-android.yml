@@ -46,7 +46,7 @@ jobs:
       MOTOTAKE_E2E_RUN_ID: ${{ inputs.run_id || github.run_id }}
       MOTOTAKE_SANDBOX_HEALTH_URL: https://rotapronta-api-sandbox-production.up.railway.app/api/health
       MAESTRO_VERSION: 2.6.1
-      NODE_ENV: production
+      NODE_ENV: test
       PAYMENT_GATEWAY_ENABLED: "false"
       PORT: 3000
 
@@ -95,7 +95,7 @@ jobs:
           pnpm --filter @deliveries/backend prisma:generate
           pnpm --filter @deliveries/backend prisma:deploy:prod
           pnpm --filter @deliveries/backend build
-          pnpm --filter @deliveries/backend start > backend.log 2>&1 &
+          NODE_ENV=production pnpm --filter @deliveries/backend start > backend.log 2>&1 &
           node -e "let n=0; const tick=()=>fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok) throw new Error('not ready')}).then(()=>console.log('local backend health ok')).catch(()=>{if(++n>60) process.exit(1); setTimeout(tick,1000)}); tick();"
 
       - name: Generate native Android project

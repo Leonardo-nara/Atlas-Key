@@ -40,7 +40,7 @@ jobs:
       HOST: 0.0.0.0
       JWT_ACCESS_EXPIRES_IN: 15m
       JWT_REFRESH_EXPIRES_DAYS: 30
-      JWT_SECRET: courier-e2e-local-secret
+      JWT_SECRET: courier-e2e-local-secret-minimum-32-characters
       MOTOTAKE_E2E_API_URL: http://127.0.0.1:3000/api
       MOTOTAKE_E2E_PREFIX: QA_COURIER_UI_CLOUD_${{ inputs.run_id || github.run_id }}
       MOTOTAKE_E2E_RUN_ID: ${{ inputs.run_id || github.run_id }}
@@ -104,6 +104,13 @@ jobs:
       - name: Build debug APK
         working-directory: apps/mobile/android
         run: ./gradlew assembleDebug --no-daemon
+
+      - name: Upload QA debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: mototake-courier-e2e-debug-apk
+          path: apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
 
       - name: Prepare QA sandbox data and Maestro flows
         run: |

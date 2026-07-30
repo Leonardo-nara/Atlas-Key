@@ -1,5 +1,7 @@
+import { dirname } from "node:path";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const apiUrl = normalizeUrl(
   process.env.MOTOTAKE_E2E_API_URL ??
@@ -14,7 +16,8 @@ const prefix = sanitizePrefix(
 );
 const qaSlug = prefix;
 const password = `Qa${runId.slice(-8).replace(/\D/g, "7")}Strong!1`;
-const rootDir = process.cwd();
+const scriptDir = dirname(fileURLToPath(import.meta.url));
+const rootDir = path.resolve(scriptDir, "..");
 const templatesDir = path.join(rootDir, ".maestro", "courier");
 const generatedDir = path.join(templatesDir, "generated");
 const seedStartedPath = path.join(generatedDir, "seed-started.json");
@@ -150,6 +153,10 @@ async function generateFlows(replacements) {
   const files = (await readdir(templatesDir))
     .filter((file) => file.endsWith(".yaml"))
     .sort();
+
+  if (files.length === 0) {
+    throw new Error(`Nenhum fluxo Maestro encontrado em ${templatesDir}.`);
+  }
 
   for (const file of files) {
     const source = await readFile(path.join(templatesDir, file), "utf8");

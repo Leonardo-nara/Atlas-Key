@@ -56,7 +56,7 @@ const paymentColors = ["#38BDF8", "#60A5FA", "#34D399", "#FB923C", "#A78BFA"];
 
 export function DashboardPage() {
   const { token, user, store } = useAuth();
-  const isPlatformAdmin = user?.role === "PLATFORM_ADMIN";
+  const isPlatformAdmin = user?.role === "SUPER_ADMIN" || user?.role === "PLATFORM_ADMIN";
   const [period, setPeriod] = useState<DashboardPeriod>("7d");
   const [state, setState] = useState<DashboardState>({
     status: "idle",
@@ -497,13 +497,16 @@ function AdminDashboardView({ dashboard }: { dashboard: AdminDashboard }) {
       </div>
 
       <div className="dashboard-metric-grid">
-        <MetricCard icon="E" label="Empresas ativas" tone="success" value={dashboard.activeStores} />
+        <MetricCard icon="E" label="Empresas totais" value={dashboard.totalStores ?? dashboard.activeStores + dashboard.suspendedStores + dashboard.inactiveStores} />
+        <MetricCard icon="A" label="Empresas ativas" tone="success" value={dashboard.activeStores} />
         <MetricCard icon="S" label="Empresas suspensas" tone="warning" value={dashboard.suspendedStores} />
-        <MetricCard icon="I" label="Empresas inativas" value={dashboard.inactiveStores} />
+        <MetricCard icon="I" label="Empresas encerradas" value={dashboard.inactiveStores} />
+        <MetricCard icon="O" label="Lojas online" tone="primary" value={dashboard.onlineStores ?? 0} />
         <MetricCard icon="U" label="Usuarios ativos" value={dashboard.activeUsers} />
         <MetricCard icon="M" label="Motoboys ativos" value={dashboard.activeCouriers} />
         <MetricCard icon="P" label="Pedidos hoje" tone="primary" value={dashboard.ordersToday} />
-        <MetricCard icon="T" label="Pedidos totais" value={dashboard.totalOrders} />
+        <MetricCard icon="7" label="Pedidos 7 dias" value={dashboard.ordersLast7Days ?? 0} />
+        <MetricCard icon="30" label="Pedidos 30 dias" value={dashboard.ordersLast30Days ?? 0} />
         <MetricCard icon="!" label="Pagamentos pendentes" tone="warning" value={dashboard.pendingPayments} />
       </div>
 

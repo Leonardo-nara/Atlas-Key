@@ -28,6 +28,7 @@ const adminNavigationItems = [
   { to: "/admin/stores", label: "Empresas", icon: "E" },
   { to: "/admin/users", label: "Usuarios", icon: "U" },
   { to: "/admin/couriers", label: "Motoboys", icon: "B" },
+  { to: "/admin/system", label: "Sistema", icon: "S" },
   { to: "/admin/audit-logs", label: "Auditoria", icon: "A" }
 ];
 
@@ -39,7 +40,7 @@ export function AppLayout() {
     return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true";
   });
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const isPlatformAdmin = user?.role === "PLATFORM_ADMIN";
+  const isPlatformAdmin = user?.role === "SUPER_ADMIN" || user?.role === "PLATFORM_ADMIN";
   const isStoreAdmin = user?.role === "STORE_ADMIN";
   const activeNavigationItems = isPlatformAdmin
     ? adminNavigationItems
@@ -101,7 +102,7 @@ export function AppLayout() {
             <div className="brand-mark">M</div>
             <div className="brand-copy">
               <strong>Mototake</strong>
-              <span>{isPlatformAdmin ? "Admin" : "Painel"}</span>
+              <span>{isPlatformAdmin ? "Super Admin" : "Painel"}</span>
             </div>
             <button
               aria-label={sidebarCollapsed ? "Expandir menu" : "Recolher menu"}
@@ -133,7 +134,7 @@ export function AppLayout() {
               <h1>{isPlatformAdmin ? "Plataforma" : store?.name ?? "Loja"}</h1>
               <p>
                 {isPlatformAdmin
-                  ? "Controle seguro da operacao."
+                  ? "Controle seguro da plataforma."
                   : store?.address || "Endereco nao informado."}
               </p>
               <StatusBadge tone={store?.status === "SUSPENDED" ? "warning" : "success"}>
@@ -178,7 +179,7 @@ export function AppLayout() {
           </span>
           <p>
             {isPlatformAdmin
-              ? "Suporte, bloqueios e cadastros iniciais."
+              ? "Empresas, usuarios, auditoria e saude operacional."
               : "Pedidos, catalogo, caixa e relatorios em uma rotina centralizada."}
           </p>
         </div>
@@ -236,7 +237,7 @@ export function AppLayout() {
           </button>
           <div className="topbar-title">
             <p className="section-kicker">Painel operacional</p>
-            <strong>{isPlatformAdmin ? "Administracao Mototake" : store?.name ?? "Mototake"}</strong>
+            <strong>{isPlatformAdmin ? "Super Admin Mototake" : store?.name ?? "Mototake"}</strong>
           </div>
           <div className="topbar-status">
             <span className="online-dot" aria-hidden="true" />

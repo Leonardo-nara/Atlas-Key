@@ -3,7 +3,7 @@ export interface AuthUser {
   name: string;
   email: string;
   phone: string;
-  role: "PLATFORM_ADMIN" | "STORE_ADMIN" | "COURIER" | "CLIENT";
+  role: "SUPER_ADMIN" | "PLATFORM_ADMIN" | "STORE_ADMIN" | "COURIER" | "CLIENT";
   status?: "ACTIVE" | "SUSPENDED" | "INACTIVE";
   active: boolean;
   createdAt: string;
@@ -128,15 +128,38 @@ export interface AdminDashboardRecentStore {
 
 export interface AdminDashboard {
   generatedAt: string;
+  totalStores?: number;
   activeStores: number;
   suspendedStores: number;
   inactiveStores: number;
+  onlineStores?: number;
+  pausedStores?: number;
   activeUsers: number;
+  totalCouriers?: number;
   activeCouriers: number;
+  blockedCouriers?: number;
+  linkedCouriers?: number;
   ordersToday: number;
+  ordersLast7Days?: number;
+  ordersLast30Days?: number;
   totalOrders: number;
+  completedOrders?: number;
+  cancelledOrders?: number;
+  inProgressOrders?: number;
   pendingPayments: number;
   recentStores: AdminDashboardRecentStore[];
+}
+
+export interface AdminSystemHealth {
+  checkedAt: string;
+  uptimeSeconds: number;
+  release: string;
+  services: Array<{
+    key: string;
+    label: string;
+    status: "OPERATIONAL" | "UNSTABLE" | "UNAVAILABLE" | "NO_DATA";
+    detail: string;
+  }>;
 }
 
 export interface StoreDeliveryZone {
@@ -612,6 +635,15 @@ export interface AdminStore extends Store {
   status: OperationalStatus;
   owner?: AuthUser;
   lastOrderAt?: string | null;
+  recentOrders?: Array<{
+    id: string;
+    status: string;
+    customerName?: string | null;
+    total?: number | null;
+    createdAt: string;
+    updatedAt?: string;
+  }>;
+  auditLogs?: AdminAuditLog[];
   _count?: {
     products?: number;
     orders?: number;

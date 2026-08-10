@@ -3,6 +3,7 @@ import type {
   AdminAuditLog,
   AdminCourier,
   AdminStore,
+  AdminSystemHealth,
   AdminUser,
   OperationalStatus,
   PaginatedResponse
@@ -63,6 +64,9 @@ export const adminService = {
   listStores(token: string) {
     return http<AdminStore[]>("/admin/stores", { token });
   },
+  getStore(token: string, storeId: string) {
+    return http<AdminStore>(`/admin/stores/${storeId}`, { token });
+  },
   createStore(token: string, input: CreateAdminStoreInput) {
     return http<AdminStore>("/admin/stores", {
       method: "POST",
@@ -70,11 +74,16 @@ export const adminService = {
       body: JSON.stringify(input)
     });
   },
-  updateStoreStatus(token: string, storeId: string, status: OperationalStatus) {
+  updateStoreStatus(
+    token: string,
+    storeId: string,
+    status: OperationalStatus,
+    reason?: string
+  ) {
     return http<AdminStore>(`/admin/stores/${storeId}/status`, {
       method: "PATCH",
       token,
-      body: JSON.stringify({ status })
+      body: JSON.stringify({ status, reason })
     });
   },
   listUsers(token: string) {
@@ -112,5 +121,8 @@ export const adminService = {
         token
       }
     );
+  },
+  getSystemHealth(token: string) {
+    return http<AdminSystemHealth>("/admin/system-health", { token });
   }
 };

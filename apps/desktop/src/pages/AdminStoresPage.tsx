@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { Link } from "react-router-dom";
 
 import { adminService } from "../features/admin/admin-service";
 import { useAuth } from "../features/auth/auth-context";
 import { ApiError } from "../lib/http";
-import { ConfirmDialog } from "../shared/ui/ConfirmDialog";
 import { PageHeader } from "../shared/ui/PageHeader";
 import type { AdminStore, OperationalStatus } from "../types/api";
 
@@ -27,6 +27,7 @@ export function AdminStoresPage() {
   const [pendingStatusChange, setPendingStatusChange] = useState<{
     store: AdminStore;
     status: OperationalStatus;
+    reason: string;
   } | null>(null);
   const [form, setForm] = useState({
     storeName: "",
@@ -59,12 +60,7 @@ export function AdminStoresPage() {
         }
 
         return normalizeSearch(
-          [
-            store.name,
-            store.address,
-            store.owner?.name,
-            store.owner?.email
-          ].join(" ")
+          [store.name, store.address, store.owner?.name, store.owner?.email].join(" ")
         ).includes(normalizedSearch);
       });
   }, [search, statusFilter, stores]);
@@ -112,7 +108,11 @@ export function AdminStoresPage() {
     }
   }
 
-  async function handleStatusChange(storeId: string, status: OperationalStatus) {
+  async function handleStatusChange(
+    storeId: string,
+    status: OperationalStatus,
+    reason?: string
+  ) {
     if (!token) {
       return;
     }
@@ -120,7 +120,7 @@ export function AdminStoresPage() {
     try {
       setMessage(null);
       setError(null);
-      await adminService.updateStoreStatus(token, storeId, status);
+      await adminService.updateStoreStatus(token, storeId, status, reason);
       setMessage("Status da empresa atualizado.");
       await loadStores();
     } catch (statusError) {
@@ -132,7 +132,7 @@ export function AdminStoresPage() {
     <section className="page-section">
       <PageHeader
         title="Empresas"
-        description="Cadastre lojas, crie o dono inicial e controle suspensao ou inativacao sem apagar historico."
+        description="Cadastre lojas, crie o dono inicial e controle suspensao ou encerramento sem apagar historico."
       />
 
       <form className="panel form-grid" onSubmit={(event) => void handleCreateStore(event)}>
@@ -235,7 +235,7 @@ export function AdminStoresPage() {
               <option value="ALL">Todos</option>
               <option value="ACTIVE">Ativas</option>
               <option value="SUSPENDED">Suspensas</option>
-              <option value="INACTIVE">Inativas</option>
+              <option value="INACTIVE">Encerradas</option>
             </select>
           </label>
         </div>
@@ -243,7 +243,7 @@ export function AdminStoresPage() {
           <div className="screen-state state-loading">Carregando empresas...</div>
         ) : stores.length === 0 ? (
           <div className="empty-state">
-            Nenhuma empresa cadastrada. Crie a primeira loja para iniciar a operação.
+            Nenhuma empresa cadastrada. Crie a primeira loja para iniciar a operacao.
           </div>
         ) : displayedStores.length === 0 ? (
           <div className="empty-state">
@@ -257,6 +257,7 @@ export function AdminStoresPage() {
                 <th>Dono</th>
                 <th>Status</th>
                 <th>Operacao</th>
+                <th>Detalhes</th>
               </tr>
             </thead>
             <tbody>
@@ -265,12 +266,16 @@ export function AdminStoresPage() {
                   <td>
                     <strong>{store.name}</strong>
                     <p>{store.address}</p>
+                    <p>ID: {store.id}</p>
                     <p>Fuso: {formatTimezone(store.timezone)}</p>
                     <div className="indicator-row">
                       {store.status === "SUSPENDED" ? (
                         <span className="pill dashboard-status-suspended">
                           Empresa suspensa
                         </span>
+                      ) : null}
+                      {store.status === "INACTIVE" ? (
+                        <span className="pill pill-muted">Empresa encerrada</span>
                       ) : null}
                       {isStoreWithoutRecentOrders(store) ? (
                         <span className="pill pill-muted">Sem pedidos recentes</span>
@@ -287,7 +292,8 @@ export function AdminStoresPage() {
                       onChange={(event) =>
                         setPendingStatusChange({
                           store,
-                          status: event.target.value as OperationalStatus
+                          status: event.target.value as OperationalStatus,
+                          reason: ""
                         })
                       }
                       value={store.status}
@@ -299,6 +305,11 @@ export function AdminStoresPage() {
                       ))}
                     </select>
                   </td>
+                  <td>
+                    <Link className="secondary-button" to={`/admin/stores/${store.id}`}>
+                      Abrir
+                    </Link>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -307,18 +318,66 @@ export function AdminStoresPage() {
       </div>
 
       {pendingStatusChange ? (
-        <ConfirmDialog
-          confirmLabel={`Alterar para ${statusLabel(pendingStatusChange.status)}`}
-          description={`A empresa "${pendingStatusChange.store.name}" ficará como ${statusLabel(pendingStatusChange.status).toLowerCase()}. Isso pode bloquear operações da loja e ocultá-la para clientes.`}
-          onCancel={() => setPendingStatusChange(null)}
-          onConfirm={() => {
-            const nextChange = pendingStatusChange;
-            setPendingStatusChange(null);
-            void handleStatusChange(nextChange.store.id, nextChange.status);
-          }}
-          title="Alterar status da empresa?"
-          tone={pendingStatusChange.status === "ACTIVE" ? "warning" : "danger"}
-        />
+        <div className="modal-backdrop" role="presentation">
+          <div aria-modal="true" className="modal-card confirm-dialog" role="dialog">
+            <div className="modal-header">
+              <div>
+                <p className="section-kicker">
+                  {pendingStatusChange.status === "ACTIVE" ? "Reativacao" : "Acao sensivel"}
+                </p>
+                <h3>Alterar status da empresa?</h3>
+              </div>
+            </div>
+            <p className="muted-text">
+              A empresa "{pendingStatusChange.store.name}" ficara como{" "}
+              {statusLabel(pendingStatusChange.status).toLowerCase()}. O motivo e
+              interno e nao sera exibido ao cliente.
+            </p>
+            <label className="field">
+              <span>Motivo interno</span>
+              <textarea
+                maxLength={240}
+                onChange={(event) =>
+                  setPendingStatusChange({
+                    ...pendingStatusChange,
+                    reason: event.target.value
+                  })
+                }
+                placeholder="Ex.: inadimplencia, solicitacao da empresa, seguranca..."
+                required={pendingStatusChange.status !== "ACTIVE"}
+                value={pendingStatusChange.reason}
+              />
+            </label>
+            <div className="modal-actions">
+              <button
+                className="ghost-button"
+                onClick={() => setPendingStatusChange(null)}
+                type="button"
+              >
+                Cancelar
+              </button>
+              <button
+                className={pendingStatusChange.status === "ACTIVE" ? "primary-button" : "danger-button"}
+                disabled={
+                  pendingStatusChange.status !== "ACTIVE" &&
+                  pendingStatusChange.reason.trim().length < 3
+                }
+                onClick={() => {
+                  const nextChange = pendingStatusChange;
+                  setPendingStatusChange(null);
+                  void handleStatusChange(
+                    nextChange.store.id,
+                    nextChange.status,
+                    nextChange.reason
+                  );
+                }}
+                type="button"
+              >
+                Alterar para {statusLabel(pendingStatusChange.status)}
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
     </section>
   );
@@ -333,7 +392,7 @@ function statusLabel(status: OperationalStatus) {
     return "Suspensa";
   }
 
-  return "Inativa";
+  return "Encerrada";
 }
 
 function formatTimezone(timezone?: string | null) {

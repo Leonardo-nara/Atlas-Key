@@ -8,7 +8,7 @@ import { PageHeader } from "../shared/ui/PageHeader";
 import type { AdminUser, OperationalStatus } from "../types/api";
 
 const statusOptions: OperationalStatus[] = ["ACTIVE", "SUSPENDED", "INACTIVE"];
-const roleOptions: AdminUser["role"][] = ["PLATFORM_ADMIN", "CLIENT", "COURIER"];
+const roleOptions: AdminUser["role"][] = ["CLIENT", "COURIER"];
 
 export function AdminUsersPage() {
   const { token } = useAuth();
@@ -299,8 +299,12 @@ function statusLabel(status: OperationalStatus) {
 }
 
 function roleLabel(role: AdminUser["role"]) {
+  if (role === "SUPER_ADMIN") {
+    return "Super Admin";
+  }
+
   if (role === "PLATFORM_ADMIN") {
-    return "Admin da plataforma";
+    return "Admin legado";
   }
 
   if (role === "STORE_ADMIN") {

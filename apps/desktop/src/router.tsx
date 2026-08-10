@@ -4,7 +4,9 @@ import type { ReactElement } from "react";
 import { useAuth } from "./features/auth/auth-context";
 import { AdminAuditLogsPage } from "./pages/AdminAuditLogsPage";
 import { AdminCouriersPage } from "./pages/AdminCouriersPage";
+import { AdminStoreDetailsPage } from "./pages/AdminStoreDetailsPage";
 import { AdminStoresPage } from "./pages/AdminStoresPage";
+import { AdminSystemPage } from "./pages/AdminSystemPage";
 import { AdminUsersPage } from "./pages/AdminUsersPage";
 import { CashRegistersPage } from "./pages/CashRegistersPage";
 import { CouriersPage } from "./pages/CouriersPage";
@@ -130,33 +132,49 @@ export const appRouter = createHashRouter([
       {
         path: "admin/stores",
         element: (
-          <RoleRoute role="PLATFORM_ADMIN">
+          <AdminRoute>
             <AdminStoresPage />
-          </RoleRoute>
+          </AdminRoute>
+        )
+      },
+      {
+        path: "admin/stores/:storeId",
+        element: (
+          <AdminRoute>
+            <AdminStoreDetailsPage />
+          </AdminRoute>
         )
       },
       {
         path: "admin/users",
         element: (
-          <RoleRoute role="PLATFORM_ADMIN">
+          <AdminRoute>
             <AdminUsersPage />
-          </RoleRoute>
+          </AdminRoute>
         )
       },
       {
         path: "admin/couriers",
         element: (
-          <RoleRoute role="PLATFORM_ADMIN">
+          <AdminRoute>
             <AdminCouriersPage />
-          </RoleRoute>
+          </AdminRoute>
+        )
+      },
+      {
+        path: "admin/system",
+        element: (
+          <AdminRoute>
+            <AdminSystemPage />
+          </AdminRoute>
         )
       },
       {
         path: "admin/audit-logs",
         element: (
-          <RoleRoute role="PLATFORM_ADMIN">
+          <AdminRoute>
             <AdminAuditLogsPage />
-          </RoleRoute>
+          </AdminRoute>
         )
       }
     ]
@@ -183,10 +201,20 @@ function RoleRoute({
   return children;
 }
 
+function AdminRoute({ children }: { children: ReactElement }) {
+  const { user } = useAuth();
+
+  if (user?.role !== "SUPER_ADMIN" && user?.role !== "PLATFORM_ADMIN") {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+}
+
 function HomeRoute() {
   const { user } = useAuth();
 
-  if (user?.role === "PLATFORM_ADMIN") {
+  if (user?.role === "SUPER_ADMIN" || user?.role === "PLATFORM_ADMIN") {
     return <DashboardPage />;
   }
 

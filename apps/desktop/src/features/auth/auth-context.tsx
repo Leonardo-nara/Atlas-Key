@@ -252,7 +252,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function loadStoreForUser(nextUser: AuthUser, authToken: string) {
-    if (nextUser.role === "PLATFORM_ADMIN") {
+    if (isAdminRole(nextUser.role)) {
       return null;
     }
 
@@ -264,7 +264,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   function resolveRouteForUser(nextUser: AuthUser) {
-    if (nextUser.role === "PLATFORM_ADMIN") {
+    if (isAdminRole(nextUser.role)) {
       return "/admin/stores";
     }
 
@@ -328,6 +328,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+function isAdminRole(role: AuthUser["role"]) {
+  return role === "SUPER_ADMIN" || role === "PLATFORM_ADMIN";
 }
 
 export function useAuth() {

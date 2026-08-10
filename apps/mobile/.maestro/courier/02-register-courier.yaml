@@ -2,6 +2,10 @@ appId: com.souzaworks.mototake
 ---
 - clearState
 - launchApp
+- extendedWaitUntil:
+    visible:
+      id: login-email
+    timeout: 60000
 - tapOn:
     id: login-register-courier
 - tapOn:

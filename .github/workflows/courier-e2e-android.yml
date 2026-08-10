@@ -139,9 +139,18 @@ jobs:
           profile: pixel_6
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           script: |
+            adb shell input keyevent KEYCODE_WAKEUP
+            adb shell settings put global window_animation_scale 0
+            adb shell settings put global transition_animation_scale 0
+            adb shell settings put global animator_duration_scale 0
             adb reverse tcp:8081 tcp:8081
+            adb reverse tcp:3000 tcp:3000
             adb install apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk
-            maestro test apps/mobile/.maestro/courier/generated
+            mkdir -p apps/mobile/.maestro/courier/diagnostics
+            adb exec-out screencap -p > apps/mobile/.maestro/courier/diagnostics/before-maestro.png || true
+            adb shell uiautomator dump /sdcard/window-before-maestro.xml || true
+            adb pull /sdcard/window-before-maestro.xml apps/mobile/.maestro/courier/diagnostics/window-before-maestro.xml || true
+            timeout 18m maestro test apps/mobile/.maestro/courier/generated
 
       - name: Upload Android E2E diagnostics
         uses: actions/upload-artifact@v4
@@ -151,6 +160,7 @@ jobs:
           path: |
             metro.log
             apps/mobile/.maestro/courier/generated
+            apps/mobile/.maestro/courier/diagnostics
           if-no-files-found: ignore
 
       - name: Cleanup QA sandbox data

@@ -2,6 +2,10 @@ appId: com.souzaworks.mototake
 ---
 - clearState
 - launchApp
+- extendedWaitUntil:
+    visible:
+      id: login-email
+    timeout: 60000
 - tapOn:
     id: login-email
 - inputText: "__COURIEREMAIL__"
@@ -12,6 +16,10 @@ appId: com.souzaworks.mototake
     id: login-submit
 - stopApp
 - launchApp
+- extendedWaitUntil:
+    visible:
+      id: courier-tab-home
+    timeout: 60000
 - assertVisible:
     id: courier-tab-home
 - tapOn:

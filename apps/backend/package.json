@@ -29,6 +29,8 @@
     "load:smoke:prod": "node scripts/load-smoke.js",
     "admin:create": "dotenv -e ../../.env -- node scripts/create-platform-admin.js",
     "admin:create:prod": "node scripts/create-platform-admin.js",
+    "admin:create-super": "dotenv -e ../../.env -- node scripts/create-super-admin.js",
+    "admin:create-super:prod": "node scripts/create-super-admin.js",
     "admin:reset-password": "dotenv -e ../../.env -- node scripts/reset-platform-admin-password.js",
     "admin:reset-password:prod": "node scripts/reset-platform-admin-password.js",
     "build": "nest build",

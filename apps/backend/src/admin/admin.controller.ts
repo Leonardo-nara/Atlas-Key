@@ -24,7 +24,7 @@ import { UpdateAdminStoreStatusDto } from "./dto/update-admin-store-status.dto";
 import { UpdateAdminUserStatusDto } from "./dto/update-admin-user-status.dto";
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.PLATFORM_ADMIN)
+@Roles(UserRole.SUPER_ADMIN, UserRole.PLATFORM_ADMIN)
 @Controller("admin")
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
@@ -32,6 +32,11 @@ export class AdminController {
   @Get("dashboard")
   getDashboard() {
     return this.adminService.getDashboard();
+  }
+
+  @Get("system-health")
+  getSystemHealth() {
+    return this.adminService.getSystemHealth();
   }
 
   @Get("audit-logs")

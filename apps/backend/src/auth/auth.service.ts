@@ -49,8 +49,8 @@ export class AuthService {
       throw new BadRequestException("Email ja cadastrado");
     }
 
-    if (dto.role === UserRole.PLATFORM_ADMIN) {
-      throw new BadRequestException("PLATFORM_ADMIN deve ser criado pelo script seguro");
+    if (dto.role === UserRole.PLATFORM_ADMIN || dto.role === UserRole.SUPER_ADMIN) {
+      throw new BadRequestException("Administrador interno deve ser criado pelo script seguro");
     }
 
     if (dto.role === UserRole.STORE_ADMIN && (!dto.storeName || !dto.storeAddress)) {
@@ -522,6 +522,21 @@ export class AuthService {
       context,
       metadata: { flow }
     });
+
+    if (flow === "login" && user.role === UserRole.SUPER_ADMIN) {
+      await this.prisma.adminAuditLog.create({
+        data: {
+          adminUserId: user.id,
+          action: "SUPER_ADMIN_LOGIN",
+          targetType: "USER",
+          targetId: user.id,
+          metadataJson: {
+            requestId: context?.requestId ?? "",
+            ipAddress: context?.ipAddress ?? ""
+          }
+        }
+      });
+    }
 
     return {
       accessToken,

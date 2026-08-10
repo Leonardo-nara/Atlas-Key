@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException
 } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import {
   OrderPaymentStatus,
   OrderStatus,
@@ -26,7 +27,10 @@ import { UpdateAdminUserStatusDto } from "./dto/update-admin-user-status.dto";
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService
+  ) {}
 
   async getDashboard() {
     const { startOfToday, startOfTomorrow, timeZone } = getTodayRangeForTimeZone(DEFAULT_STORE_TIMEZONE);
@@ -40,7 +44,18 @@ export class AdminService {
       ordersToday,
       totalOrders,
       pendingPayments,
-      recentStores
+      recentStores,
+      totalStores,
+      onlineStores,
+      pausedStores,
+      totalCouriers,
+      blockedCouriers,
+      linkedCouriers,
+      ordersLast7Days,
+      ordersLast30Days,
+      completedOrders,
+      cancelledOrders,
+      inProgressOrders
     ] = await this.prisma.$transaction([
       this.prisma.store.count({
         where: { status: StoreStatus.ACTIVE, active: true }
@@ -90,21 +105,143 @@ export class AdminService {
             }
           }
         }
+      }),
+      this.prisma.store.count(),
+      this.prisma.store.count({
+        where: {
+          active: true,
+          status: StoreStatus.ACTIVE,
+          storefrontEnabled: true
+        }
+      }),
+      this.prisma.store.count({
+        where: {
+          active: true,
+          status: StoreStatus.ACTIVE,
+          storefrontEnabled: false
+        }
+      }),
+      this.prisma.user.count({
+        where: { role: PrismaUserRole.COURIER }
+      }),
+      this.prisma.user.count({
+        where: {
+          role: PrismaUserRole.COURIER,
+          OR: [{ status: UserStatus.SUSPENDED }, { active: false }]
+        }
+      }),
+      this.prisma.storeCourierLink.count({
+        where: { status: StoreCourierLinkStatus.APPROVED }
+      }),
+      this.prisma.order.count({
+        where: {
+          createdAt: { gte: new Date(Date.now() - 7 * 86_400_000) }
+        }
+      }),
+      this.prisma.order.count({
+        where: {
+          createdAt: { gte: new Date(Date.now() - 30 * 86_400_000) }
+        }
+      }),
+      this.prisma.order.count({
+        where: { status: OrderStatus.DELIVERED }
+      }),
+      this.prisma.order.count({
+        where: { status: OrderStatus.CANCELLED }
+      }),
+      this.prisma.order.count({
+        where: {
+          status: {
+            in: [
+              OrderStatus.PENDING,
+              OrderStatus.ACCEPTED,
+              OrderStatus.ASSIGNED,
+              OrderStatus.OUT_FOR_DELIVERY
+            ]
+          }
+        }
       })
     ]);
 
     return {
       generatedAt: new Date(),
       timezone: timeZone,
+      totalStores,
       activeStores,
       suspendedStores,
       inactiveStores,
+      onlineStores,
+      pausedStores,
       activeUsers,
+      totalCouriers,
       activeCouriers,
+      blockedCouriers,
+      linkedCouriers,
       ordersToday,
+      ordersLast7Days,
+      ordersLast30Days,
       totalOrders,
+      completedOrders,
+      cancelledOrders,
+      inProgressOrders,
       pendingPayments,
       recentStores
+    };
+  }
+
+  async getSystemHealth() {
+    const checkedAt = new Date();
+    let databaseStatus: "OPERATIONAL" | "UNAVAILABLE" = "OPERATIONAL";
+
+    try {
+      await this.prisma.$queryRaw`SELECT 1`;
+    } catch {
+      databaseStatus = "UNAVAILABLE";
+    }
+
+    const gatewayEnabled =
+      this.configService.get<string>("PAYMENT_GATEWAY_ENABLED") === "true";
+    const gatewayProvider =
+      this.configService.get<string>("PAYMENT_GATEWAY_PROVIDER")?.trim() || "";
+
+    return {
+      checkedAt,
+      uptimeSeconds: Math.floor(process.uptime()),
+      release:
+        this.configService.get<string>("SENTRY_RELEASE") ||
+        this.configService.get<string>("RAILWAY_GIT_COMMIT_SHA") ||
+        "local",
+      services: [
+        {
+          key: "backend",
+          label: "Backend",
+          status: "OPERATIONAL",
+          detail: "Processo respondendo requisicoes autenticadas."
+        },
+        {
+          key: "database",
+          label: "Banco de dados",
+          status: databaseStatus,
+          detail:
+            databaseStatus === "OPERATIONAL"
+              ? "Consulta Prisma simples concluida."
+              : "Falha ao consultar o banco pelo Prisma."
+        },
+        {
+          key: "websocket",
+          label: "WebSocket",
+          status: "NO_DATA",
+          detail: "Sem metrica dedicada nesta versao."
+        },
+        {
+          key: "payments",
+          label: "Pagamentos",
+          status: gatewayEnabled ? "OPERATIONAL" : "NO_DATA",
+          detail: gatewayEnabled
+            ? `Gateway configurado: ${gatewayProvider || "nao informado"}.`
+            : "Pix automatico desligado; Pix manual permanece operacional."
+        }
+      ]
     };
   }
 
@@ -188,6 +325,18 @@ export class AdminService {
             courierLinks: true,
             deliveryZones: true
           }
+        },
+        orders: {
+          orderBy: { createdAt: "desc" },
+          take: 8,
+          select: {
+            id: true,
+            status: true,
+            customerName: true,
+            total: true,
+            createdAt: true,
+            updatedAt: true
+          }
         }
       }
     });
@@ -196,7 +345,29 @@ export class AdminService {
       throw new NotFoundException("Empresa nao encontrada");
     }
 
-    return this.serializeStore(store);
+    const auditLogs = await this.prisma.adminAuditLog.findMany({
+      where: {
+        targetType: "STORE",
+        targetId: storeId
+      },
+      orderBy: { createdAt: "desc" },
+      take: 12,
+      include: {
+        adminUser: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true
+          }
+        }
+      }
+    });
+
+    return {
+      ...this.serializeStore(store),
+      auditLogs
+    };
   }
 
   async createStore(dto: CreateAdminStoreDto) {
@@ -259,7 +430,7 @@ export class AdminService {
   ) {
     const store = await this.prisma.store.findUnique({
       where: { id: storeId },
-      select: { id: true, status: true, active: true }
+      select: { id: true, status: true, active: true, ownerUserId: true }
     });
 
     if (!store) {
@@ -300,6 +471,18 @@ export class AdminService {
           nextActive: dto.status === StoreStatus.ACTIVE
         }
       });
+
+      if (dto.status !== StoreStatus.ACTIVE) {
+        await tx.authSession.updateMany({
+          where: {
+            userId: store.ownerUserId,
+            revokedAt: null
+          },
+          data: {
+            revokedAt: new Date()
+          }
+        });
+      }
 
       return nextStore;
     });
@@ -384,9 +567,13 @@ export class AdminService {
   }
 
   async createUser(dto: CreateAdminUserDto) {
-    if (dto.role === UserRole.STORE_ADMIN) {
+    if (
+      dto.role === UserRole.STORE_ADMIN ||
+      dto.role === UserRole.PLATFORM_ADMIN ||
+      dto.role === UserRole.SUPER_ADMIN
+    ) {
       throw new BadRequestException(
-        "Use Empresas > Criar empresa para criar dono de loja com loja vinculada"
+        "Use o fluxo seguro apropriado para criar administradores internos ou donos de loja"
       );
     }
 
@@ -658,6 +845,10 @@ export class AdminService {
       return `${targetPrefix}_SUSPENDED`;
     }
 
+    if (targetPrefix === "STORE") {
+      return "STORE_CLOSED";
+    }
+
     return `${targetPrefix}_INACTIVATED`;
   }
 
@@ -695,7 +886,14 @@ export class AdminService {
     timezone?: string | null;
     createdAt: Date;
     updatedAt: Date;
-    orders?: Array<{ createdAt: Date }>;
+    orders?: Array<{
+      id?: string;
+      status?: OrderStatus;
+      customerName?: string;
+      total?: Prisma.Decimal | number;
+      createdAt: Date;
+      updatedAt?: Date;
+    }>;
     owner: ReturnType<AdminService["safeUserSelect"]> extends infer T
       ? { [K in keyof T]: unknown }
       : never;
@@ -704,6 +902,13 @@ export class AdminService {
     return {
       ...store,
       lastOrderAt: store.orders?.[0]?.createdAt ?? null,
+      recentOrders: store.orders?.map((order) => ({
+        ...order,
+        total:
+          typeof order.total === "object" && order.total !== null
+            ? Number(order.total)
+            : order.total
+      })) ?? [],
       orders: undefined,
       profileImageKey: undefined,
       imageUrl: store.profileImageKey ? `/media/stores/${store.id}/image` : null

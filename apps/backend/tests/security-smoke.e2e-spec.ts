@@ -75,6 +75,11 @@ const actorByName: Record<string, { sub: string; email: string; role: UserRole }
     sub: "platform-user",
     email: "platform@example.com",
     role: UserRole.PLATFORM_ADMIN
+  },
+  super: {
+    sub: "super-user",
+    email: "super@example.com",
+    role: UserRole.SUPER_ADMIN
   }
 };
 
@@ -288,6 +293,19 @@ const adminServiceMock = {
     pendingPayments: 0,
     recentStores: []
   }),
+  getSystemHealth: () => ({
+    checkedAt: new Date(),
+    uptimeSeconds: 60,
+    release: "test",
+    services: [
+      {
+        key: "backend",
+        label: "Backend",
+        status: "OPERATIONAL",
+        detail: "OK"
+      }
+    ]
+  }),
   listAuditLogs: () => ({
     items: [
       {
@@ -453,7 +471,8 @@ describe("backend smoke/security routes", () => {
       courier: await jwtService.signAsync(actorByName.courier),
       client: await jwtService.signAsync(actorByName.client),
       store: await jwtService.signAsync(actorByName.store),
-      platform: await jwtService.signAsync(actorByName.platform)
+      platform: await jwtService.signAsync(actorByName.platform),
+      super: await jwtService.signAsync(actorByName.super)
     };
 
     const address = app.getHttpServer().address() as { port: number };
@@ -814,6 +833,7 @@ describe("backend smoke/security routes", () => {
     await expectStatus("/admin/stores", 403, { token: "courier" });
     await expectStatus("/admin/audit-logs", 403, { token: "store" });
     await expectStatus("/admin/dashboard", 403, { token: "store" });
+    await expectStatus("/admin/system-health", 403, { token: "store" });
     await expectStatus("/stores/me/dashboard", 403, { token: "platform" });
 
     const response = await request("/admin/users", { token: "platform" });
@@ -823,6 +843,8 @@ describe("backend smoke/security routes", () => {
 
     await expectStatus("/admin/audit-logs", 200, { token: "platform" });
     await expectStatus("/admin/dashboard", 200, { token: "platform" });
+    await expectStatus("/admin/dashboard", 200, { token: "super" });
+    await expectStatus("/admin/system-health", 200, { token: "super" });
     await expectStatus("/stores/me/dashboard", 200, { token: "store" });
   });
 });

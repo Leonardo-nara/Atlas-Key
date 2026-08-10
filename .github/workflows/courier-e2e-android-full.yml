@@ -1,10 +1,6 @@
-name: Courier Android E2E Sandbox
+name: Courier Android E2E Full QA
 
 on:
-  push:
-    branches:
-      - codex/mototake-courier-premium-ui
-      - codex/mototake-fast-launch-mvp
   workflow_dispatch:
     inputs:
       run_id:
@@ -13,10 +9,10 @@ on:
         type: string
 
 jobs:
-  courier-android-e2e:
-    name: Courier Android E2E Sandbox
+  courier-android-e2e-full:
+    name: Courier Android E2E Full QA
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     services:
       postgres:
         image: postgres:16
@@ -42,8 +38,8 @@ jobs:
       JWT_REFRESH_EXPIRES_DAYS: 30
       JWT_SECRET: courier-e2e-local-secret-minimum-32-characters
       MOTOTAKE_E2E_API_URL: http://127.0.0.1:3000/api
-      MOTOTAKE_E2E_PREFIX: QA_COURIER_UI_CLOUD_${{ inputs.run_id || github.run_id }}
-      MOTOTAKE_E2E_RUN_ID: ${{ inputs.run_id || github.run_id }}
+      MOTOTAKE_E2E_PREFIX: QA_COURIER_UI_CLOUD_${{ inputs.run_id }}
+      MOTOTAKE_E2E_RUN_ID: ${{ inputs.run_id }}
       MOTOTAKE_SANDBOX_HEALTH_URL: https://rotapronta-api-sandbox-production.up.railway.app/api/health
       MAESTRO_VERSION: 2.6.1
       NODE_ENV: test
@@ -108,7 +104,7 @@ jobs:
       - name: Upload QA debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: mototake-courier-e2e-debug-apk
+          name: mototake-courier-e2e-full-debug-apk
           path: apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
@@ -132,8 +128,7 @@ jobs:
           node -e "let n=0; const fs=require('node:fs'); const tick=()=>fetch('http://127.0.0.1:8081/status').then(r=>r.text()).then(t=>{if(!t.includes('packager-status:running')) throw new Error('not ready'); console.log('metro health ok')}).catch(()=>{if(++n>90){fs.existsSync('../../metro.log')&&console.error(fs.readFileSync('../../metro.log','utf8')); process.exit(1);} setTimeout(tick,1000)}); tick();"
 
       - name: Run Maestro on Android emulator
-        timeout-minutes: 22
-        continue-on-error: true
+        timeout-minutes: 35
         uses: reactivecircus/android-emulator-runner@324029e2f414c084d8b15ba075288885e74aef9c
         with:
           api-level: 35
@@ -152,12 +147,13 @@ jobs:
             adb exec-out screencap -p > apps/mobile/.maestro/courier/diagnostics/before-maestro.png || true
             adb shell uiautomator dump /sdcard/window-before-maestro.xml || true
             adb pull /sdcard/window-before-maestro.xml apps/mobile/.maestro/courier/diagnostics/window-before-maestro.xml || true
+
             set +e
 
             timeout \
               --signal=TERM \
               --kill-after=30s \
-              15m \
+              25m \
               maestro test apps/mobile/.maestro/courier/generated
 
             MAESTRO_EXIT=$?
@@ -169,10 +165,9 @@ jobs:
 
             if [ "$MAESTRO_EXIT" -eq 0 ]; then
               echo "Maestro concluido com sucesso."
-            elif [ "$MAESTRO_EXIT" -eq 124 ] || [ "$MAESTRO_EXIT" -eq 137 ]; then
-              echo "::warning::Maestro excedeu o limite de tempo. Android E2E permanece pendente."
             else
-              echo "::warning::Maestro retornou codigo $MAESTRO_EXIT. Android E2E permanece pendente."
+              echo "::error::Maestro falhou com codigo $MAESTRO_EXIT. Android E2E final nao aprovado."
+              exit "$MAESTRO_EXIT"
             fi
 
       - name: Summarize Android E2E status
@@ -188,7 +183,7 @@ jobs:
           if [ "$MAESTRO_EXIT" = "0" ]; then
             echo "### ANDROID E2E: APROVADO NESTE RUN" >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "### ANDROID E2E: PENDENTE DE VALIDACAO FINAL - NAO BLOQUEIA DESENVOLVIMENTO" >> "$GITHUB_STEP_SUMMARY"
+            echo "### ANDROID E2E: REPROVADO NO QA FINAL" >> "$GITHUB_STEP_SUMMARY"
             echo "" >> "$GITHUB_STEP_SUMMARY"
             echo "Codigo Maestro: $MAESTRO_EXIT" >> "$GITHUB_STEP_SUMMARY"
           fi
@@ -197,7 +192,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: mototake-courier-e2e-diagnostics
+          name: mototake-courier-e2e-full-diagnostics
           path: |
             metro.log
             apps/mobile/.maestro/courier/generated

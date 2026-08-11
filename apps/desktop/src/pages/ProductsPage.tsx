@@ -10,6 +10,7 @@ import { ApiError } from "../lib/http";
 import { toMediaUrl } from "../lib/media-url";
 import { ConfirmDialog } from "../shared/ui/ConfirmDialog";
 import { PageHeader } from "../shared/ui/PageHeader";
+import { EmptyState } from "../shared/ui/premium";
 import type { Product } from "../types/api";
 
 export function ProductsPage() {
@@ -184,9 +185,10 @@ export function ProductsPage() {
             <span>Ações</span>
           </div>
           {products.length === 0 ? (
-            <div className="empty-state">
-              Nenhum produto cadastrado ainda. Crie alguns itens para começar a receber pedidos.
-            </div>
+            <EmptyState
+              title="Nenhum produto cadastrado ainda."
+              description="Crie alguns itens para começar a receber pedidos."
+            />
           ) : (
             products.map((product) => (
               <div className="table-row" key={product.id}>

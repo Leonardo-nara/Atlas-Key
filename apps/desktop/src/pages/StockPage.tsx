@@ -4,6 +4,7 @@ import { stockService } from "../features/stock/stock-service";
 import { ApiError } from "../lib/http";
 import { PageHeader } from "../shared/ui/PageHeader";
 import { ConfirmDialog } from "../shared/ui/ConfirmDialog";
+import { EmptyState, MetricCard } from "../shared/ui/premium";
 import type { Product, StockMovement, StockMovementType, StockSummary } from "../types/api";
 
 const movementLabels: Record<StockMovementType, string> = {
@@ -102,11 +103,11 @@ export function StockPage() {
     <section className="page-section">
       <PageHeader title="Estoque" description="Acompanhe saldos e registre entradas ou ajustes com historico completo." />
       {summary ? (
-        <div className="info-grid">
-          <article className="info-card"><span className="info-label">Controlados</span><strong>{summary.controlledProducts}</strong></article>
-          <article className="info-card"><span className="info-label">Disponiveis</span><strong>{summary.availableProducts}</strong></article>
-          <article className="info-card"><span className="info-label">Estoque baixo</span><strong>{summary.lowStockProducts}</strong></article>
-          <article className="info-card"><span className="info-label">Sem estoque</span><strong>{summary.outOfStockProducts}</strong></article>
+        <div className="dashboard-metric-grid stock-summary-grid">
+          <MetricCard icon="C" label="Controlados" value={summary.controlledProducts} />
+          <MetricCard icon="D" label="Disponível" tone="success" value={summary.availableProducts} />
+          <MetricCard icon="B" label="Estoque baixo" tone={summary.lowStockProducts > 0 ? "warning" : "neutral"} value={summary.lowStockProducts} />
+          <MetricCard icon="S" label="Sem estoque" tone={summary.outOfStockProducts > 0 ? "danger" : "neutral"} value={summary.outOfStockProducts} />
         </div>
       ) : null}
       <div className="panel stock-filters">
@@ -119,7 +120,9 @@ export function StockPage() {
       {loading ? <div className="screen-state state-loading">Carregando estoque...</div> : (
         <div className="stock-grid">
           <div className="panel stock-product-list">
-            {products.length === 0 ? <div className="empty-state">Nenhum produto encontrado para este filtro.</div> : products.map((product) => (
+            {products.length === 0 ? (
+              <EmptyState title="Nenhum produto encontrado para este filtro." />
+            ) : products.map((product) => (
               <button className={`stock-product-row ${selected?.id === product.id ? "stock-product-row-active" : ""}`} key={product.id} onClick={() => void selectProduct(product)} type="button">
                 <span><strong>{product.name}</strong><small>{product.stockControlEnabled ? "Controle ativo" : "Sem controle"}</small></span>
                 <strong>{product.stockControlEnabled ? formatQuantity(product.stockQuantity) : "--"}</strong>
@@ -127,7 +130,11 @@ export function StockPage() {
             ))}
           </div>
           <div className="panel stock-detail">
-            {!selected ? <div className="empty-state">Selecione um produto para movimentar e consultar o historico.</div> : !selected.stockControlEnabled ? <div className="empty-state">Ative o controle de estoque na edicao do produto.</div> : (
+            {!selected ? (
+              <EmptyState title="Selecione um produto para movimentar e consultar o historico." />
+            ) : !selected.stockControlEnabled ? (
+              <EmptyState title="Ative o controle de estoque na edicao do produto." />
+            ) : (
               <>
                 <div className="panel-heading"><div><span className="info-label">Saldo atual</span><h2>{selected.name}: {formatQuantity(selected.stockQuantity)}</h2></div></div>
                 <form className="stock-movement-form" onSubmit={requestMovement}>
@@ -136,7 +143,7 @@ export function StockPage() {
                   <label className="field"><span>Motivo</span><input minLength={3} required value={reason} onChange={(event) => setReason(event.target.value)} /></label>
                   <button className="primary-button" disabled={saving} type="submit">{saving ? "Salvando..." : "Registrar movimento"}</button>
                 </form>
-                <div className="stock-history"><h3>Historico recente</h3>{movements.length === 0 ? <div className="empty-state">Nenhuma movimentacao registrada.</div> : movements.map((movement) => <article className="stock-history-row" key={movement.id}><div><strong>{movementLabels[movement.type]}</strong><p>{movement.reason || "Sem motivo informado"}</p><small>Operador: {movement.createdByUser?.name ?? "Sistema"}</small></div><div><strong>{movement.direction === "IN" ? "+" : "-"}{formatQuantity(movement.quantity)}</strong><small>{formatQuantity(movement.balanceBefore)} para {formatQuantity(movement.balanceAfter)}</small><small>{new Date(movement.createdAt).toLocaleString("pt-BR")}</small></div></article>)}</div>
+                <div className="stock-history"><h3>Historico recente</h3>{movements.length === 0 ? <EmptyState title="Nenhuma movimentacao registrada." /> : movements.map((movement) => <article className="stock-history-row" key={movement.id}><div><strong>{movementLabels[movement.type]}</strong><p>{movement.reason || "Sem motivo informado"}</p><small>Operador: {movement.createdByUser?.name ?? "Sistema"}</small></div><div><strong>{movement.direction === "IN" ? "+" : "-"}{formatQuantity(movement.quantity)}</strong><small>{formatQuantity(movement.balanceBefore)} para {formatQuantity(movement.balanceAfter)}</small><small>{new Date(movement.createdAt).toLocaleString("pt-BR")}</small></div></article>)}</div>
               </>
             )}
           </div>

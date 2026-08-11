@@ -8,28 +8,46 @@ import { StatusBadge } from "../ui/premium";
 
 const SIDEBAR_COLLAPSED_KEY = "mototake:sidebar-collapsed";
 
-const navigationItems = [
-  { to: "/", label: "Dashboard", icon: "D", end: true },
-  { to: "/setup", label: "Configuracao inicial", icon: "I" },
-  { to: "/orders", label: "Pedidos", icon: "P" },
-  { to: "/products", label: "Produtos", icon: "C" },
-  { to: "/stock", label: "Estoque", icon: "E" },
-  { to: "/storefront", label: "Loja online", icon: "O" },
-  { to: "/pdv", label: "PDV", icon: "V" },
-  { to: "/cash-registers", label: "Caixa", icon: "X" },
-  { to: "/delivery-zones", label: "Taxas de entrega", icon: "T" },
-  { to: "/pix-settings", label: "Pix manual", icon: "M" },
-  { to: "/reports", label: "Relatorios", icon: "R" },
-  { to: "/couriers", label: "Motoboys", icon: "B" }
+type NavIconName =
+  | "dashboard"
+  | "setup"
+  | "orders"
+  | "products"
+  | "stock"
+  | "storefront"
+  | "pdv"
+  | "cash"
+  | "zones"
+  | "pix"
+  | "reports"
+  | "couriers"
+  | "adminStores"
+  | "adminUsers"
+  | "system"
+  | "audit";
+
+const navigationItems: Array<{ to: string; label: string; icon: NavIconName; end?: boolean }> = [
+  { to: "/", label: "Dashboard", icon: "dashboard", end: true },
+  { to: "/setup", label: "Configuracao inicial", icon: "setup" },
+  { to: "/orders", label: "Pedidos", icon: "orders" },
+  { to: "/products", label: "Produtos", icon: "products" },
+  { to: "/stock", label: "Estoque", icon: "stock" },
+  { to: "/storefront", label: "Loja online", icon: "storefront" },
+  { to: "/pdv", label: "PDV", icon: "pdv" },
+  { to: "/cash-registers", label: "Caixa", icon: "cash" },
+  { to: "/delivery-zones", label: "Taxas de entrega", icon: "zones" },
+  { to: "/pix-settings", label: "Pix manual", icon: "pix" },
+  { to: "/reports", label: "Relatorios", icon: "reports" },
+  { to: "/couriers", label: "Motoboys", icon: "couriers" }
 ];
 
-const adminNavigationItems = [
-  { to: "/", label: "Dashboard", icon: "D", end: true },
-  { to: "/admin/stores", label: "Empresas", icon: "E" },
-  { to: "/admin/users", label: "Usuarios", icon: "U" },
-  { to: "/admin/couriers", label: "Motoboys", icon: "B" },
-  { to: "/admin/system", label: "Sistema", icon: "S" },
-  { to: "/admin/audit-logs", label: "Auditoria", icon: "A" }
+const adminNavigationItems: Array<{ to: string; label: string; icon: NavIconName; end?: boolean }> = [
+  { to: "/", label: "Dashboard", icon: "dashboard", end: true },
+  { to: "/admin/stores", label: "Empresas", icon: "adminStores" },
+  { to: "/admin/users", label: "Usuarios", icon: "adminUsers" },
+  { to: "/admin/couriers", label: "Motoboys", icon: "couriers" },
+  { to: "/admin/system", label: "Sistema", icon: "system" },
+  { to: "/admin/audit-logs", label: "Auditoria", icon: "audit" }
 ];
 
 export function AppLayout() {
@@ -196,7 +214,7 @@ export function AppLayout() {
                 onClick={() => setMobileSidebarOpen(false)}
                 to={item.to}
               >
-                <span className="nav-icon" aria-hidden="true">{item.icon}</span>
+                <span className="nav-icon" aria-hidden="true">{renderNavIcon(item.icon)}</span>
                 <span className="nav-label">{item.label}</span>
               </NavLink>
             ))
@@ -249,10 +267,40 @@ export function AppLayout() {
               <strong>{user?.name}</strong>
               <small>{user?.email}</small>
             </div>
+            <span className="topbar-user-caret" aria-hidden="true">⌄</span>
           </div>
         </header>
         <Outlet />
       </main>
     </div>
+  );
+}
+
+function renderNavIcon(icon: NavIconName) {
+  const iconPaths: Record<NavIconName, string[]> = {
+    dashboard: ["M3 11.5 12 4l9 7.5", "M5 10.5V20h5v-5h4v5h5v-9.5"],
+    setup: ["M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z", "M4 12h2m12 0h2M12 4v2m0 12v2m5.7-13.7-1.4 1.4M7.7 16.3l-1.4 1.4m0-11.4 1.4 1.4m8.6 8.6 1.4 1.4"],
+    orders: ["M7 4h10l2 4v12H5V8l2-4Z", "M8 9h8M8 13h8M8 17h5"],
+    products: ["M12 3 4.5 7.2v9.6L12 21l7.5-4.2V7.2L12 3Z", "M4.5 7.2 12 11.5l7.5-4.3M12 11.5V21"],
+    stock: ["M5 7h14M6 11h12M7 15h10M8 19h8", "M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5Z"],
+    storefront: ["M4 10h16l-1.2-5H5.2L4 10Z", "M6 10v10h12V10", "M9 20v-6h6v6"],
+    pdv: ["M4 5h16v11H4V5Z", "M8 20h8M12 16v4"],
+    cash: ["M4 7h16v12H4V7Z", "M8 7V5h8v2", "M7 12h10M8 16h3"],
+    zones: ["M12 21s7-4.8 7-11a7 7 0 1 0-14 0c0 6.2 7 11 7 11Z", "M12 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"],
+    pix: ["M7 7 4 10l3 3M17 7l3 3-3 3M10 4l4 16"],
+    reports: ["M6 4h12v16H6V4Z", "M9 15v2m3-6v6m3-9v9"],
+    couriers: ["M8 17a4 4 0 0 1 8 0", "M12 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z", "M4 19h16"],
+    adminStores: ["M4 20V8l8-4 8 4v12", "M8 20v-6h8v6", "M8 10h.01M12 10h.01M16 10h.01"],
+    adminUsers: ["M7 18a5 5 0 0 1 10 0", "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z", "M18 8h3m-1.5-1.5v3"],
+    system: ["M5 5h14v10H5V5Z", "M8 19h8M12 15v4"],
+    audit: ["M6 4h12v16H6V4Z", "M9 8h6M9 12h6M9 16h3"]
+  };
+
+  return (
+    <svg viewBox="0 0 24 24" focusable="false">
+      {iconPaths[icon].map((path) => (
+        <path d={path} key={path} />
+      ))}
+    </svg>
   );
 }

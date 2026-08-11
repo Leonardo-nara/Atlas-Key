@@ -121,21 +121,18 @@ p {
 
 .login-screen {
   position: relative;
-  overflow: hidden;
+  overflow: auto;
   min-height: 100vh;
   width: 100%;
   display: grid;
   place-items: center;
-  padding: clamp(22px, 4vw, 48px);
+  padding: clamp(18px, 3vw, 44px);
   isolation: isolate;
-  /* Definitive photographic asset target:
-     apps/desktop/src/assets/login/mototake-login-background.webp */
   background:
-    linear-gradient(180deg, rgba(3, 12, 28, 0.48), rgba(3, 12, 28, 0.72)),
-    radial-gradient(circle at 18% 16%, rgba(56, 189, 248, 0.22), transparent 34%),
-    radial-gradient(circle at 78% 72%, rgba(37, 99, 235, 0.24), transparent 36%),
-    linear-gradient(135deg, #050b14 0%, #06111f 48%, #091522 100%);
-  animation: login-gradient-shift 18s ease-in-out infinite alternate;
+    linear-gradient(90deg, rgba(3, 10, 20, 0.34) 0%, rgba(3, 10, 20, 0.62) 42%, rgba(3, 10, 20, 0.7) 58%, rgba(3, 10, 20, 0.34) 100%),
+    linear-gradient(180deg, rgba(3, 12, 28, 0.08), rgba(3, 9, 18, 0.54)),
+    url("./assets/login/mototake-login-background.png") center / cover no-repeat,
+    #06111f;
 }
 
 .login-screen::before {
@@ -143,13 +140,13 @@ p {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: -3;
+  z-index: -2;
   background:
-    linear-gradient(90deg, rgba(5, 11, 20, 0.9), rgba(5, 11, 20, 0.2), rgba(5, 11, 20, 0.86)),
-    linear-gradient(rgba(56, 189, 248, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(56, 189, 248, 0.022) 1px, transparent 1px);
-  background-size: auto, 52px 52px, 52px 52px;
-  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), transparent 82%);
+    radial-gradient(circle at 18% 18%, rgba(56, 189, 248, 0.2), transparent 32%),
+    radial-gradient(circle at 78% 76%, rgba(37, 99, 235, 0.22), transparent 34%),
+    linear-gradient(rgba(56, 189, 248, 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56, 189, 248, 0.016) 1px, transparent 1px);
+  background-size: auto, auto, 58px 58px, 58px 58px;
 }
 
 .login-screen::after {
@@ -158,162 +155,10 @@ p {
   inset: auto 0 0;
   height: 44%;
   pointer-events: none;
-  z-index: -2;
-  background:
-    linear-gradient(to top, rgba(3, 9, 18, 0.98), rgba(3, 9, 18, 0.1)),
-    radial-gradient(ellipse at 50% 96%, rgba(56, 189, 248, 0.18), transparent 54%);
-}
-
-.login-cityscape {
-  position: absolute;
-  inset: 0;
-  z-index: -2;
-  pointer-events: none;
-  overflow: hidden;
-}
-
-.city-block {
-  position: absolute;
-  bottom: 26%;
-  width: 72px;
-  border: 1px solid rgba(56, 189, 248, 0.1);
-  border-bottom: 0;
-  background:
-    linear-gradient(90deg, rgba(56, 189, 248, 0.14) 2px, transparent 2px),
-    linear-gradient(rgba(56, 189, 248, 0.12) 2px, transparent 2px),
-    rgba(7, 17, 30, 0.74);
-  background-size: 18px 100%, 100% 22px, auto;
-  box-shadow: 0 0 36px rgba(56, 189, 248, 0.07);
-}
-
-.city-block-a {
-  left: 8%;
-  height: 230px;
-}
-
-.city-block-b {
-  left: 17%;
-  height: 310px;
-  width: 92px;
-}
-
-.city-block-c {
-  right: 10%;
-  height: 250px;
-  width: 110px;
-}
-
-.city-road {
-  position: absolute;
-  left: -6%;
-  right: -6%;
-  bottom: 13%;
-  height: 3px;
-  background: linear-gradient(90deg, transparent, rgba(96, 165, 250, 0.72), transparent);
-  box-shadow:
-    0 18px 0 rgba(56, 189, 248, 0.12),
-    0 48px 70px rgba(56, 189, 248, 0.16);
-}
-
-.login-rider,
-.login-bike {
-  position: absolute;
-  pointer-events: none;
   z-index: -1;
-  filter: drop-shadow(0 22px 46px rgba(0, 0, 0, 0.58));
-}
-
-.login-rider {
-  left: clamp(14px, 7vw, 120px);
-  bottom: 17%;
-  width: 150px;
-  height: 240px;
-  opacity: 0.74;
-}
-
-.rider-head,
-.rider-body,
-.rider-bag {
-  position: absolute;
-  background: linear-gradient(160deg, #06111f, #10243a);
-  border: 1px solid rgba(56, 189, 248, 0.28);
-}
-
-.rider-head {
-  top: 0;
-  left: 62px;
-  width: 54px;
-  height: 54px;
-  border-radius: 50%;
-  box-shadow: inset 10px -8px 0 rgba(56, 189, 248, 0.18);
-}
-
-.rider-body {
-  top: 54px;
-  left: 42px;
-  width: 72px;
-  height: 112px;
-  border-radius: 36px 36px 16px 16px;
-  transform: rotate(-11deg);
-}
-
-.rider-bag {
-  top: 84px;
-  left: 100px;
-  width: 54px;
-  height: 62px;
-  border-radius: 16px;
-  background: linear-gradient(160deg, rgba(56, 189, 248, 0.34), rgba(16, 36, 58, 0.86));
-}
-
-.login-bike {
-  right: clamp(10px, 8vw, 150px);
-  bottom: 15%;
-  width: 290px;
-  height: 130px;
-  opacity: 0.78;
-}
-
-.bike-wheel {
-  position: absolute;
-  bottom: 0;
-  width: 76px;
-  height: 76px;
-  border: 10px solid rgba(5, 11, 20, 0.92);
-  border-radius: 50%;
-  box-shadow:
-    inset 0 0 0 4px rgba(56, 189, 248, 0.26),
-    0 0 42px rgba(56, 189, 248, 0.16);
-}
-
-.bike-wheel-left {
-  left: 18px;
-}
-
-.bike-wheel-right {
-  right: 18px;
-}
-
-.bike-frame {
-  position: absolute;
-  left: 54px;
-  right: 42px;
-  bottom: 38px;
-  height: 42px;
-  border-radius: 999px 999px 28px 28px;
-  background: linear-gradient(90deg, #07111e, #10243a 54%, #06111f);
-  border: 1px solid rgba(56, 189, 248, 0.3);
-}
-
-.bike-light {
-  position: absolute;
-  right: 0;
-  bottom: 58px;
-  width: 72px;
-  height: 18px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(56, 189, 248, 0.72), transparent);
-  filter: blur(1px);
+  background:
+    linear-gradient(to top, rgba(3, 9, 18, 0.96), rgba(3, 9, 18, 0)),
+    radial-gradient(ellipse at 50% 96%, rgba(56, 189, 248, 0.16), transparent 58%);
 }
 
 .login-card,
@@ -330,17 +175,21 @@ p {
 .login-card {
   position: relative;
   z-index: 1;
-  width: min(100%, 900px);
+  width: min(100%, 1120px);
   overflow: hidden;
   display: grid;
-  grid-template-columns: minmax(310px, 1fr) minmax(330px, 0.92fr);
-  border: 1px solid rgba(56, 189, 248, 0.45);
-  border-radius: 24px;
-  background: rgba(4, 20, 47, 0.9);
+  grid-template-columns: minmax(420px, 1.05fr) minmax(390px, 0.95fr);
+  min-height: min(700px, calc(100vh - 64px));
+  border: 1px solid rgba(56, 189, 248, 0.42);
+  border-radius: 30px;
+  background:
+    linear-gradient(135deg, rgba(9, 25, 43, 0.86), rgba(3, 12, 28, 0.9)),
+    rgba(4, 20, 47, 0.88);
   box-shadow:
-    0 24px 80px rgba(0, 0, 0, 0.45),
-    0 0 0 1px rgba(96, 165, 250, 0.08) inset;
-  backdrop-filter: blur(12px);
+    0 34px 110px rgba(0, 0, 0, 0.62),
+    0 0 0 1px rgba(96, 165, 250, 0.1) inset,
+    0 0 72px rgba(56, 189, 248, 0.12);
+  backdrop-filter: blur(18px);
   animation: login-card-enter 0.48s ease both;
 }
 
@@ -369,14 +218,14 @@ p {
 .login-card-copy {
   position: relative;
   min-width: 0;
-  padding: clamp(28px, 4vw, 44px);
+  padding: clamp(34px, 4.8vw, 64px);
   display: grid;
   align-content: space-between;
-  gap: 28px;
+  gap: 36px;
   color: #f5faff;
   background:
-    radial-gradient(circle at 12% 10%, rgba(56, 189, 248, 0.24), transparent 34%),
-    linear-gradient(160deg, rgba(7, 17, 30, 0.96) 0%, rgba(13, 28, 43, 0.74) 100%);
+    radial-gradient(circle at 10% 12%, rgba(56, 189, 248, 0.24), transparent 34%),
+    linear-gradient(160deg, rgba(7, 17, 30, 0.9) 0%, rgba(13, 28, 43, 0.62) 100%);
 }
 
 .login-copy-block {
@@ -385,10 +234,10 @@ p {
 }
 
 .login-title {
-  max-width: 430px;
+  max-width: 500px;
   color: #f5faff;
-  font-size: clamp(2.25rem, 5vw, 3.85rem);
-  line-height: 0.94;
+  font-size: clamp(2.7rem, 5.1vw, 5rem);
+  line-height: 0.9;
   letter-spacing: -0.04em;
   font-weight: 850;
 }
@@ -401,13 +250,13 @@ p {
 .login-card-form {
   position: relative;
   min-width: 0;
-  padding: clamp(28px, 4vw, 44px);
+  padding: clamp(34px, 4vw, 56px);
   display: grid;
   align-content: center;
-  gap: 20px;
+  gap: 18px;
   background:
-    radial-gradient(circle at top right, rgba(56, 189, 248, 0.16), transparent 36%),
-    rgba(9, 21, 34, 0.9);
+    radial-gradient(circle at top right, rgba(56, 189, 248, 0.18), transparent 36%),
+    linear-gradient(180deg, rgba(9, 21, 34, 0.92), rgba(5, 15, 29, 0.9));
 }
 
 .login-card-form::before {
@@ -428,7 +277,7 @@ p {
   border-color: rgba(56, 189, 248, 0.34);
   border-radius: 18px;
   background:
-    linear-gradient(145deg, rgba(16, 36, 58, 0.74), rgba(5, 11, 20, 0.42));
+    linear-gradient(145deg, rgba(16, 36, 58, 0.8), rgba(5, 11, 20, 0.48));
   box-shadow: 0 16px 34px rgba(0, 0, 0, 0.22);
 }
 
@@ -3334,6 +3183,34 @@ p {
 
   .dashboard-bottom-grid .content-card:first-child {
     grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 1181px) and (max-height: 820px) {
+  .login-screen {
+    padding: 18px;
+  }
+
+  .login-card {
+    min-height: auto;
+    grid-template-columns: minmax(400px, 1fr) minmax(380px, 0.95fr);
+  }
+
+  .login-card-copy,
+  .login-card-form {
+    padding: 34px 44px;
+  }
+
+  .login-title {
+    font-size: clamp(2.4rem, 4.4vw, 4.2rem);
+  }
+
+  .login-benefit-grid .info-card {
+    padding: 16px;
+  }
+
+  .login-card-form .form-grid {
+    gap: 14px;
   }
 }
 

@@ -56,8 +56,9 @@ const paymentColors = ["#38BDF8", "#60A5FA", "#34D399", "#FB923C", "#A78BFA"];
 
 export function DashboardPage() {
   const { token, user, store } = useAuth();
-  const isPlatformAdmin = user?.role === "SUPER_ADMIN" || user?.role === "PLATFORM_ADMIN";
+  const isPlatformAdmin = isAdminRole(user?.role);
   const [period, setPeriod] = useState<DashboardPeriod>("7d");
+  const [reloadKey, setReloadKey] = useState(0);
   const [state, setState] = useState<DashboardState>({
     status: "idle",
     store: null,
@@ -77,7 +78,7 @@ export function DashboardPage() {
 
     async function loadDashboard() {
       try {
-        if (currentUser.role === "PLATFORM_ADMIN") {
+        if (isAdminRole(currentUser.role)) {
           const adminDashboard = await dashboardService.getAdminDashboard(currentToken);
 
           if (isActive) {
@@ -124,6 +125,17 @@ export function DashboardPage() {
               error: null
             });
           }
+
+          return;
+        }
+
+        if (isActive) {
+          setState({
+            status: "error",
+            store: null,
+            admin: null,
+            error: "Este perfil nao tem acesso ao dashboard do desktop."
+          });
         }
       } catch (error) {
         if (!isActive) {
@@ -147,10 +159,10 @@ export function DashboardPage() {
     return () => {
       isActive = false;
     };
-  }, [period, token, user]);
+  }, [period, reloadKey, token, user]);
 
   function retry() {
-    setPeriod((current) => current);
+    setReloadKey((current) => current + 1);
   }
 
   return (
@@ -177,6 +189,10 @@ export function DashboardPage() {
       ) : null}
     </section>
   );
+}
+
+function isAdminRole(role: string | undefined) {
+  return role === "SUPER_ADMIN" || role === "PLATFORM_ADMIN";
 }
 
 function DashboardLoading({ isPlatformAdmin }: { isPlatformAdmin: boolean }) {

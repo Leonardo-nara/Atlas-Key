@@ -16,7 +16,7 @@ export function LoginPage() {
     loginError
   } = useAuth();
   const [mode, setMode] = useState<"login" | "register">(
-    isDevelopment ? "login" : "register"
+    "login"
   );
   const [email, setEmail] = useState(
     isDevelopment ? "store-admin@example.com" : ""
@@ -83,23 +83,6 @@ export function LoginPage() {
 
   return (
     <main className="login-screen">
-      <div className="login-cityscape" aria-hidden="true">
-        <span className="city-block city-block-a" />
-        <span className="city-block city-block-b" />
-        <span className="city-block city-block-c" />
-        <span className="city-road" />
-      </div>
-      <div className="login-rider" aria-hidden="true">
-        <span className="rider-head" />
-        <span className="rider-body" />
-        <span className="rider-bag" />
-      </div>
-      <div className="login-bike" aria-hidden="true">
-        <span className="bike-wheel bike-wheel-left" />
-        <span className="bike-wheel bike-wheel-right" />
-        <span className="bike-frame" />
-        <span className="bike-light" />
-      </div>
       <section className="login-card">
         <div className="login-card-copy">
           <div className="login-brand-lockup">
@@ -173,7 +156,7 @@ export function LoginPage() {
           </div>
           <p className="muted-text">
             {mode === "login"
-              ? "Ja tem conta? Entre com o e-mail corporativo e a senha da empresa."
+              ? "Use seu e-mail e senha para acessar o Mototake."
               : "Primeiro acesso? Crie a conta da empresa aqui e entre no painel imediatamente."}
           </p>
           <h1>{mode === "login" ? "Entrar" : "Criar conta da empresa"}</h1>
@@ -185,7 +168,7 @@ export function LoginPage() {
                   <strong> store-admin@example.com</strong>.
                 </>
               ) : (
-                "Use o e-mail e a senha da conta da empresa para acessar o painel."
+                "Use seu e-mail e senha para acessar o Mototake."
               )
             ) : (
               "A conta entra autenticada logo apos o cadastro. Endereco e ajustes operacionais podem ser completados depois."

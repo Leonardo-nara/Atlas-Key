@@ -255,7 +255,16 @@ jobs:
           profile: pixel_6
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           script: |
-            adb wait-for-device
+            DIAGNOSTICS_DIR="apps/mobile/.maestro/courier/diagnostics"
+            APK_PATH="apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk"
+            MAESTRO_BIN="$HOME/.maestro/bin/maestro"
+
+            mkdir -p "$DIAGNOSTICS_DIR"
+            adb devices -l > "$DIAGNOSTICS_DIR/adb-devices-initial.txt" || true
+            "$MAESTRO_BIN" --version > "$DIAGNOSTICS_DIR/maestro-version.txt" 2>&1 || true
+
+            adb wait-for-device || true
+            BOOT_COMPLETED="0"
             for i in $(seq 1 60); do
               BOOT_COMPLETED="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
               if [ "$BOOT_COMPLETED" = "1" ]; then
@@ -264,41 +273,60 @@ jobs:
               fi
               sleep 2
             done
+            echo "$BOOT_COMPLETED" > "$DIAGNOSTICS_DIR/boot-completed.txt"
+            if [ "$BOOT_COMPLETED" != "1" ]; then
+              echo "::error::Android emulator did not report boot completed."
+              adb devices -l > "$DIAGNOSTICS_DIR/adb-devices-boot-timeout.txt" || true
+              exit 1
+            fi
+
             adb shell input keyevent KEYCODE_WAKEUP || true
             adb shell settings put global window_animation_scale 0 || true
             adb shell settings put global transition_animation_scale 0 || true
             adb shell settings put global animator_duration_scale 0 || true
+            REVERSE_OK="0"
             for i in $(seq 1 5); do
               if adb reverse tcp:8081 tcp:8081 && adb reverse tcp:3000 tcp:3000; then
                 echo "ADB reverse configured."
+                REVERSE_OK="1"
                 break
               fi
               echo "ADB reverse failed on attempt $i. Retrying."
               adb kill-server || true
               adb start-server || true
-              adb wait-for-device
+              adb wait-for-device || true
               sleep 3
             done
+            if [ "$REVERSE_OK" != "1" ]; then
+              echo "::error::ADB reverse failed after retries."
+              adb devices -l > "$DIAGNOSTICS_DIR/adb-devices-reverse-failed.txt" || true
+              exit 1
+            fi
+
+            INSTALL_OK="0"
             for i in $(seq 1 3); do
-              if adb install apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk; then
+              if adb install "$APK_PATH"; then
                 echo "Debug APK installed."
+                INSTALL_OK="1"
                 break
-              fi
-              if [ "$i" -eq 3 ]; then
-                echo "::error::Debug APK install failed after retries."
-                exit 1
               fi
               echo "ADB install failed on attempt $i. Retrying."
               adb kill-server || true
               adb start-server || true
-              adb wait-for-device
+              adb wait-for-device || true
               sleep 5
             done
-            mkdir -p apps/mobile/.maestro/courier/diagnostics
-            adb exec-out screencap -p > apps/mobile/.maestro/courier/diagnostics/before-maestro.png || true
+            if [ "$INSTALL_OK" != "1" ]; then
+              echo "::error::Debug APK install failed after retries."
+              adb devices -l > "$DIAGNOSTICS_DIR/adb-devices-install-failed.txt" || true
+              exit 1
+            fi
+
+            adb devices -l > "$DIAGNOSTICS_DIR/adb-devices-before-maestro.txt" || true
+            adb exec-out screencap -p > "$DIAGNOSTICS_DIR/before-maestro.png" || true
             adb shell uiautomator dump /sdcard/window-before-maestro.xml || true
-            adb pull /sdcard/window-before-maestro.xml apps/mobile/.maestro/courier/diagnostics/window-before-maestro.xml || true
-            if grep -q "android:id/aerr_wait" apps/mobile/.maestro/courier/diagnostics/window-before-maestro.xml; then
+            adb pull /sdcard/window-before-maestro.xml "$DIAGNOSTICS_DIR/window-before-maestro.xml" || true
+            if [ -f "$DIAGNOSTICS_DIR/window-before-maestro.xml" ] && grep -q "android:id/aerr_wait" "$DIAGNOSTICS_DIR/window-before-maestro.xml"; then
               echo "Android System UI ANR dialog detected before Maestro. Selecting Wait and continuing."
               adb shell input tap 540 1300
               sleep 5
@@ -311,12 +339,12 @@ jobs:
             sleep 2
             adb shell input keyevent KEYCODE_HOME || true
             sleep 2
-            adb exec-out screencap -p > apps/mobile/.maestro/courier/diagnostics/after-system-dialog-dismiss.png || true
+            adb exec-out screencap -p > "$DIAGNOSTICS_DIR/after-system-dialog-dismiss.png" || true
 
             set +e
-            timeout --signal=TERM --kill-after=30s 30m maestro test apps/mobile/.maestro/courier/generated
+            timeout --signal=TERM --kill-after=30s 30m "$MAESTRO_BIN" test apps/mobile/.maestro/courier/generated
             MAESTRO_EXIT=$?
-            echo "$MAESTRO_EXIT" > apps/mobile/.maestro/courier/diagnostics/maestro-exit-code.txt
+            echo "$MAESTRO_EXIT" > "$DIAGNOSTICS_DIR/maestro-exit-code.txt"
             set -e
 
             if [ "$MAESTRO_EXIT" -eq 0 ]; then

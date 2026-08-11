@@ -1,0 +1,319 @@
+name: Fast Launch Final QA
+
+on:
+  push:
+    branches:
+      - codex/mototake-fast-launch-mvp
+
+jobs:
+  release-static-checks:
+    name: Release static checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      API_PREFIX: api
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/mototake_static_checks?schema=public
+      JWT_ACCESS_EXPIRES_IN: 15m
+      JWT_REFRESH_EXPIRES_DAYS: 30
+      JWT_SECRET: static-checks-local-secret-minimum-32-characters
+      NODE_ENV: test
+      PAYMENT_GATEWAY_ENABLED: "false"
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: mototake_static_checks
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d mototake_static_checks"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@7088e561eb65bb68695d245aa206f005ef30921d
+        with:
+          version: 10.7.0
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22.14.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Backend checks
+        run: |
+          pnpm --filter @deliveries/backend prisma:generate
+          pnpm --filter @deliveries/backend typecheck
+          pnpm --filter @deliveries/backend lint
+          pnpm --filter @deliveries/backend build
+          pnpm --filter @deliveries/backend test
+
+      - name: Desktop checks
+        run: |
+          pnpm --filter @deliveries/desktop typecheck
+          pnpm --filter @deliveries/desktop lint
+          pnpm --filter @deliveries/desktop build
+
+      - name: Mobile checks
+        run: |
+          pnpm --filter @deliveries/mobile typecheck
+          pnpm --filter @deliveries/mobile lint
+          pnpm --filter @deliveries/mobile build
+          pnpm --filter @deliveries/mobile config:check
+          cd apps/mobile
+          pnpm dlx expo-doctor
+
+      - name: Storefront and shared checks
+        run: |
+          pnpm --filter @deliveries/storefront typecheck
+          pnpm --filter @deliveries/storefront lint
+          pnpm --filter @deliveries/storefront build
+          pnpm --filter @deliveries/shared-types typecheck
+
+      - name: Git whitespace check
+        run: git diff --check
+
+  backend-e2e-final:
+    name: Backend E2E final
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: mototake_backend_e2e
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d mototake_backend_e2e"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      API_PREFIX: api
+      DATABASE_URL_E2E: postgresql://postgres:postgres@localhost:5432/mototake_backend_e2e?schema=rotapronta_e2e
+      JWT_ACCESS_EXPIRES_IN: 15m
+      JWT_REFRESH_EXPIRES_DAYS: 30
+      JWT_SECRET: backend-e2e-local-secret-minimum-32-characters
+      NODE_ENV: test
+      PAYMENT_GATEWAY_ENABLED: "false"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@7088e561eb65bb68695d245aa206f005ef30921d
+        with:
+          version: 10.7.0
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22.14.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run backend E2E
+        run: pnpm --filter @deliveries/backend test:e2e
+
+  android-e2e-final:
+    name: Android E2E final
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: mototake_android_e2e
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d mototake_android_e2e"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      API_PREFIX: api
+      CORS_ALLOWED_ORIGINS: http://localhost:5173,http://127.0.0.1:5173,http://10.0.2.2:3000
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/mototake_android_e2e?schema=public
+      EXPO_PUBLIC_API_URL: http://10.0.2.2:3000/api
+      EXPO_PUBLIC_SOCKET_URL: http://10.0.2.2:3000
+      HOST: 0.0.0.0
+      JWT_ACCESS_EXPIRES_IN: 15m
+      JWT_REFRESH_EXPIRES_DAYS: 30
+      JWT_SECRET: android-e2e-local-secret-minimum-32-characters
+      MAESTRO_VERSION: 2.6.1
+      MOTOTAKE_E2E_API_URL: http://127.0.0.1:3000/api
+      MOTOTAKE_E2E_PREFIX: QA_COURIER_UI_CLOUD_final_${{ github.run_id }}
+      MOTOTAKE_E2E_RUN_ID: final_${{ github.run_id }}
+      MOTOTAKE_SANDBOX_HEALTH_URL: https://rotapronta-api-sandbox-production.up.railway.app/api/health
+      NODE_ENV: test
+      PAYMENT_GATEWAY_ENABLED: "false"
+      PORT: 3000
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@7088e561eb65bb68695d245aa206f005ef30921d
+        with:
+          version: 10.7.0
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22.14.0
+          cache: pnpm
+
+      - name: Setup Java
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate Railway sandbox health without writes
+        run: node -e "fetch(process.env.MOTOTAKE_SANDBOX_HEALTH_URL).then(r => { if (!r.ok) process.exit(1); console.log('railway sandbox health ok'); })"
+
+      - name: Static mobile checks
+        run: |
+          pnpm --filter @deliveries/mobile typecheck
+          pnpm --filter @deliveries/mobile lint
+          pnpm --filter @deliveries/mobile build
+          pnpm --filter @deliveries/mobile config:check
+          cd apps/mobile
+          pnpm dlx expo-doctor
+
+      - name: Verify emulator/backend configuration
+        run: |
+          node -e "if (process.env.EXPO_PUBLIC_API_URL !== 'http://10.0.2.2:3000/api') process.exit(1); if (process.env.MOTOTAKE_E2E_API_URL !== 'http://127.0.0.1:3000/api') process.exit(1);"
+
+      - name: Build and start local backend
+        run: |
+          pnpm --filter @deliveries/backend prisma:generate
+          pnpm --filter @deliveries/backend prisma:deploy:prod
+          pnpm --filter @deliveries/backend build
+          NODE_ENV=production pnpm --filter @deliveries/backend start > backend.log 2>&1 &
+          node -e "let n=0; const fs=require('node:fs'); const tick=()=>fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok) throw new Error('not ready')}).then(()=>console.log('local backend health ok')).catch(()=>{if(++n>120){fs.existsSync('backend.log')&&console.error(fs.readFileSync('backend.log','utf8')); process.exit(1);} setTimeout(tick,1000)}); tick();"
+
+      - name: Generate native Android project
+        run: pnpm --filter @deliveries/mobile exec expo prebuild --platform android --clean --no-install
+
+      - name: Build debug APK
+        working-directory: apps/mobile/android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Upload QA debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: mototake-courier-final-qa-debug-apk
+          path: apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      - name: Prepare QA data and Maestro flows
+        run: node apps/mobile/scripts/prepare-courier-e2e.mjs
+
+      - name: Install Maestro CLI
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+          "$HOME/.maestro/bin/maestro" --version
+
+      - name: Start Metro bundler
+        working-directory: apps/mobile
+        env:
+          CI: "1"
+          EXPO_NO_TELEMETRY: "1"
+        run: |
+          pnpm exec expo start --localhost --non-interactive > ../../metro.log 2>&1 &
+          node -e "let n=0; const fs=require('node:fs'); const tick=()=>fetch('http://127.0.0.1:8081/status').then(r=>r.text()).then(t=>{if(!t.includes('packager-status:running')) throw new Error('not ready'); console.log('metro health ok')}).catch(()=>{if(++n>90){fs.existsSync('../../metro.log')&&console.error(fs.readFileSync('../../metro.log','utf8')); process.exit(1);} setTimeout(tick,1000)}); tick();"
+
+      - name: Run Maestro on Android emulator
+        timeout-minutes: 35
+        uses: reactivecircus/android-emulator-runner@324029e2f414c084d8b15ba075288885e74aef9c
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: |
+            adb shell input keyevent KEYCODE_WAKEUP
+            adb shell settings put global window_animation_scale 0
+            adb shell settings put global transition_animation_scale 0
+            adb shell settings put global animator_duration_scale 0
+            adb reverse tcp:8081 tcp:8081
+            adb reverse tcp:3000 tcp:3000
+            adb install apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk
+            mkdir -p apps/mobile/.maestro/courier/diagnostics
+            adb exec-out screencap -p > apps/mobile/.maestro/courier/diagnostics/before-maestro.png || true
+            adb shell uiautomator dump /sdcard/window-before-maestro.xml || true
+            adb pull /sdcard/window-before-maestro.xml apps/mobile/.maestro/courier/diagnostics/window-before-maestro.xml || true
+
+            set +e
+            timeout --signal=TERM --kill-after=30s 25m maestro test apps/mobile/.maestro/courier/generated
+            MAESTRO_EXIT=$?
+            echo "$MAESTRO_EXIT" > apps/mobile/.maestro/courier/diagnostics/maestro-exit-code.txt
+            set -e
+
+            if [ "$MAESTRO_EXIT" -eq 0 ]; then
+              echo "ANDROID E2E FINAL: APROVADO"
+            else
+              echo "::error::ANDROID E2E FINAL: REPROVADO com codigo $MAESTRO_EXIT."
+              exit "$MAESTRO_EXIT"
+            fi
+
+      - name: Summarize Android E2E status
+        if: always()
+        run: |
+          EXIT_FILE="apps/mobile/.maestro/courier/diagnostics/maestro-exit-code.txt"
+          if [ -f "$EXIT_FILE" ]; then
+            MAESTRO_EXIT="$(cat "$EXIT_FILE")"
+          else
+            MAESTRO_EXIT="missing"
+          fi
+
+          if [ "$MAESTRO_EXIT" = "0" ]; then
+            echo "### ANDROID E2E FINAL: APROVADO" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### ANDROID E2E FINAL: REPROVADO" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "Codigo Maestro: $MAESTRO_EXIT" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload Android E2E diagnostics
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mototake-courier-final-qa-diagnostics
+          path: |
+            backend.log
+            metro.log
+            apps/mobile/.maestro/courier/generated
+            apps/mobile/.maestro/courier/diagnostics
+          if-no-files-found: ignore
+
+      - name: Cleanup QA data
+        if: always()
+        run: node apps/mobile/scripts/cleanup-courier-e2e.mjs
+
+      - name: Final local backend health
+        if: always()
+        run: node -e "fetch(process.env.MOTOTAKE_E2E_API_URL + '/health').then(r => { if (!r.ok) process.exit(1); console.log('local backend health ok'); })"

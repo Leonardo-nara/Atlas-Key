@@ -259,6 +259,7 @@ function createReportsService() {
 
 function buildFixture() {
   const today = atLocalNoon(new Date());
+  const todayStoreB = atLocalNoon(new Date(), "America/Rio_Branco");
   const yesterday = addDays(today, -1);
   const old = addDays(today, -40);
   const stores = [
@@ -288,7 +289,7 @@ function buildFixture() {
       payment(SalePaymentMethod.CASH, SalePaymentStatus.PAID, 25)
     ], [saleItem("product-a-1", "Antigo", 1, 25, 25)]),
     ...["=formula", "+formula", "-formula", "@formula", "\tformula", "\rformula", "\nformula"].map((name, index) =>
-      sale(`sale-b-${index}`, "store-b", name, SaleStatus.COMPLETED, index === 0 ? 33 : 0, today, today, [
+      sale(`sale-b-${index}`, "store-b", name, SaleStatus.COMPLETED, index === 0 ? 33 : 0, todayStoreB, todayStoreB, [
         payment(SalePaymentMethod.CASH, SalePaymentStatus.PAID, index === 0 ? 33 : 0)
       ], [saleItem("product-b-1", name, 1, index === 0 ? 33 : 0, index === 0 ? 33 : 0)])
     )
@@ -303,7 +304,7 @@ function buildFixture() {
     order("order-a-progress", "store-a", "Cliente andamento", OrderStatus.ACCEPTED, OrderPaymentMethod.PIX_MANUAL, OrderPaymentStatus.PENDING, 60, today, today, [
       orderItem("product-a-1", "Andamento", 1, 60, 60)
     ]),
-    order("order-b-delivered", "store-b", "Cliente loja B", OrderStatus.DELIVERED, OrderPaymentMethod.PIX_MANUAL, OrderPaymentStatus.PAID, 44, today, today, [
+    order("order-b-delivered", "store-b", "Cliente loja B", OrderStatus.DELIVERED, OrderPaymentMethod.PIX_MANUAL, OrderPaymentStatus.PAID, 44, todayStoreB, todayStoreB, [
       orderItem("product-b-1", "Loja B", 1, 44, 44)
     ]),
     order("order-b-rio-branco-edge", "store-b", "Cliente fuso", OrderStatus.DELIVERED, OrderPaymentMethod.CASH, OrderPaymentStatus.PAID, 55, new Date("2026-01-02T04:30:00.000Z"), new Date("2026-01-02T04:30:00.000Z"), [
@@ -537,9 +538,9 @@ function decimal(value: number) {
   return new Prisma.Decimal(value);
 }
 
-function atLocalNoon(value: Date) {
+function atLocalNoon(value: Date, timeZone = "America/Sao_Paulo") {
   const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo",
+    timeZone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit"

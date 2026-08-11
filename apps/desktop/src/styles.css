@@ -3240,20 +3240,6 @@ p {
     line-height: 0.98;
   }
 
-  .login-rider {
-    left: 4vw;
-    opacity: 0.34;
-    transform: scale(0.82);
-    transform-origin: left bottom;
-  }
-
-  .login-bike {
-    right: 3vw;
-    opacity: 0.34;
-    transform: scale(0.84);
-    transform-origin: right bottom;
-  }
-
   .desktop-shell {
     grid-template-columns: 1fr;
   }
@@ -3330,16 +3316,6 @@ p {
 
   .login-benefit-grid {
     grid-template-columns: 1fr;
-  }
-
-  .login-rider,
-  .login-bike,
-  .city-block {
-    display: none;
-  }
-
-  .city-road {
-    bottom: 7%;
   }
 
   .topbar {

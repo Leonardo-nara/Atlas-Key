@@ -255,13 +255,45 @@ jobs:
           profile: pixel_6
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           script: |
-            adb shell input keyevent KEYCODE_WAKEUP
-            adb shell settings put global window_animation_scale 0
-            adb shell settings put global transition_animation_scale 0
-            adb shell settings put global animator_duration_scale 0
-            adb reverse tcp:8081 tcp:8081
-            adb reverse tcp:3000 tcp:3000
-            adb install apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk
+            adb wait-for-device
+            for i in {1..60}; do
+              BOOT_COMPLETED="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
+              if [ "$BOOT_COMPLETED" = "1" ]; then
+                echo "Android emulator boot completed."
+                break
+              fi
+              sleep 2
+            done
+            adb shell input keyevent KEYCODE_WAKEUP || true
+            adb shell settings put global window_animation_scale 0 || true
+            adb shell settings put global transition_animation_scale 0 || true
+            adb shell settings put global animator_duration_scale 0 || true
+            for i in {1..5}; do
+              if adb reverse tcp:8081 tcp:8081 && adb reverse tcp:3000 tcp:3000; then
+                echo "ADB reverse configured."
+                break
+              fi
+              echo "ADB reverse failed on attempt $i. Retrying."
+              adb kill-server || true
+              adb start-server || true
+              adb wait-for-device
+              sleep 3
+            done
+            for i in {1..3}; do
+              if adb install apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk; then
+                echo "Debug APK installed."
+                break
+              fi
+              if [ "$i" -eq 3 ]; then
+                echo "::error::Debug APK install failed after retries."
+                exit 1
+              fi
+              echo "ADB install failed on attempt $i. Retrying."
+              adb kill-server || true
+              adb start-server || true
+              adb wait-for-device
+              sleep 5
+            done
             mkdir -p apps/mobile/.maestro/courier/diagnostics
             adb exec-out screencap -p > apps/mobile/.maestro/courier/diagnostics/before-maestro.png || true
             adb shell uiautomator dump /sdcard/window-before-maestro.xml || true

@@ -270,8 +270,16 @@ jobs:
               echo "Android System UI ANR dialog detected before Maestro. Selecting Wait and continuing."
               adb shell input tap 540 1300
               sleep 5
-              adb exec-out screencap -p > apps/mobile/.maestro/courier/diagnostics/after-system-ui-wait.png || true
             fi
+            # GitHub hosted emulators can show transient ANR dialogs for Android system apps
+            # (System UI/Settings) before the tested app starts. Dismiss them before Maestro.
+            adb shell input tap 540 1300 || true
+            sleep 2
+            adb shell input tap 350 1190 || true
+            sleep 2
+            adb shell input keyevent KEYCODE_HOME || true
+            sleep 2
+            adb exec-out screencap -p > apps/mobile/.maestro/courier/diagnostics/after-system-dialog-dismiss.png || true
 
             set +e
             timeout --signal=TERM --kill-after=30s 30m maestro test apps/mobile/.maestro/courier/generated

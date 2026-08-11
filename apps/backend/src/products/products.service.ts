@@ -32,7 +32,9 @@ export class ProductsService {
         price: new Prisma.Decimal(dto.price),
         category: dto.category,
         imageUrl: dto.imageUrl,
-        available: dto.available ?? true
+        available: dto.available ?? true,
+        showInStorefront: dto.showInStorefront ?? true,
+        storefrontFeatured: dto.storefrontFeatured ?? false
       }
     });
 
@@ -81,7 +83,9 @@ export class ProductsService {
               imageUpdatedAt: null
             }
           : {}),
-        available: dto.available
+        available: dto.available,
+        showInStorefront: dto.showInStorefront,
+        storefrontFeatured: dto.storefrontFeatured
       }
     });
 
@@ -226,7 +230,9 @@ export class ProductsService {
       imageUrl: product.imageKey
         ? `/media/products/${product.id}/image`
         : product.imageUrl,
-      price: Number(product.price)
+      price: Number(product.price),
+      stockQuantity: Number(product.stockQuantity),
+      minimumStock: Number(product.minimumStock)
     };
   }
 }

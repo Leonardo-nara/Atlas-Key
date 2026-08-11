@@ -388,6 +388,82 @@ p {
   justify-self: center;
 }
 
+.storefront-section {
+  display: grid;
+  gap: var(--rp-space-4);
+  padding: var(--rp-space-4);
+  border: 1px solid rgba(29, 56, 84, 0.78);
+  border-radius: var(--rp-radius-lg);
+  background: rgba(16, 36, 58, 0.36);
+}
+
+.storefront-hours-list,
+.storefront-payment-list,
+.storefront-products-mini-list {
+  display: grid;
+  gap: var(--rp-space-3);
+}
+
+.storefront-hour-row {
+  display: grid;
+  grid-template-columns: 120px minmax(100px, 0.45fr) minmax(100px, 1fr) minmax(100px, 1fr);
+  gap: var(--rp-space-3);
+  align-items: center;
+  padding: var(--rp-space-3);
+  border: 1px solid rgba(29, 56, 84, 0.72);
+  border-radius: var(--rp-radius-md);
+  background: rgba(5, 11, 20, 0.38);
+}
+
+.compact-checkbox {
+  margin: 0;
+}
+
+.storefront-payment-option {
+  align-items: flex-start;
+  padding: var(--rp-space-3);
+  border: 1px solid rgba(29, 56, 84, 0.72);
+  border-radius: var(--rp-radius-md);
+  background: rgba(5, 11, 20, 0.32);
+}
+
+.storefront-payment-option span {
+  display: grid;
+  gap: 4px;
+}
+
+.storefront-payment-option small,
+.storefront-product-row small {
+  color: var(--rp-text-muted);
+}
+
+.inline-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--rp-space-2);
+}
+
+.storefront-product-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--rp-space-3);
+  padding: var(--rp-space-3);
+  border: 1px solid rgba(29, 56, 84, 0.72);
+  border-radius: var(--rp-radius-md);
+  background: rgba(5, 11, 20, 0.32);
+}
+
+@media (max-width: 980px) {
+  .storefront-settings-grid,
+  .storefront-hour-row {
+    grid-template-columns: 1fr;
+  }
+
+  .storefront-preview-card {
+    position: static;
+  }
+}
+
 .mode-chip {
   border: 1px solid transparent;
   min-height: 42px;

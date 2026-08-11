@@ -190,15 +190,39 @@ export interface StorefrontSettings {
   storeId: string;
   storeName: string;
   slug?: string | null;
+  publicName?: string | null;
+  publicPhone?: string | null;
+  address?: string | null;
+  addressComplement?: string | null;
+  addressCity?: string | null;
+  addressState?: string | null;
+  addressZipCode?: string | null;
   publicDescription?: string | null;
   storefrontEnabled: boolean;
   pickupEnabled: boolean;
   businessHoursNote?: string | null;
+  storefrontMinimumOrder: number;
+  storefrontPaymentMethods: StorefrontPaymentMethod[];
+  storefrontOpeningHours: StorefrontOpeningHour[];
   averagePreparationMinutes: number;
   deliveryTimeMinMinutes: number;
   deliveryTimeMaxMinutes: number;
   publicUrl?: string | null;
   updatedAt: string;
+}
+
+export type StorefrontPaymentMethod =
+  | "CASH"
+  | "CARD_DEBIT_ON_DELIVERY"
+  | "CARD_CREDIT_ON_DELIVERY"
+  | "PIX_MANUAL"
+  | "ONLINE";
+
+export interface StorefrontOpeningHour {
+  dayOfWeek: number;
+  closed: boolean;
+  openTime?: string;
+  closeTime?: string;
 }
 
 export type StoreCourierLinkStatus =
@@ -246,6 +270,8 @@ export interface Product {
   imageSize?: number | null;
   imageUpdatedAt?: string | null;
   available: boolean;
+  showInStorefront: boolean;
+  storefrontFeatured: boolean;
   stockControlEnabled: boolean;
   stockQuantity: number;
   minimumStock: number;

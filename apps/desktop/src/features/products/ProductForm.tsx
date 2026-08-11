@@ -27,6 +27,8 @@ const emptyForm: ProductInput = {
   category: "",
   imageUrl: "",
   available: true,
+  showInStorefront: true,
+  storefrontFeatured: false,
   stockControlEnabled: false,
   minimumStock: 0,
   allowNegativeStock: false,
@@ -65,6 +67,8 @@ export function ProductForm({
       category: initialValue.category,
       imageUrl: initialValue.imageUrl ?? "",
       available: initialValue.available,
+      showInStorefront: initialValue.showInStorefront,
+      storefrontFeatured: initialValue.storefrontFeatured,
       stockControlEnabled: initialValue.stockControlEnabled,
       minimumStock: initialValue.minimumStock,
       allowNegativeStock: initialValue.allowNegativeStock,
@@ -247,6 +251,34 @@ export function ProductForm({
           type="checkbox"
         />
         <span>Produto disponivel para venda</span>
+      </label>
+
+      <label className="checkbox-field">
+        <input
+          checked={form.showInStorefront}
+          onChange={(event) =>
+            setForm((current) => ({
+              ...current,
+              showInStorefront: event.target.checked
+            }))
+          }
+          type="checkbox"
+        />
+        <span>Exibir na Loja Online</span>
+      </label>
+
+      <label className="checkbox-field">
+        <input
+          checked={form.storefrontFeatured}
+          onChange={(event) =>
+            setForm((current) => ({
+              ...current,
+              storefrontFeatured: event.target.checked
+            }))
+          }
+          type="checkbox"
+        />
+        <span>Destacar no cardapio online</span>
       </label>
 
       <section className="stock-settings-card">

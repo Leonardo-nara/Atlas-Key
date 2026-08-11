@@ -22,6 +22,7 @@ import { GoogleMobileAuthDto } from "./dto/google-mobile-auth.dto";
 import { RegisterClientDto } from "./dto/register-client.dto";
 import { RegisterDto } from "./dto/register.dto";
 import { RegisterStoreQuickDto } from "./dto/register-store-quick.dto";
+import { generateUniqueStoreSlug } from "../stores/store-slug";
 
 export interface AuthRequestContext {
   requestId?: string;
@@ -83,6 +84,7 @@ export class AuthService {
           data: {
             name: dto.storeName!,
             address: dto.storeAddress!,
+            slug: await generateUniqueStoreSlug(tx, dto.storeName!),
             ownerUserId: createdUser.id,
             status: "ACTIVE",
             active: true
@@ -136,6 +138,7 @@ export class AuthService {
         data: {
           name: dto.storeName,
           address: "",
+          slug: await generateUniqueStoreSlug(tx, dto.storeName),
           ownerUserId: createdUser.id,
           status: "ACTIVE",
           active: true

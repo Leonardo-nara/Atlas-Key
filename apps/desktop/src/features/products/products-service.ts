@@ -10,6 +10,8 @@ export interface ProductInput {
   imageFile?: File | null;
   removeImage?: boolean;
   available: boolean;
+  showInStorefront: boolean;
+  storefrontFeatured: boolean;
   stockControlEnabled: boolean;
   minimumStock: number;
   allowNegativeStock: boolean;
@@ -79,6 +81,8 @@ function toProductRequestBody(input: ProductInput) {
     price: input.price,
     category: input.category,
     imageUrl: input.imageUrl,
-    available: input.available
+    available: input.available,
+    showInStorefront: input.showInStorefront,
+    storefrontFeatured: input.storefrontFeatured
   };
 }

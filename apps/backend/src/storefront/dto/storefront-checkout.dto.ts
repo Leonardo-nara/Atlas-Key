@@ -3,20 +3,54 @@ import {
   ArrayMinSize,
   IsArray,
   IsEnum,
+  IsIn,
+  IsInt,
+  IsNumber,
   IsOptional,
   IsString,
   Matches,
+  Max,
   MaxLength,
+  Min,
   MinLength,
   ValidateNested
 } from "class-validator";
-import { OrderPaymentMethod } from "@prisma/client";
 
+import { MAX_MONEY_AMOUNT } from "../../common/validation/money";
 import { trimOptionalString, trimString } from "../../common/validation/text";
-import { CreateClientOrderItemDto } from "../../orders/dto/create-client-order-item.dto";
 import { ClientOrderFulfillmentInput } from "../../orders/dto/create-client-order.dto";
 
 const SAFE_TEXT_PATTERN = /^[^<>]*$/;
+export const STOREFRONT_PAYMENT_METHODS = [
+  "CASH",
+  "CARD_DEBIT_ON_DELIVERY",
+  "CARD_CREDIT_ON_DELIVERY",
+  "PIX_MANUAL",
+  "ONLINE"
+] as const;
+
+export type StorefrontPaymentMethodInput =
+  (typeof STOREFRONT_PAYMENT_METHODS)[number];
+
+export class StorefrontCheckoutItemDto {
+  @Transform(trimString)
+  @IsString()
+  @MinLength(1)
+  @MaxLength(120)
+  productId!: string;
+
+  @IsInt()
+  @Min(1)
+  @Max(99)
+  quantity!: number;
+
+  @IsOptional()
+  @Transform(trimOptionalString)
+  @IsString()
+  @MaxLength(240)
+  @Matches(SAFE_TEXT_PATTERN)
+  notes?: string;
+}
 
 export class StorefrontCheckoutDto {
   @Transform(trimString)
@@ -106,8 +140,14 @@ export class StorefrontCheckoutDto {
   @Matches(SAFE_TEXT_PATTERN)
   notes?: string;
 
-  @IsEnum(OrderPaymentMethod)
-  paymentMethod!: OrderPaymentMethod;
+  @IsIn(STOREFRONT_PAYMENT_METHODS)
+  paymentMethod!: StorefrontPaymentMethodInput;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Max(MAX_MONEY_AMOUNT)
+  cashChangeFor?: number;
 
   @IsOptional()
   @Transform(trimOptionalString)
@@ -119,6 +159,6 @@ export class StorefrontCheckoutDto {
   @IsArray()
   @ArrayMinSize(1)
   @ValidateNested({ each: true })
-  @Type(() => CreateClientOrderItemDto)
-  items!: CreateClientOrderItemDto[];
+  @Type(() => StorefrontCheckoutItemDto)
+  items!: StorefrontCheckoutItemDto[];
 }

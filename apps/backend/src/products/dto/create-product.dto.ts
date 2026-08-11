@@ -46,4 +46,12 @@ export class CreateProductDto {
   @IsOptional()
   @IsBoolean()
   available?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  showInStorefront?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  storefrontFeatured?: boolean;
 }

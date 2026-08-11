@@ -24,6 +24,7 @@ import { CreateAdminUserDto } from "./dto/create-admin-user.dto";
 import { ListAdminAuditLogsQueryDto } from "./dto/list-admin-audit-logs-query.dto";
 import { UpdateAdminStoreStatusDto } from "./dto/update-admin-store-status.dto";
 import { UpdateAdminUserStatusDto } from "./dto/update-admin-user-status.dto";
+import { generateUniqueStoreSlug } from "../stores/store-slug";
 
 @Injectable()
 export class AdminService {
@@ -398,6 +399,7 @@ export class AdminService {
         data: {
           name: dto.storeName,
           address: dto.storeAddress,
+          slug: await generateUniqueStoreSlug(tx, dto.storeName),
           timezone: normalizeTimeZone(dto.timezone),
           ownerUserId: owner.id,
           status: StoreStatus.ACTIVE,

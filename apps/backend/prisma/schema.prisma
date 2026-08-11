@@ -356,10 +356,19 @@ model Store {
   name        String
   address     String
   slug        String?  @unique
+  publicName  String?
+  publicPhone String?
+  addressComplement String?
+  addressCity String?
+  addressState String?
+  addressZipCode String?
   publicDescription String?
   storefrontEnabled Boolean @default(false)
   pickupEnabled Boolean @default(true)
   businessHoursNote String?
+  storefrontMinimumOrder Decimal @default(0) @db.Decimal(10, 2)
+  storefrontPaymentMethods Json?
+  storefrontOpeningHours Json?
   averagePreparationMinutes Int @default(25)
   deliveryTimeMinMinutes Int @default(20)
   deliveryTimeMaxMinutes Int @default(45)
@@ -447,6 +456,8 @@ model Product {
   imageSize    Int?
   imageUpdatedAt DateTime?
   available   Boolean  @default(true)
+  showInStorefront Boolean @default(true)
+  storefrontFeatured Boolean @default(false)
   stockControlEnabled Boolean @default(false)
   stockQuantity Decimal @default(0) @db.Decimal(14, 3)
   minimumStock Decimal @default(0) @db.Decimal(14, 3)
@@ -652,6 +663,9 @@ model Order {
   paymentStatus   OrderPaymentStatus @default(PENDING)
   paymentProvider OrderPaymentProvider?
   paidAt          DateTime?
+  storefrontPaymentLabel String?
+  cashChangeNeeded Boolean @default(false)
+  cashChangeFor Decimal? @db.Decimal(10, 2)
   paymentProofStatus OrderPaymentProofStatus @default(NOT_SUBMITTED)
   paymentProofSubmittedAt DateTime?
   paymentProofPayerName String?
@@ -750,6 +764,7 @@ model OrderItem {
   quantity     Int
   unitPrice    Decimal @db.Decimal(10, 2)
   totalPrice   Decimal @db.Decimal(10, 2)
+  notes        String?
 
   order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product Product? @relation(fields: [productId], references: [id])

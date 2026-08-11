@@ -38,9 +38,18 @@ export interface RealtimeOrderEventPayload {
 export type StorefrontFulfillmentType = "DELIVERY" | "PICKUP";
 export type StorefrontPaymentMethod =
   | "CASH"
+  | "CARD_DEBIT_ON_DELIVERY"
+  | "CARD_CREDIT_ON_DELIVERY"
   | "CARD_ON_DELIVERY"
   | "PIX_MANUAL"
   | "ONLINE";
+
+export interface StorefrontOpeningHour {
+  dayOfWeek: number;
+  closed: boolean;
+  openTime?: string;
+  closeTime?: string;
+}
 
 export interface StorefrontPublicProduct {
   id: string;
@@ -50,6 +59,7 @@ export interface StorefrontPublicProduct {
   category: string;
   imageUrl?: string | null;
   available: boolean;
+  featured?: boolean;
   availabilityLabel: string;
 }
 
@@ -57,10 +67,23 @@ export interface StorefrontPublicStore {
   name: string;
   slug: string;
   address?: string;
+  addressComplement?: string | null;
+  addressCity?: string | null;
+  addressState?: string | null;
+  addressZipCode?: string | null;
+  phone?: string | null;
   description?: string | null;
   imageUrl?: string | null;
   pickupEnabled: boolean;
   businessHoursNote?: string | null;
+  minimumOrder?: number;
+  openingHours?: StorefrontOpeningHour[];
+  availability?: {
+    openNow: boolean;
+    orderAllowed: boolean;
+    label: string;
+    message: string;
+  };
   estimatedWindow?: {
     preparationMinutes: number;
     deliveryMinMinutes: number;
@@ -72,8 +95,16 @@ export interface StorefrontPublicCatalog {
   status: "OPEN" | "UNAVAILABLE";
   message?: string;
   store: StorefrontPublicStore;
-  paymentOptions?: { methods: StorefrontPaymentMethod[] };
+  paymentOptions?: {
+    methods: StorefrontPaymentMethod[];
+    options?: Array<{
+      value: StorefrontPaymentMethod;
+      label: string;
+      orderPaymentMethod: "CASH" | "CARD_ON_DELIVERY" | "PIX_MANUAL" | "ONLINE";
+    }>;
+  };
   deliveryZones?: Array<{ district: string; name: string; fee: number }>;
   categories?: string[];
+  featuredProducts?: StorefrontPublicProduct[];
   products?: StorefrontPublicProduct[];
 }

@@ -26,26 +26,51 @@ import { StockService } from "../stock/stock.service";
 import { StoresService } from "../stores/stores.service";
 import { ClientOrderFulfillmentInput } from "../orders/dto/create-client-order.dto";
 import { PaymentGatewayService } from "../orders/payment-gateway.service";
-import { StorefrontCheckoutDto } from "./dto/storefront-checkout.dto";
+import {
+  StorefrontCheckoutDto,
+  type StorefrontPaymentMethodInput
+} from "./dto/storefront-checkout.dto";
 import { UpdateStorefrontSettingsDto } from "./dto/update-storefront-settings.dto";
+import { generateUniqueStoreSlug, normalizeStoreSlug } from "../stores/store-slug";
 
-const RESERVED_SLUGS = new Set([
-  "admin",
-  "api",
-  "app",
-  "assets",
-  "checkout",
-  "dashboard",
-  "entregador",
-  "login",
-  "loja",
-  "pedido",
-  "pedidos",
-  "platform",
-  "static",
-  "storefront",
-  "www"
-]);
+const DEFAULT_STOREFRONT_PAYMENT_METHODS: StorefrontPaymentMethodInput[] = [
+  "CASH",
+  "CARD_DEBIT_ON_DELIVERY",
+  "CARD_CREDIT_ON_DELIVERY",
+  "PIX_MANUAL"
+];
+
+const PAYMENT_METHOD_LABELS: Record<StorefrontPaymentMethodInput, string> = {
+  CASH: "Dinheiro",
+  CARD_DEBIT_ON_DELIVERY: "Cartao de debito na entrega",
+  CARD_CREDIT_ON_DELIVERY: "Cartao de credito na entrega",
+  PIX_MANUAL: "Pix manual",
+  ONLINE: "Pix automatico"
+};
+
+const WEEKDAY_LABELS = [
+  "domingo",
+  "segunda-feira",
+  "terca-feira",
+  "quarta-feira",
+  "quinta-feira",
+  "sexta-feira",
+  "sabado"
+];
+
+interface StorefrontOpeningHour {
+  dayOfWeek: number;
+  closed: boolean;
+  openTime?: string;
+  closeTime?: string;
+}
+
+interface StorefrontAvailability {
+  openNow: boolean;
+  orderAllowed: boolean;
+  label: string;
+  message: string;
+}
 
 type PublicOrderWithRelations = Prisma.OrderGetPayload<{
   include: {
@@ -73,6 +98,16 @@ export class StorefrontService {
       role
     );
 
+    if (!store.slug) {
+      const slug = await generateUniqueStoreSlug(this.prisma, store.name);
+      const updatedStore = await this.prisma.store.update({
+        where: { id: store.id },
+        data: { slug }
+      });
+
+      return this.serializeStorefrontSettings(updatedStore);
+    }
+
     return this.serializeStorefrontSettings(store);
   }
 
@@ -88,6 +123,14 @@ export class StorefrontService {
     const slug = dto.slug !== undefined ? this.normalizeSlug(dto.slug) : undefined;
     const nextMin = dto.deliveryTimeMinMinutes ?? store.deliveryTimeMinMinutes;
     const nextMax = dto.deliveryTimeMaxMinutes ?? store.deliveryTimeMaxMinutes;
+    const nextOpeningHours =
+      dto.storefrontOpeningHours !== undefined
+        ? this.normalizeOpeningHours(dto.storefrontOpeningHours)
+        : undefined;
+    const nextPaymentMethods =
+      dto.storefrontPaymentMethods !== undefined
+        ? this.normalizePaymentMethods(dto.storefrontPaymentMethods)
+        : undefined;
 
     if (nextMax < nextMin) {
       throw new BadRequestException(
@@ -103,6 +146,18 @@ export class StorefrontService {
           ...(dto.publicDescription !== undefined
             ? { publicDescription: dto.publicDescription ?? null }
             : {}),
+          ...(dto.publicName !== undefined ? { publicName: dto.publicName ?? null } : {}),
+          ...(dto.publicPhone !== undefined ? { publicPhone: dto.publicPhone ?? null } : {}),
+          ...(dto.addressComplement !== undefined
+            ? { addressComplement: dto.addressComplement ?? null }
+            : {}),
+          ...(dto.addressCity !== undefined ? { addressCity: dto.addressCity ?? null } : {}),
+          ...(dto.addressState !== undefined
+            ? { addressState: dto.addressState?.toUpperCase() ?? null }
+            : {}),
+          ...(dto.addressZipCode !== undefined
+            ? { addressZipCode: dto.addressZipCode ?? null }
+            : {}),
           ...(dto.storefrontEnabled !== undefined
             ? { storefrontEnabled: dto.storefrontEnabled }
             : {}),
@@ -111,6 +166,15 @@ export class StorefrontService {
             : {}),
           ...(dto.businessHoursNote !== undefined
             ? { businessHoursNote: dto.businessHoursNote ?? null }
+            : {}),
+          ...(dto.storefrontMinimumOrder !== undefined
+            ? { storefrontMinimumOrder: new Prisma.Decimal(dto.storefrontMinimumOrder) }
+            : {}),
+          ...(nextPaymentMethods !== undefined
+            ? { storefrontPaymentMethods: nextPaymentMethods }
+            : {}),
+          ...(nextOpeningHours !== undefined
+            ? { storefrontOpeningHours: nextOpeningHours }
             : {}),
           ...(dto.averagePreparationMinutes !== undefined
             ? { averagePreparationMinutes: dto.averagePreparationMinutes }
@@ -148,10 +212,15 @@ export class StorefrontService {
       };
     }
 
+    const availability = this.getStoreAvailability(store);
     const [products, deliveryZones] = await this.prisma.$transaction([
       this.prisma.product.findMany({
-        where: { storeId: store.id, available: true },
-        orderBy: [{ category: "asc" }, { name: "asc" }]
+        where: { storeId: store.id, available: true, showInStorefront: true },
+        orderBy: [
+          { storefrontFeatured: "desc" },
+          { category: "asc" },
+          { name: "asc" }
+        ]
       }),
       this.prisma.storeDeliveryZone.findMany({
         where: { storeId: store.id, isActive: true },
@@ -161,7 +230,7 @@ export class StorefrontService {
 
     return {
       status: "OPEN",
-      store: this.serializePublicStore(store),
+      store: this.serializePublicStore(store, availability),
       paymentOptions: this.getPaymentOptions(store),
       deliveryZones: deliveryZones.map((zone) => ({
         district: zone.district,
@@ -169,6 +238,9 @@ export class StorefrontService {
         fee: Number(zone.fee)
       })),
       categories: [...new Set(products.map((product) => product.category))],
+      featuredProducts: products
+        .filter((product) => product.storefrontFeatured)
+        .map((product) => this.serializePublicProduct(product)),
       products: products.map((product) => this.serializePublicProduct(product))
     };
   }
@@ -213,6 +285,7 @@ export class StorefrontService {
 
   async checkout(slug: string, dto: StorefrontCheckoutDto) {
     const store = await this.findAvailableStoreBySlug(slug);
+    this.ensureStoreAcceptsOrders(store);
     const duplicate = await this.findDuplicateOrder(store.id, dto.idempotencyKey);
 
     if (duplicate) {
@@ -220,7 +293,8 @@ export class StorefrontService {
     }
 
     const fulfillmentType = dto.fulfillmentType as OrderFulfillmentType;
-    const paymentMethod = this.resolvePaymentMethod(dto.paymentMethod, store);
+    const paymentSelection = this.resolvePaymentMethod(dto.paymentMethod, store);
+    const paymentMethod = paymentSelection.orderPaymentMethod;
     const payerDocument = dto.payerDocument?.trim();
 
     if (paymentMethod === OrderPaymentMethod.ONLINE && !payerDocument) {
@@ -239,7 +313,8 @@ export class StorefrontService {
       where: {
         id: { in: requestedProductIds },
         storeId: store.id,
-        available: true
+        available: true,
+        showInStorefront: true
       }
     });
 
@@ -268,6 +343,7 @@ export class StorefrontService {
         productId: product.id,
         nameSnapshot: product.name,
         quantity: item.quantity,
+        notes: item.notes,
         unitPrice,
         totalPrice
       };
@@ -277,7 +353,27 @@ export class StorefrontService {
       (total, item) => total + item.totalPrice,
       0
     );
+
+    const minimumOrder = Number(store.storefrontMinimumOrder);
+    if (subtotal < minimumOrder) {
+      throw new BadRequestException(
+        `Pedido minimo de ${minimumOrder.toLocaleString("pt-BR", {
+          style: "currency",
+          currency: "BRL"
+        })}.`
+      );
+    }
+
     const total = subtotal + deliveryFee;
+    const cashChangeFor =
+      paymentMethod === OrderPaymentMethod.CASH && dto.cashChangeFor !== undefined
+        ? dto.cashChangeFor
+        : null;
+
+    if (cashChangeFor !== null && cashChangeFor < total) {
+      throw new BadRequestException("O valor para troco precisa ser maior ou igual ao total.");
+    }
+
     const trackingToken = await this.generateTrackingToken();
     const publicOrderCode = this.generatePublicOrderCode();
 
@@ -316,12 +412,17 @@ export class StorefrontService {
             paymentMethod === OrderPaymentMethod.ONLINE
               ? OrderPaymentProvider.FUTURE_GATEWAY
               : OrderPaymentProvider.MANUAL,
+          storefrontPaymentLabel: paymentSelection.label,
+          cashChangeNeeded: cashChangeFor !== null,
+          cashChangeFor:
+            cashChangeFor === null ? null : new Prisma.Decimal(cashChangeFor),
           notes: dto.notes,
           items: {
             create: normalizedItems.map((item) => ({
               productId: item.productId,
               nameSnapshot: item.nameSnapshot,
               quantity: item.quantity,
+              notes: item.notes,
               unitPrice: new Prisma.Decimal(item.unitPrice),
               totalPrice: new Prisma.Decimal(item.totalPrice)
             }))
@@ -518,16 +619,13 @@ export class StorefrontService {
   }
 
   private resolvePaymentMethod(
-    paymentMethod: OrderPaymentMethod,
-    store: { pixEnabled: boolean }
+    paymentMethod: StorefrontPaymentMethodInput,
+    store: { pixEnabled: boolean; storefrontPaymentMethods: Prisma.JsonValue | null }
   ) {
-    if (
-      paymentMethod !== OrderPaymentMethod.CASH &&
-      paymentMethod !== OrderPaymentMethod.CARD_ON_DELIVERY &&
-      paymentMethod !== OrderPaymentMethod.PIX_MANUAL &&
-      paymentMethod !== OrderPaymentMethod.ONLINE
-    ) {
-      throw new BadRequestException("Forma de pagamento invalida.");
+    const enabledMethods = this.getEnabledStorefrontPaymentMethods(store);
+
+    if (!enabledMethods.includes(paymentMethod)) {
+      throw new BadRequestException("Forma de pagamento indisponivel para esta loja.");
     }
 
     if (paymentMethod === OrderPaymentMethod.PIX_MANUAL && !store.pixEnabled) {
@@ -538,17 +636,32 @@ export class StorefrontService {
       throw new BadRequestException("Pix automatico indisponivel no momento.");
     }
 
-    return paymentMethod;
+    return {
+      orderPaymentMethod:
+        paymentMethod === "CARD_DEBIT_ON_DELIVERY" ||
+        paymentMethod === "CARD_CREDIT_ON_DELIVERY"
+          ? OrderPaymentMethod.CARD_ON_DELIVERY
+          : paymentMethod,
+      label: PAYMENT_METHOD_LABELS[paymentMethod]
+    };
   }
 
-  private getPaymentOptions(store: { pixEnabled: boolean }) {
+  private getPaymentOptions(store: {
+    pixEnabled: boolean;
+    storefrontPaymentMethods: Prisma.JsonValue | null;
+  }) {
+    const methods = this.getEnabledStorefrontPaymentMethods(store);
+
     return {
-      methods: [
-        OrderPaymentMethod.CASH,
-        OrderPaymentMethod.CARD_ON_DELIVERY,
-        ...(store.pixEnabled ? [OrderPaymentMethod.PIX_MANUAL] : []),
-        ...(this.isAutomaticPixAvailable() ? [OrderPaymentMethod.ONLINE] : [])
-      ]
+      methods,
+      options: methods.map((method) => ({
+        value: method,
+        label: PAYMENT_METHOD_LABELS[method],
+        orderPaymentMethod:
+          method === "CARD_DEBIT_ON_DELIVERY" || method === "CARD_CREDIT_ON_DELIVERY"
+            ? OrderPaymentMethod.CARD_ON_DELIVERY
+            : method
+      }))
     };
   }
 
@@ -557,6 +670,143 @@ export class StorefrontService {
       this.paymentGatewayService.isEnabled() &&
       this.paymentGatewayService.getConfiguredProvider().toLowerCase() === "asaas"
     );
+  }
+
+  private ensureStoreAcceptsOrders(store: {
+    storefrontOpeningHours: Prisma.JsonValue | null;
+    timezone: string;
+  }) {
+    const availability = this.getStoreAvailability(store);
+
+    if (!availability.orderAllowed) {
+      throw new BadRequestException(availability.message);
+    }
+  }
+
+  private getStoreAvailability(store: {
+    storefrontOpeningHours: Prisma.JsonValue | null;
+    timezone: string;
+  }) {
+    const hours = this.parseOpeningHours(store.storefrontOpeningHours);
+
+    if (hours.length === 0) {
+      return {
+        openNow: true,
+        orderAllowed: true,
+        label: "Aberto agora",
+        message: "Loja aberta para pedidos."
+      };
+    }
+
+    const now = this.getLocalTimeParts(store.timezone);
+    const today = hours.find((hour) => hour.dayOfWeek === now.dayOfWeek);
+
+    if (
+      today &&
+      !today.closed &&
+      today.openTime &&
+      today.closeTime &&
+      now.time >= today.openTime &&
+      now.time < today.closeTime
+    ) {
+      return {
+        openNow: true,
+        orderAllowed: true,
+        label: "Aberto agora",
+        message: `Aberto hoje ate ${this.formatHour(today.closeTime)}.`
+      };
+    }
+
+    const nextOpening = this.findNextOpening(hours, now.dayOfWeek, now.time);
+    const message = nextOpening
+      ? `Loja fechada. Abre ${nextOpening.when} as ${this.formatHour(nextOpening.openTime)}.`
+      : "Loja fechada no momento.";
+
+    return {
+      openNow: false,
+      orderAllowed: false,
+      label: "Loja fechada",
+      message
+    };
+  }
+
+  private parseOpeningHours(value: Prisma.JsonValue | null): StorefrontOpeningHour[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+
+    return (value as unknown[])
+      .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
+      .map((item) => ({
+        dayOfWeek: Number(item.dayOfWeek),
+        closed: Boolean(item.closed),
+        openTime: typeof item.openTime === "string" ? item.openTime : undefined,
+        closeTime: typeof item.closeTime === "string" ? item.closeTime : undefined
+      }))
+      .filter((item) => Number.isInteger(item.dayOfWeek) && item.dayOfWeek >= 0 && item.dayOfWeek <= 6);
+  }
+
+  private getLocalTimeParts(timezone: string) {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      weekday: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false
+    }).formatToParts(new Date());
+    const weekday = parts.find((part) => part.type === "weekday")?.value ?? "Sun";
+    const hour = parts.find((part) => part.type === "hour")?.value.padStart(2, "0") ?? "00";
+    const minute = parts.find((part) => part.type === "minute")?.value.padStart(2, "0") ?? "00";
+    const weekdayMap: Record<string, number> = {
+      Sun: 0,
+      Mon: 1,
+      Tue: 2,
+      Wed: 3,
+      Thu: 4,
+      Fri: 5,
+      Sat: 6
+    };
+
+    return {
+      dayOfWeek: weekdayMap[weekday] ?? 0,
+      time: `${hour}:${minute}`
+    };
+  }
+
+  private findNextOpening(
+    hours: StorefrontOpeningHour[],
+    currentDay: number,
+    currentTime: string
+  ) {
+    for (let offset = 0; offset < 7; offset += 1) {
+      const dayOfWeek = (currentDay + offset) % 7;
+      const hour = hours.find((item) => item.dayOfWeek === dayOfWeek);
+
+      if (!hour || hour.closed || !hour.openTime) {
+        continue;
+      }
+
+      if (offset === 0 && hour.openTime <= currentTime) {
+        continue;
+      }
+
+      return {
+        when:
+          offset === 0
+            ? "hoje"
+            : offset === 1
+              ? "amanha"
+              : `na ${WEEKDAY_LABELS[dayOfWeek]}`,
+        openTime: hour.openTime
+      };
+    }
+
+    return null;
+  }
+
+  private formatHour(value: string) {
+    const [hour, minute] = value.split(":");
+    return minute === "00" ? `${hour}h` : `${hour}h${minute}`;
   }
 
   private buildCustomerAddress(dto: StorefrontCheckoutDto) {
@@ -598,13 +848,67 @@ export class StorefrontService {
   }
 
   private normalizeSlug(value: string) {
-    const slug = value.trim().toLowerCase();
+    return normalizeStoreSlug(value);
+  }
 
-    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) || RESERVED_SLUGS.has(slug)) {
-      throw new BadRequestException("Escolha um link valido para a loja.");
+  private normalizePaymentMethods(methods: StorefrontPaymentMethodInput[]) {
+    const uniqueMethods = [...new Set(methods)];
+
+    if (uniqueMethods.length === 0) {
+      throw new BadRequestException("Selecione pelo menos uma forma de pagamento.");
     }
 
-    return slug;
+    return uniqueMethods;
+  }
+
+  private getEnabledStorefrontPaymentMethods(store: {
+    pixEnabled: boolean;
+    storefrontPaymentMethods: Prisma.JsonValue | null;
+  }): StorefrontPaymentMethodInput[] {
+    const configuredMethods = Array.isArray(store.storefrontPaymentMethods)
+      ? store.storefrontPaymentMethods
+      : DEFAULT_STOREFRONT_PAYMENT_METHODS;
+    const normalized = configuredMethods.filter(
+      (method): method is StorefrontPaymentMethodInput =>
+        typeof method === "string" &&
+        method in PAYMENT_METHOD_LABELS
+    );
+
+    return [...new Set(normalized)]
+      .filter((method) => method !== "PIX_MANUAL" || store.pixEnabled)
+      .filter((method) => method !== "ONLINE" || this.isAutomaticPixAvailable());
+  }
+
+  private normalizeOpeningHours(hours: StorefrontOpeningHour[]) {
+    if (hours.length !== 7) {
+      throw new BadRequestException("Configure os horarios dos sete dias da semana.");
+    }
+
+    const seen = new Set<number>();
+    return hours
+      .map((hour) => {
+        if (seen.has(hour.dayOfWeek)) {
+          throw new BadRequestException("Existe dia da semana duplicado nos horarios.");
+        }
+
+        seen.add(hour.dayOfWeek);
+
+        if (hour.closed) {
+          return { dayOfWeek: hour.dayOfWeek, closed: true };
+        }
+
+        if (!hour.openTime || !hour.closeTime || hour.closeTime <= hour.openTime) {
+          throw new BadRequestException("Informe abertura e fechamento validos para os horarios.");
+        }
+
+        return {
+          dayOfWeek: hour.dayOfWeek,
+          closed: false,
+          openTime: hour.openTime,
+          closeTime: hour.closeTime
+        };
+      })
+      .sort((a, b) => a.dayOfWeek - b.dayOfWeek);
   }
 
   private isProductStockAvailable(
@@ -626,10 +930,21 @@ export class StorefrontService {
     id: string;
     name: string;
     slug: string | null;
+    publicName: string | null;
+    publicPhone: string | null;
+    address: string;
+    addressComplement: string | null;
+    addressCity: string | null;
+    addressState: string | null;
+    addressZipCode: string | null;
     publicDescription: string | null;
     storefrontEnabled: boolean;
     pickupEnabled: boolean;
     businessHoursNote: string | null;
+    storefrontMinimumOrder: Prisma.Decimal;
+    storefrontPaymentMethods: Prisma.JsonValue | null;
+    storefrontOpeningHours: Prisma.JsonValue | null;
+    pixEnabled: boolean;
     averagePreparationMinutes: number;
     deliveryTimeMinMinutes: number;
     deliveryTimeMaxMinutes: number;
@@ -639,10 +954,20 @@ export class StorefrontService {
       storeId: store.id,
       storeName: store.name,
       slug: store.slug,
+      publicName: store.publicName,
+      publicPhone: store.publicPhone,
+      address: store.address,
+      addressComplement: store.addressComplement,
+      addressCity: store.addressCity,
+      addressState: store.addressState,
+      addressZipCode: store.addressZipCode,
       publicDescription: store.publicDescription,
       storefrontEnabled: store.storefrontEnabled,
       pickupEnabled: store.pickupEnabled,
       businessHoursNote: store.businessHoursNote,
+      storefrontMinimumOrder: Number(store.storefrontMinimumOrder),
+      storefrontPaymentMethods: this.getEnabledStorefrontPaymentMethods(store),
+      storefrontOpeningHours: this.parseOpeningHours(store.storefrontOpeningHours),
       averagePreparationMinutes: store.averagePreparationMinutes,
       deliveryTimeMinMinutes: store.deliveryTimeMinMinutes,
       deliveryTimeMaxMinutes: store.deliveryTimeMaxMinutes,
@@ -653,25 +978,41 @@ export class StorefrontService {
 
   private serializePublicStore(store: {
     name: string;
+    publicName: string | null;
+    publicPhone: string | null;
     slug: string | null;
     address: string;
+    addressComplement: string | null;
+    addressCity: string | null;
+    addressState: string | null;
+    addressZipCode: string | null;
     publicDescription: string | null;
     pickupEnabled: boolean;
     businessHoursNote: string | null;
+    storefrontMinimumOrder: Prisma.Decimal;
+    storefrontOpeningHours: Prisma.JsonValue | null;
     averagePreparationMinutes: number;
     deliveryTimeMinMinutes: number;
     deliveryTimeMaxMinutes: number;
     profileImageKey: string | null;
     id: string;
-  }) {
+  }, availability: StorefrontAvailability) {
     return {
-      name: store.name,
+      name: store.publicName ?? store.name,
       slug: store.slug,
       address: store.address,
+      addressComplement: store.addressComplement,
+      addressCity: store.addressCity,
+      addressState: store.addressState,
+      addressZipCode: store.addressZipCode,
+      phone: store.publicPhone,
       description: store.publicDescription,
       imageUrl: store.profileImageKey ? `/media/stores/${store.id}/image` : null,
       pickupEnabled: store.pickupEnabled,
       businessHoursNote: store.businessHoursNote,
+      minimumOrder: Number(store.storefrontMinimumOrder),
+      openingHours: this.parseOpeningHours(store.storefrontOpeningHours),
+      availability,
       estimatedWindow: this.buildEstimateWindow(store)
     };
   }
@@ -699,6 +1040,8 @@ export class StorefrontService {
     stockControlEnabled: boolean;
     stockQuantity: Prisma.Decimal;
     allowNegativeStock: boolean;
+    showInStorefront: boolean;
+    storefrontFeatured: boolean;
   }) {
     const stockAvailable =
       !product.stockControlEnabled ||
@@ -715,6 +1058,7 @@ export class StorefrontService {
         ? `/media/products/${product.id}/image`
         : product.imageUrl,
       available: stockAvailable,
+      featured: product.storefrontFeatured,
       availabilityLabel: stockAvailable ? "Disponivel" : "Indisponivel"
     };
   }
@@ -738,6 +1082,8 @@ export class StorefrontService {
       status: order.status,
       statusLabel: this.serializeStatusLabel(order),
       paymentMethod: order.paymentMethod,
+      paymentMethodLabel:
+        order.storefrontPaymentLabel ?? this.serializeLegacyPaymentMethodLabel(order.paymentMethod),
       paymentStatus: order.paymentStatus,
       fulfillmentType: order.fulfillmentType,
       store: {
@@ -755,6 +1101,8 @@ export class StorefrontService {
       subtotal: Number(order.subtotal),
       deliveryFee: Number(order.deliveryFee),
       total: Number(order.total),
+      cashChangeNeeded: order.cashChangeNeeded,
+      cashChangeFor: order.cashChangeFor ? Number(order.cashChangeFor) : null,
       notes: order.notes,
       estimatedWindow: this.buildEstimateWindow(order.store),
       pixPaymentInstructions: this.buildPixPaymentInstructions(order),
@@ -772,6 +1120,7 @@ export class StorefrontService {
       items: order.items.map((item) => ({
         name: item.nameSnapshot,
         quantity: item.quantity,
+        notes: item.notes,
         unitPrice: Number(item.unitPrice),
         totalPrice: Number(item.totalPrice)
       })),
@@ -833,6 +1182,13 @@ export class StorefrontService {
     if (order.status === OrderStatus.OUT_FOR_DELIVERY) return "Saiu para entrega";
     if (order.status === OrderStatus.DELIVERED) return "Entregue";
     return "Cancelado";
+  }
+
+  private serializeLegacyPaymentMethodLabel(method: OrderPaymentMethod) {
+    if (method === OrderPaymentMethod.CASH) return "Dinheiro";
+    if (method === OrderPaymentMethod.CARD_ON_DELIVERY) return "Cartao na entrega";
+    if (method === OrderPaymentMethod.PIX_MANUAL) return "Pix manual";
+    return "Pix automatico";
   }
 
   private serializeEventLabel(type: OrderEventType) {

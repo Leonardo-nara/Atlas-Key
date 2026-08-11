@@ -342,10 +342,15 @@ jobs:
             adb exec-out screencap -p > "$DIAGNOSTICS_DIR/after-system-dialog-dismiss.png" || true
 
             set +e
-            timeout --signal=TERM --kill-after=30s 30m "$MAESTRO_BIN" test apps/mobile/.maestro/courier/generated
+            timeout --signal=TERM --kill-after=30s 30m "$MAESTRO_BIN" test apps/mobile/.maestro/courier/generated > "$DIAGNOSTICS_DIR/maestro-output.log" 2>&1
             MAESTRO_EXIT=$?
             echo "$MAESTRO_EXIT" > "$DIAGNOSTICS_DIR/maestro-exit-code.txt"
+            adb exec-out screencap -p > "$DIAGNOSTICS_DIR/after-maestro.png" || true
+            adb shell uiautomator dump /sdcard/window-after-maestro.xml || true
+            adb pull /sdcard/window-after-maestro.xml "$DIAGNOSTICS_DIR/window-after-maestro.xml" || true
             set -e
+
+            cat "$DIAGNOSTICS_DIR/maestro-output.log"
 
             if [ "$MAESTRO_EXIT" -eq 0 ]; then
               echo "ANDROID E2E FINAL: APROVADO"

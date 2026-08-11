@@ -83,8 +83,23 @@ export function LoginPage() {
 
   return (
     <main className="login-screen">
-      <div className="login-orb login-orb-one" aria-hidden="true" />
-      <div className="login-orb login-orb-two" aria-hidden="true" />
+      <div className="login-cityscape" aria-hidden="true">
+        <span className="city-block city-block-a" />
+        <span className="city-block city-block-b" />
+        <span className="city-block city-block-c" />
+        <span className="city-road" />
+      </div>
+      <div className="login-rider" aria-hidden="true">
+        <span className="rider-head" />
+        <span className="rider-body" />
+        <span className="rider-bag" />
+      </div>
+      <div className="login-bike" aria-hidden="true">
+        <span className="bike-wheel bike-wheel-left" />
+        <span className="bike-wheel bike-wheel-right" />
+        <span className="bike-frame" />
+        <span className="bike-light" />
+      </div>
       <section className="login-card">
         <div className="login-card-copy">
           <div className="login-brand-lockup">
@@ -97,7 +112,8 @@ export function LoginPage() {
           <div className="login-copy-block">
             <p className="section-kicker">Painel da empresa</p>
             <h1 className="login-title">
-              Operacao profissional para delivery, PDV e estoque.
+              Operacao profissional para{" "}
+              <span>delivery, PDV e estoque.</span>
             </h1>
             <p className="muted-text">
               Entre com sua conta de administrador ou crie a empresa direto no
@@ -107,13 +123,21 @@ export function LoginPage() {
 
           <div className="login-benefit-grid">
             <article className="info-card">
+              <span className="login-info-icon" aria-hidden="true">
+                <span className="clock-hand" />
+              </span>
               <span className="info-label">Operacao</span>
-              <strong>Tempo real e historico</strong>
+              <strong>Tempo real e historico.</strong>
               <p>Pedidos, cancelamentos e atualizacoes com contexto claro.</p>
             </article>
             <article className="info-card">
+              <span className="login-info-icon login-info-chart" aria-hidden="true">
+                <span />
+                <span />
+                <span />
+              </span>
               <span className="info-label">Implantacao</span>
-              <strong>Comeco rapido</strong>
+              <strong>Conexao rapida.</strong>
               <p>Crie a conta da empresa em poucos minutos e complete o restante depois.</p>
             </article>
           </div>
@@ -257,21 +281,27 @@ export function LoginPage() {
             ) : null}
 
             {loginError || localError ? (
-              <div className="feedback feedback-error">{loginError ?? localError}</div>
+              <div className="feedback feedback-error" role="alert">
+                <span className="login-error-icon" aria-hidden="true">!</span>
+                <span>{loginError ?? localError}</span>
+              </div>
             ) : null}
 
             <button
-              className="primary-button"
+              className="primary-button login-submit-button"
               disabled={isLoggingIn || isRegistering}
               type="submit"
             >
-              {mode === "login"
+              <span>
+                {mode === "login"
                 ? isLoggingIn
                   ? "Entrando..."
                   : "Entrar"
                 : isRegistering
                   ? "Criando conta..."
                   : "Criar conta e entrar"}
+              </span>
+              <span className="login-submit-arrow" aria-hidden="true">-&gt;</span>
             </button>
           </form>
         </div>

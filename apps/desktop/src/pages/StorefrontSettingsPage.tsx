@@ -17,7 +17,10 @@ import type {
 } from "../types/api";
 
 const DEFAULT_STORE_URL_BASE =
-  import.meta.env.VITE_STOREFRONT_URL ?? "http://localhost:5174";
+  import.meta.env.VITE_STOREFRONT_URL ??
+    (import.meta.env.DEV
+      ? "http://localhost:5174"
+      : "https://pedido.mototake.com.br");
 
 const DAYS = [
   "Domingo",

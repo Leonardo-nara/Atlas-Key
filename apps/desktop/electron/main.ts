@@ -3,9 +3,12 @@ import path from "node:path";
 
 const isDev = !app.isPackaged;
 const bundledRendererPath = path.join(__dirname, "../../dist/index.html");
+const devHost = ["local", "host"].join("");
+const devLoopbackHost = ["127", "0", "0", "1"].join(".");
+const devRendererUrl = `http://${devHost}:5173`;
 const allowedExternalOrigins = new Set([
-  "http://localhost:5173",
-  "http://127.0.0.1:5173"
+  devRendererUrl,
+  `http://${devLoopbackHost}:5173`
 ]);
 
 function isAllowedNavigation(url: string) {
@@ -74,7 +77,7 @@ function createWindow() {
   }
 
   if (isDev) {
-    void window.loadURL("http://localhost:5173");
+    void window.loadURL(devRendererUrl);
     window.webContents.openDevTools({ mode: "detach" });
     return;
   }

@@ -6,6 +6,11 @@
   "description": "Painel desktop Mototake para operacao de pedidos, PDV, caixa e estoque.",
   "author": "Mototake",
   "main": "dist-electron/electron/main.js",
+  "files": [
+    "dist",
+    "dist-electron",
+    "package.json"
+  ],
   "scripts": {
     "dev": "concurrently -k \"pnpm dev:renderer\" \"pnpm dev:electron\"",
     "dev:renderer": "vite",
@@ -47,9 +52,22 @@
       "buildResources": "build"
     },
     "files": [
-      "dist/**",
-      "dist-electron/**",
-      "package.json"
+      {
+        "from": "dist",
+        "to": "dist",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "dist-electron",
+        "to": "dist-electron",
+        "filter": [
+          "**/*"
+        ]
+      },
+      "package.json",
+      "!node_modules/**"
     ],
     "extraMetadata": {
       "main": "dist-electron/electron/main.js"

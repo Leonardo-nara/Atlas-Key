@@ -1,6 +1,6 @@
 {
   "name": "@deliveries/desktop",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "productName": "Mototake",
   "description": "Painel desktop Mototake para operacao de pedidos, PDV, caixa e estoque.",

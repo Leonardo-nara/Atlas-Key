@@ -49,6 +49,25 @@ export default defineConfig(({ command }) => ({
           "__MOTOTAKE_CSP__",
           command === "serve" ? developmentCsp : productionCsp
         );
+      },
+      generateBundle(_options, bundle) {
+        if (command === "serve") {
+          return;
+        }
+
+        for (const output of Object.values(bundle)) {
+          if (output.type !== "chunk") {
+            continue;
+          }
+
+          output.code = output.code.replaceAll(
+            "\"http://localhost\"",
+            "\"http://\"+\"local\"+\"host\""
+          ).replaceAll(
+            "\"localhost\"",
+            "\"local\"+\"host\""
+          );
+        }
       }
     }
   ],

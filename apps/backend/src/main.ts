@@ -25,6 +25,7 @@ async function bootstrap() {
   httpServer.disable("x-powered-by");
   app.use(
     helmet({
+      crossOriginResourcePolicy: { policy: "cross-origin" },
       crossOriginEmbedderPolicy: false,
       contentSecurityPolicy: false
     })

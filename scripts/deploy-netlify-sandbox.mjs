@@ -8,6 +8,7 @@ const allowedSites = {
     name: "mototake-demo-cliente",
     id: "95e9d819-f336-4eda-aab6-82ad11d1931e",
     appDir: "apps/storefront",
+    netlifyFilter: "@deliveries/storefront",
     buildCommand: ["pnpm", ["--filter", "@deliveries/storefront", "build"]],
     publishDir: "apps/storefront/dist",
     env: {
@@ -18,6 +19,7 @@ const allowedSites = {
     name: "mototake-painel-sandbox",
     id: "be7b5676-72b2-4b2d-906b-2b70e8dbb0a4",
     appDir: "apps/desktop",
+    netlifyFilter: "@deliveries/desktop",
     buildCommand: ["pnpm", ["--filter", "@deliveries/desktop", "build:renderer"]],
     publishDir: "apps/desktop/dist",
     env: {
@@ -67,6 +69,8 @@ if (!existsSync(redirectsPath)) {
 run("npx", [
   "netlify",
   "deploy",
+  "--filter",
+  site.netlifyFilter,
   "--prod",
   "--no-build",
   "--dir",
@@ -78,15 +82,35 @@ run("npx", [
 ], { ...process.env, NODE_OPTIONS: mergeNodeOptions(process.env.NODE_OPTIONS) });
 
 function run(command, commandArgs, env) {
-  const result = spawnSync(command, commandArgs, {
+  const isWindows = process.platform === "win32";
+  const result = isWindows
+    ? spawnSync([command, ...commandArgs].map(quoteWindowsArg).join(" "), {
+      cwd: process.cwd(),
+      env,
+      shell: true,
+      stdio: "inherit"
+    })
+    : spawnSync(command, commandArgs, {
     cwd: process.cwd(),
     env,
-    shell: process.platform === "win32",
+    shell: false,
     stdio: "inherit"
   });
+  if (result.error) {
+    console.error(`Falha ao executar ${command}: ${result.error.message}`);
+    process.exit(1);
+  }
   if (result.status !== 0) {
     process.exit(result.status ?? 1);
   }
+}
+
+function quoteWindowsArg(value) {
+  if (!/[\s"]/u.test(value)) {
+    return value;
+  }
+
+  return `"${value.replaceAll("\"", "\\\"")}"`;
 }
 
 function mergeNodeOptions(current) {

@@ -193,17 +193,7 @@ export function ProductsPage() {
             products.map((product) => (
               <div className="table-row" key={product.id}>
                 <div className="product-table-name">
-                  {product.imageUrl ? (
-                    <img
-                      alt={`Imagem de ${product.name}`}
-                      className="product-table-image"
-                      src={toMediaUrl(product.imageUrl) ?? undefined}
-                    />
-                  ) : (
-                    <div className="product-table-placeholder">
-                      {product.name.slice(0, 1).toUpperCase()}
-                    </div>
-                  )}
+                  <ProductThumbnail product={product} />
                   <div>
                   <strong>{product.name}</strong>
                   <p>{product.description || "Sem descrição"}</p>
@@ -250,5 +240,27 @@ export function ProductsPage() {
         />
       ) : null}
     </section>
+  );
+}
+
+function ProductThumbnail({ product }: { product: Product }) {
+  const [imageLoadFailed, setImageLoadFailed] = useState(false);
+  const imageUrl = product.imageUrl ? toMediaUrl(product.imageUrl) : null;
+
+  if (imageUrl && !imageLoadFailed) {
+    return (
+      <img
+        alt={`Imagem de ${product.name}`}
+        className="product-table-image"
+        onError={() => setImageLoadFailed(true)}
+        src={imageUrl}
+      />
+    );
+  }
+
+  return (
+    <div className="product-table-placeholder">
+      {product.name.slice(0, 1).toUpperCase()}
+    </div>
   );
 }

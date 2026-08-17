@@ -54,6 +54,7 @@ export function AppLayout() {
   const { user, store, logout, logoutAll, uploadStoreImage, removeStoreImage } =
     useAuth();
   const [storeImageError, setStoreImageError] = useState<string | null>(null);
+  const [storeImageLoadFailed, setStoreImageLoadFailed] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true";
   });
@@ -79,6 +80,10 @@ export function AppLayout() {
   useEffect(() => {
     window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(sidebarCollapsed));
   }, [sidebarCollapsed]);
+
+  useEffect(() => {
+    setStoreImageLoadFailed(false);
+  }, [store?.imageUrl]);
 
   async function handleStoreImageChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -136,9 +141,10 @@ export function AppLayout() {
             <div className="store-avatar">
               {isPlatformAdmin ? (
                 <span>A</span>
-              ) : store?.imageUrl ? (
+              ) : store?.imageUrl && !storeImageLoadFailed ? (
                 <img
                   alt={`Imagem de ${store.name}`}
+                  onError={() => setStoreImageLoadFailed(true)}
                   src={toMediaUrl(store.imageUrl) ?? undefined}
                 />
               ) : (

@@ -4433,6 +4433,40 @@ a.primary-button {
   }
 }
 
+@media (max-height: 920px) and (min-width: 1181px) {
+  .sidebar-footer {
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .sidebar-user-card {
+    gap: 8px;
+  }
+
+  .sidebar-user-row {
+    gap: 10px;
+    grid-template-columns: 36px minmax(0, 1fr);
+  }
+
+  .sidebar-session-copy span {
+    display: none;
+  }
+
+  .sidebar-session-avatar {
+    border-radius: 12px;
+    font-size: 0.92rem;
+  }
+
+  .sidebar-actions {
+    gap: 8px;
+  }
+
+  .sidebar-actions .ghost-button {
+    min-height: 38px;
+    padding-inline: 10px;
+  }
+}
+
 @media (max-height: 840px) and (min-width: 1181px) {
   .sidebar {
     gap: 11px;

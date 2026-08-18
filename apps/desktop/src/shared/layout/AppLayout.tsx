@@ -232,10 +232,15 @@ export function AppLayout() {
         <div className="sidebar-footer">
           <div className="sidebar-user-card">
             <span className="user-chip">Sessao ativa</span>
-            <p>
-              <strong>{user?.name}</strong>
-            </p>
-            <p>{user?.email}</p>
+            <div className="sidebar-user-row">
+              <span className="sidebar-session-avatar">
+                {user?.name?.slice(0, 1).toUpperCase() ?? "U"}
+              </span>
+              <div className="sidebar-session-copy">
+                <strong>{user?.name}</strong>
+                <span>{user?.email}</span>
+              </div>
+            </div>
           </div>
 
           <div className="sidebar-actions">

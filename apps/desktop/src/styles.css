@@ -3537,7 +3537,7 @@ body {
 
 .desktop-shell {
   min-height: 100vh;
-  grid-template-columns: 266px minmax(0, 1fr);
+  grid-template-columns: 286px minmax(0, 1fr);
   gap: 0;
   background:
     radial-gradient(circle at 7% 2%, rgba(56, 189, 248, 0.08), transparent 24%),
@@ -3545,13 +3545,13 @@ body {
 }
 
 .desktop-shell-collapsed {
-  grid-template-columns: 92px minmax(0, 1fr);
+  grid-template-columns: 98px minmax(0, 1fr);
 }
 
 .sidebar {
   height: 100vh;
-  padding: 18px 14px;
-  gap: 14px;
+  padding: 22px 18px;
+  gap: 16px;
   border-right: 0;
   background: transparent;
 }
@@ -3569,52 +3569,58 @@ body {
 }
 
 .sidebar-brand {
-  padding: 16px;
-  border-radius: 16px;
+  padding: 18px;
+  border-radius: 18px;
 }
 
 .brand-row {
-  min-height: 48px;
+  min-height: 52px;
+  padding-bottom: 2px;
 }
 
 .brand-mark {
-  width: 42px;
-  height: 42px;
+  width: 46px;
+  height: 46px;
   color: #06223b;
-  border-radius: 13px;
+  border-radius: 15px;
   background: linear-gradient(135deg, #67e8f9 0%, #38bdf8 42%, #2563eb 100%);
   box-shadow: 0 12px 28px rgba(56, 189, 248, 0.22);
 }
 
 .brand-copy strong {
-  font-size: 1.02rem;
+  font-size: 1.08rem;
 }
 
 .sidebar-collapse-button {
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   border-color: rgba(56, 189, 248, 0.16);
   background: rgba(7, 24, 44, 0.82);
   color: var(--rp-text);
 }
 
 .store-profile-card {
-  gap: 12px;
-  margin-top: 18px;
+  gap: 14px;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(56, 189, 248, 0.1);
 }
 
 .store-avatar {
-  width: 64px;
-  height: 64px;
-  border-radius: 15px;
+  width: 70px;
+  height: 70px;
+  border-radius: 18px;
   color: var(--rp-text);
   background: linear-gradient(145deg, #071c34, #0d2b4c);
   border-color: rgba(29, 69, 111, 0.72);
-  font-size: 1.8rem;
+  font-size: 1.92rem;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 18px 34px rgba(0, 0, 0, 0.18);
 }
 
 .store-profile-copy {
-  gap: 8px;
+  gap: 9px;
 }
 
 .store-profile-copy h1 {
@@ -3624,7 +3630,8 @@ body {
 
 .store-profile-copy p {
   color: var(--rp-text-muted);
-  font-size: 0.88rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
 }
 
 .store-profile-copy .status-badge {
@@ -3635,7 +3642,7 @@ body {
 
 .store-image-actions {
   gap: 10px;
-  margin-top: 4px;
+  margin-top: 8px;
 }
 
 .sidebar-upload-button,
@@ -3649,8 +3656,8 @@ body {
 }
 
 .sidebar-section {
-  padding: 18px;
-  border-radius: 14px;
+  padding: 18px 20px;
+  border-radius: 16px;
 }
 
 .sidebar-section .user-chip {
@@ -3663,22 +3670,25 @@ body {
 .sidebar-section p {
   margin-top: 12px;
   color: var(--rp-text-muted);
-  line-height: 1.55;
+  line-height: 1.58;
 }
 
 .sidebar-nav {
   display: grid;
-  gap: 8px;
-  padding: 12px 8px;
-  border-radius: 14px;
-  overflow: hidden;
+  gap: 7px;
+  min-height: 0;
+  padding: 14px 10px;
+  border-radius: 16px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(56, 189, 248, 0.28) transparent;
 }
 
 .nav-item {
-  min-height: 48px;
-  gap: 13px;
-  padding: 12px 14px;
-  border-radius: 8px;
+  min-height: 50px;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: 12px;
   color: #d7e5f4;
   font-size: 0.96rem;
   font-weight: 800;
@@ -3701,8 +3711,9 @@ body {
 }
 
 .nav-icon {
-  width: 22px;
-  height: 22px;
+  width: 23px;
+  height: 23px;
+  flex: 0 0 23px;
   color: #38bdf8;
 }
 
@@ -3722,13 +3733,76 @@ body {
 }
 
 .sidebar-footer {
-  border-radius: 14px;
+  border-radius: 16px;
   padding: 16px;
+  gap: 13px;
 }
 
 .sidebar-footer .user-chip {
   color: var(--rp-success);
   background: rgba(52, 211, 153, 0.12);
+}
+
+.sidebar-user-card {
+  display: grid;
+  gap: 12px;
+}
+
+.sidebar-user-row {
+  align-items: center;
+  display: grid;
+  gap: 11px;
+  grid-template-columns: 38px minmax(0, 1fr);
+}
+
+.sidebar-session-avatar {
+  align-items: center;
+  aspect-ratio: 1;
+  border: 1px solid rgba(56, 189, 248, 0.22);
+  border-radius: 14px;
+  color: #f5faff;
+  display: inline-flex;
+  font-size: 0.95rem;
+  font-weight: 900;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.22), rgba(37, 99, 235, 0.2));
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.18);
+}
+
+.sidebar-session-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.sidebar-session-copy strong,
+.sidebar-session-copy span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-session-copy strong {
+  color: var(--rp-text);
+  font-size: 0.9rem;
+  line-height: 1.2;
+}
+
+.sidebar-session-copy span {
+  color: var(--rp-text-soft);
+  font-size: 0.77rem;
+}
+
+.sidebar-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.sidebar-actions .ghost-button {
+  min-height: 38px;
+  border-radius: 12px;
+  padding-inline: 10px;
 }
 
 .content-area {
@@ -4286,7 +4360,7 @@ a.primary-button {
 
 @media (max-width: 1420px) {
   .desktop-shell {
-    grid-template-columns: 250px minmax(0, 1fr);
+    grid-template-columns: 270px minmax(0, 1fr);
   }
 
   .content-area {
@@ -4309,14 +4383,14 @@ a.primary-button {
 
 @media (max-height: 840px) and (min-width: 1181px) {
   .sidebar {
-    gap: 10px;
-    padding: 14px 12px;
+    gap: 11px;
+    padding: 15px 13px;
   }
 
   .sidebar-brand,
   .sidebar-section,
   .sidebar-footer {
-    padding: 12px;
+    padding: 13px;
   }
 
   .brand-row {
@@ -4329,8 +4403,9 @@ a.primary-button {
   }
 
   .store-profile-card {
-    gap: 8px;
-    margin-top: 10px;
+    gap: 9px;
+    margin-top: 11px;
+    padding-top: 11px;
   }
 
   .store-avatar {
@@ -4372,7 +4447,7 @@ a.primary-button {
 
   .sidebar-nav {
     gap: 5px;
-    padding: 8px 6px;
+    padding: 9px 7px;
   }
 
   .nav-item {
@@ -4388,12 +4463,26 @@ a.primary-button {
 
   .sidebar-footer {
     display: grid;
-    gap: 7px;
-    padding: 8px;
+    gap: 8px;
+    padding: 10px;
   }
 
   .sidebar-user-card {
+    gap: 7px;
+  }
+
+  .sidebar-user-row {
+    gap: 8px;
+    grid-template-columns: 32px minmax(0, 1fr);
+  }
+
+  .sidebar-session-copy span {
     display: none;
+  }
+
+  .sidebar-session-avatar {
+    border-radius: 11px;
+    font-size: 0.84rem;
   }
 
   .sidebar-actions {

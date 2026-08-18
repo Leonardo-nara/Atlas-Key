@@ -3549,17 +3549,25 @@ body {
 }
 
 .sidebar {
+  box-sizing: border-box;
+  flex-shrink: 0;
   height: 100vh;
+  max-width: 320px;
+  min-width: 320px;
   padding: 26px 24px;
+  width: 320px;
   gap: 20px;
   border-right: 0;
   background: transparent;
+  overflow: hidden;
 }
 
 .sidebar-brand,
 .sidebar-section,
 .sidebar-nav,
 .sidebar-footer {
+  box-sizing: border-box;
+  width: 100%;
   border: 1px solid rgba(29, 69, 111, 0.72);
   background:
     linear-gradient(145deg, rgba(12, 41, 72, 0.58), rgba(4, 16, 31, 0.7)),
@@ -3569,6 +3577,7 @@ body {
 }
 
 .sidebar-brand {
+  flex-shrink: 0;
   padding: 22px;
   border-radius: 22px;
 }
@@ -3601,9 +3610,12 @@ body {
 }
 
 .store-profile-card {
-  gap: 16px;
+  align-items: center;
+  display: grid;
+  gap: 16px 18px;
+  grid-template-columns: 84px minmax(0, 1fr);
   margin-top: 22px;
-  padding: 22px 4px 4px;
+  padding: 22px 0 4px;
   border-top: 1px solid rgba(56, 189, 248, 0.14);
 }
 
@@ -3627,6 +3639,7 @@ body {
 .store-profile-copy h1 {
   font-size: 1.16rem;
   line-height: 1.18;
+  overflow-wrap: anywhere;
 }
 
 .store-profile-copy p {
@@ -3657,6 +3670,7 @@ body {
 }
 
 .sidebar-section {
+  flex-shrink: 0;
   padding: 22px;
   border-radius: 20px;
 }
@@ -3676,6 +3690,8 @@ body {
 
 .sidebar-nav {
   display: grid;
+  align-content: start;
+  flex: 1 1 auto;
   gap: 9px;
   min-height: 0;
   padding: 18px 14px;
@@ -3759,6 +3775,7 @@ body {
   padding: 18px;
   gap: 16px;
   border-top-color: rgba(52, 211, 153, 0.22);
+  flex-shrink: 0;
 }
 
 .sidebar-footer .user-chip {
@@ -4383,7 +4400,7 @@ a.primary-button {
 
 @media (max-width: 1420px) {
   .desktop-shell {
-    grid-template-columns: 300px minmax(0, 1fr);
+    grid-template-columns: 320px minmax(0, 1fr);
   }
 
   .content-area {
@@ -4427,6 +4444,7 @@ a.primary-button {
 
   .store-profile-card {
     gap: 9px;
+    grid-template-columns: 50px minmax(0, 1fr);
     margin-top: 11px;
     padding-top: 11px;
   }

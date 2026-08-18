@@ -2,12 +2,49 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 const productionApiUrl = "https://rotapronta-api-production.up.railway.app";
+const configuredApiUrl = process.env.VITE_API_URL;
+const configuredSocketUrl = process.env.VITE_SOCKET_URL;
+
+function originFrom(value: string | undefined) {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    return new URL(value).origin;
+  } catch {
+    return null;
+  }
+}
+
+function socketOriginFrom(value: string | undefined) {
+  const origin = originFrom(value);
+
+  if (!origin) {
+    return null;
+  }
+
+  return origin.replace(/^http:/, "ws:").replace(/^https:/, "wss:");
+}
+
+const configuredApiOrigin = originFrom(configuredApiUrl);
+const configuredSocketOrigin = socketOriginFrom(configuredSocketUrl ?? configuredApiUrl);
+const productionConnectOrigins = Array.from(
+  new Set(
+    [
+      productionApiUrl,
+      "wss://rotapronta-api-production.up.railway.app",
+      configuredApiOrigin,
+      configuredSocketOrigin
+    ].filter(Boolean)
+  )
+);
 const productionCsp = [
   "default-src 'self'",
   "script-src 'self'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: https:",
-  `connect-src 'self' ${productionApiUrl} wss://rotapronta-api-production.up.railway.app`,
+  `connect-src 'self' ${productionConnectOrigins.join(" ")}`,
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",

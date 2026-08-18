@@ -140,6 +140,7 @@ export function ProductsPage() {
       <PageHeader
         title="Produtos"
         description="Cadastre, edite e mantenha o catálogo da loja sincronizado com o backend."
+        visual="products"
         action={
           <button
             className="primary-button"
@@ -186,6 +187,7 @@ export function ProductsPage() {
           </div>
           {products.length === 0 ? (
             <EmptyState
+              icon="empty"
               title="Nenhum produto cadastrado ainda."
               description="Crie alguns itens para começar a receber pedidos."
             />
@@ -194,11 +196,20 @@ export function ProductsPage() {
               <div className="table-row" key={product.id}>
                 <div className="product-table-name">
                   {product.imageUrl ? (
-                    <img
-                      alt={`Imagem de ${product.name}`}
-                      className="product-table-image"
-                      src={toMediaUrl(product.imageUrl) ?? undefined}
-                    />
+                    <>
+                      <img
+                        alt={`Imagem de ${product.name}`}
+                        className="product-table-image"
+                        onError={(event) => {
+                          event.currentTarget.style.display = "none";
+                          event.currentTarget.nextElementSibling?.removeAttribute("hidden");
+                        }}
+                        src={toMediaUrl(product.imageUrl) ?? undefined}
+                      />
+                      <div className="product-table-placeholder" hidden>
+                        {product.name.slice(0, 1).toUpperCase()}
+                      </div>
+                    </>
                   ) : (
                     <div className="product-table-placeholder">
                       {product.name.slice(0, 1).toUpperCase()}

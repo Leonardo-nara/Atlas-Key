@@ -101,7 +101,11 @@ export function StockPage() {
 
   return (
     <section className="page-section">
-      <PageHeader title="Estoque" description="Acompanhe saldos e registre entradas ou ajustes com historico completo." />
+      <PageHeader
+        title="Estoque"
+        description="Acompanhe saldos e registre entradas ou ajustes com historico completo."
+        visual="stock"
+      />
       {summary ? (
         <div className="dashboard-metric-grid stock-summary-grid">
           <MetricCard icon="C" label="Controlados" value={summary.controlledProducts} />
@@ -121,7 +125,7 @@ export function StockPage() {
         <div className="stock-grid">
           <div className="panel stock-product-list">
             {products.length === 0 ? (
-              <EmptyState title="Nenhum produto encontrado para este filtro." />
+              <EmptyState icon="box" title="Nenhum produto encontrado para este filtro." />
             ) : products.map((product) => (
               <button className={`stock-product-row ${selected?.id === product.id ? "stock-product-row-active" : ""}`} key={product.id} onClick={() => void selectProduct(product)} type="button">
                 <span><strong>{product.name}</strong><small>{product.stockControlEnabled ? "Controle ativo" : "Sem controle"}</small></span>
@@ -131,7 +135,7 @@ export function StockPage() {
           </div>
           <div className="panel stock-detail">
             {!selected ? (
-              <EmptyState title="Selecione um produto para movimentar e consultar o historico." />
+              <EmptyState icon="history" title="Selecione um produto para movimentar e consultar o historico." />
             ) : !selected.stockControlEnabled ? (
               <EmptyState title="Ative o controle de estoque na edicao do produto." />
             ) : (

@@ -84,6 +84,7 @@ export function StoreReadinessPage() {
       <PageHeader
         title="Configuracao inicial"
         description="Checklist operacional para preparar a loja antes do piloto com clientes."
+        visual="setup"
         action={
           <button className="secondary-button" onClick={() => void loadReadiness()} type="button">
             Atualizar

@@ -8,6 +8,7 @@ const allowedSites = {
     name: "mototake-demo-cliente",
     id: "95e9d819-f336-4eda-aab6-82ad11d1931e",
     appDir: "apps/storefront",
+    filter: "@deliveries/storefront",
     buildCommand: ["pnpm", ["--filter", "@deliveries/storefront", "build"]],
     publishDir: "apps/storefront/dist",
     env: {
@@ -18,6 +19,7 @@ const allowedSites = {
     name: "mototake-painel-sandbox",
     id: "be7b5676-72b2-4b2d-906b-2b70e8dbb0a4",
     appDir: "apps/desktop",
+    filter: "@deliveries/desktop",
     buildCommand: ["pnpm", ["--filter", "@deliveries/desktop", "build:renderer"]],
     publishDir: "apps/desktop/dist",
     env: {
@@ -67,10 +69,12 @@ if (!existsSync(redirectsPath)) {
 run("npx", [
   "netlify",
   "deploy",
+  "--filter",
+  site.filter,
   "--prod",
   "--no-build",
   "--dir",
-  path.resolve(site.publishDir),
+  site.publishDir,
   "--site",
   site.id,
   "--message",

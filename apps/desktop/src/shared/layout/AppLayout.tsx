@@ -54,6 +54,7 @@ export function AppLayout() {
   const { user, store, logout, logoutAll, uploadStoreImage, removeStoreImage } =
     useAuth();
   const [storeImageError, setStoreImageError] = useState<string | null>(null);
+  const [storeImageFailed, setStoreImageFailed] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true";
   });
@@ -79,6 +80,10 @@ export function AppLayout() {
   useEffect(() => {
     window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(sidebarCollapsed));
   }, [sidebarCollapsed]);
+
+  useEffect(() => {
+    setStoreImageFailed(false);
+  }, [store?.imageUrl]);
 
   async function handleStoreImageChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -136,9 +141,10 @@ export function AppLayout() {
             <div className="store-avatar">
               {isPlatformAdmin ? (
                 <span>A</span>
-              ) : store?.imageUrl ? (
+              ) : store?.imageUrl && !storeImageFailed ? (
                 <img
                   alt={`Imagem de ${store.name}`}
+                  onError={() => setStoreImageFailed(true)}
                   src={toMediaUrl(store.imageUrl) ?? undefined}
                 />
               ) : (
@@ -226,10 +232,15 @@ export function AppLayout() {
         <div className="sidebar-footer">
           <div className="sidebar-user-card">
             <span className="user-chip">Sessao ativa</span>
-            <p>
-              <strong>{user?.name}</strong>
-            </p>
-            <p>{user?.email}</p>
+            <div className="sidebar-user-row">
+              <span className="sidebar-session-avatar">
+                {user?.name?.slice(0, 1).toUpperCase() ?? "U"}
+              </span>
+              <div className="sidebar-session-copy">
+                <strong>{user?.name}</strong>
+                <span>{user?.email}</span>
+              </div>
+            </div>
           </div>
 
           <div className="sidebar-actions">

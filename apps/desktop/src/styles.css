@@ -4433,14 +4433,18 @@ a.primary-button {
   }
 }
 
-@media (max-height: 920px) and (min-width: 1181px) {
+@media (max-height: 920px) {
   .sidebar-footer {
-    gap: 10px;
-    padding: 12px;
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .sidebar-footer .user-chip {
+    display: none;
   }
 
   .sidebar-user-card {
-    gap: 8px;
+    gap: 0;
   }
 
   .sidebar-user-row {

@@ -389,6 +389,7 @@ export function PdvPage() {
       <PageHeader
         title="PDV"
         description="Venda presencial de balcão com recibo interno sem valor fiscal."
+        visual="pdv"
         action={
           <div className="page-header-action">
             <button
@@ -404,21 +405,23 @@ export function PdvPage() {
             </button>
           </div>
         }
+        notice={
+          !selectedCashSession ? (
+            <div className="feedback feedback-warning">
+              Abra o caixa antes de finalizar vendas. A venda pode ser montada como rascunho, mas a conclusao exige caixa aberto.
+            </div>
+          ) : (
+            <div className="feedback feedback-info">
+              Caixa aberto: {selectedCashSession.id.slice(-8).toUpperCase()} · saldo esperado {formatMoney(selectedCashSession.expectedCashAmount)}
+            </div>
+          )
+        }
       />
 
       {error ? <div className="feedback feedback-error">{error}</div> : null}
       {successMessage ? (
         <div className="feedback feedback-success">{successMessage}</div>
       ) : null}
-      {!selectedCashSession ? (
-        <div className="feedback feedback-warning">
-          Abra o caixa antes de finalizar vendas. A venda pode ser montada como rascunho, mas a conclusao exige caixa aberto.
-        </div>
-      ) : (
-        <div className="feedback feedback-info">
-          Caixa aberto: {selectedCashSession.id.slice(-8).toUpperCase()} · saldo esperado {formatMoney(selectedCashSession.expectedCashAmount)}
-        </div>
-      )}
 
       {loading ? (
         <div className="screen-state state-loading">Carregando PDV...</div>

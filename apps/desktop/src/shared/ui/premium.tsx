@@ -58,14 +58,19 @@ export function SkeletonCard({ lines = 3 }: { lines?: number }) {
 export function EmptyState({
   title,
   description,
-  action
+  action,
+  icon = "empty"
 }: {
   title: string;
   description?: string;
   action?: ReactNode;
+  icon?: PremiumIconName;
 }) {
   return (
     <div className="empty-state premium-empty-state">
+      <span className="premium-empty-icon" aria-hidden="true">
+        <PremiumIcon name={icon} />
+      </span>
       <strong>{title}</strong>
       {description ? <p>{description}</p> : null}
       {action}
@@ -172,12 +177,86 @@ export function MetricCard({
   return (
     <article className={`premium-metric-card premium-metric-card-${tone}`}>
       <div className="premium-metric-icon" aria-hidden="true">
-        {icon}
+        <PremiumIcon name={resolveIconName(icon)} />
       </div>
       <span className="info-label">{label}</span>
       <strong className="premium-metric-value">{renderedValue}</strong>
       {helper ? <small>{helper}</small> : null}
     </article>
+  );
+}
+
+type PremiumIconName =
+  | "analytics"
+  | "box"
+  | "cart"
+  | "cash"
+  | "empty"
+  | "history"
+  | "package"
+  | "payment"
+  | "receipt"
+  | "store"
+  | "ticket"
+  | "warning";
+
+function resolveIconName(icon: string): PremiumIconName {
+  const aliases: Record<string, PremiumIconName> = {
+    "R$": "cash",
+    P: "cart",
+    T: "ticket",
+    E: "analytics",
+    "!": "warning",
+    S: "box",
+    C: "box",
+    D: "package",
+    B: "warning",
+    A: "store",
+    I: "store",
+    O: "store",
+    U: "analytics",
+    M: "cart",
+    "7": "analytics",
+    "30": "analytics",
+    analytics: "analytics",
+    box: "box",
+    cart: "cart",
+    cash: "cash",
+    empty: "empty",
+    history: "history",
+    package: "package",
+    payment: "payment",
+    receipt: "receipt",
+    store: "store",
+    ticket: "ticket",
+    warning: "warning"
+  };
+
+  return aliases[icon] ?? "analytics";
+}
+
+function PremiumIcon({ name }: { name: PremiumIconName }) {
+  const paths: Record<PremiumIconName, string[]> = {
+    analytics: ["M5 19V9", "M12 19V5", "M19 19v-7", "M4 19h16"],
+    box: ["M12 3 4.5 7.2v9.6L12 21l7.5-4.2V7.2L12 3Z", "M4.5 7.2 12 11.5l7.5-4.3", "M12 11.5V21"],
+    cart: ["M5 6h2l1.2 8.5h8.6L19 8H8", "M10 19a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z", "M17 19a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"],
+    cash: ["M4 7h16v10H4V7Z", "M8 7V5h8v2", "M8 12h8", "M9 15h2"],
+    empty: ["M6 9h12l-1 10H7L6 9Z", "M9 9V6h6v3", "M10 13h4"],
+    history: ["M4 12a8 8 0 1 0 2.4-5.7", "M4 5v5h5", "M12 8v5l3 2"],
+    package: ["M5 8h14v11H5V8Z", "M8 8V5h8v3", "M9 13h6"],
+    payment: ["M4 7h16v10H4V7Z", "M4 11h16", "M8 15h4"],
+    receipt: ["M7 4h10v16l-2-1-2 1-2-1-2 1-2-1V4Z", "M9 8h6", "M9 12h6", "M9 16h3"],
+    store: ["M4 10h16l-1.2-5H5.2L4 10Z", "M6 10v10h12V10", "M9 20v-6h6v6"],
+    ticket: ["M5 7h14v4a2 2 0 0 0 0 4v4H5v-4a2 2 0 0 0 0-4V7Z", "M12 8v10"],
+    warning: ["M12 4 3.5 19h17L12 4Z", "M12 9v4", "M12 16h.01"]
+  };
+
+  return (
+    <svg className="premium-line-icon" viewBox="0 0 24 24" focusable="false">
+      {paths[name].map((path) => (
+        <path d={path} key={path} />
+      ))}
+    </svg>
   );
 }
 

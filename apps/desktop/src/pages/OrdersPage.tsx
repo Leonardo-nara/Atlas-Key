@@ -832,6 +832,7 @@ export function OrdersPage() {
       <PageHeader
         title="Pedidos"
         description="Crie pedidos manualmente e acompanhe a fila da loja com status e histórico em tempo real."
+        visual="orders"
         action={
           <div className="orders-page-actions">
             <span className={`status-chip ${isConnected ? "live" : "offline"}`}>

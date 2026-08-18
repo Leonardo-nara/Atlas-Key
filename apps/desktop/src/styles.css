@@ -3610,30 +3610,30 @@ body {
 }
 
 .store-profile-card {
-  align-items: center;
+  align-items: start;
   display: grid;
-  gap: 16px 18px;
-  grid-template-columns: 84px minmax(0, 1fr);
-  margin-top: 22px;
-  padding: 22px 0 4px;
+  gap: 14px 16px;
+  grid-template-columns: 64px minmax(0, 1fr);
+  margin-top: 18px;
+  padding: 18px 0 2px;
   border-top: 1px solid rgba(56, 189, 248, 0.14);
 }
 
 .store-avatar {
-  width: 84px;
-  height: 84px;
-  border-radius: 22px;
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
   color: var(--rp-text);
   background: linear-gradient(145deg, #071c34, #0d2b4c);
   border-color: rgba(29, 69, 111, 0.72);
-  font-size: 2.18rem;
+  font-size: 1.72rem;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
     0 18px 34px rgba(0, 0, 0, 0.18);
 }
 
 .store-profile-copy {
-  gap: 11px;
+  gap: 8px;
 }
 
 .store-profile-copy h1 {
@@ -3643,7 +3643,7 @@ body {
   overflow: hidden;
   overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 1;
 }
 
 .store-profile-copy p {
@@ -3656,7 +3656,7 @@ body {
   display: -webkit-box;
   overflow: hidden;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 1;
 }
 
 .store-profile-copy .status-badge {

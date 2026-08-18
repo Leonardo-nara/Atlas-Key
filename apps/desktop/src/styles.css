@@ -4471,7 +4471,7 @@ a.primary-button {
   }
 }
 
-@media (max-height: 840px) and (min-width: 1181px) {
+@media (max-height: 840px) {
   .sidebar {
     gap: 11px;
     padding: 15px 13px;

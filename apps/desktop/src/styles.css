@@ -3637,15 +3637,26 @@ body {
 }
 
 .store-profile-copy h1 {
+  display: -webkit-box;
   font-size: 1.16rem;
   line-height: 1.18;
+  overflow: hidden;
   overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .store-profile-copy p {
   color: var(--rp-text-muted);
   font-size: 0.94rem;
   line-height: 1.58;
+}
+
+.store-profile-copy p:not(.section-kicker) {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .store-profile-copy .status-badge {
@@ -3691,9 +3702,9 @@ body {
 .sidebar-nav {
   display: grid;
   align-content: start;
-  flex: 1 1 auto;
+  flex: 1 1 260px;
   gap: 9px;
-  min-height: 0;
+  min-height: 180px;
   padding: 18px 14px;
   border-radius: 20px;
   overflow-y: auto;
@@ -4463,11 +4474,16 @@ a.primary-button {
 
   .store-profile-copy h1 {
     font-size: 0.95rem;
+    -webkit-line-clamp: 1;
   }
 
   .store-profile-copy p {
     font-size: 0.82rem;
     line-height: 1.35;
+  }
+
+  .store-profile-copy p:not(.section-kicker) {
+    -webkit-line-clamp: 1;
   }
 
   .store-image-actions {
@@ -4488,7 +4504,9 @@ a.primary-button {
   }
 
   .sidebar-nav {
+    flex-basis: 220px;
     gap: 5px;
+    min-height: 160px;
     padding: 9px 7px;
   }
 

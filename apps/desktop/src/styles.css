@@ -4271,8 +4271,12 @@ a.primary-button {
   padding: 22px;
 }
 
+.order-form .field {
+  min-width: 0;
+}
+
 .order-form-item {
-  grid-template-columns: minmax(170px, 1fr) 96px 94px;
+  grid-template-columns: minmax(0, 1fr) 96px 94px;
   gap: 14px;
   padding: 0;
   border: 0;

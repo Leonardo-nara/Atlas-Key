@@ -11,7 +11,8 @@
     "scheme": "mototake",
     "android": {
       "package": "com.souzaworks.mototake",
-      "versionCode": 2,
+      "versionCode": 3,
+      "googleServicesFile": "./google-services.json",
       "allowBackup": false,
       "permissions": []
     },

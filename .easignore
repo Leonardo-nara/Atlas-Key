@@ -40,5 +40,6 @@ _tmp_*
 .env
 .env.local
 .env.*.local
+google-services.json
 .DS_Store
 Thumbs.db

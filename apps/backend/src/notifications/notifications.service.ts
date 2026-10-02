@@ -16,6 +16,7 @@ interface OrderNotificationSnapshot {
   clientId?: string | null;
   courierId?: string | null;
   status: string;
+  fulfillmentType?: string;
   statusLabel?: string;
   customerName: string;
 }
@@ -105,6 +106,10 @@ export class NotificationsService {
   }
 
   notifyOrderEvent(event: string, order: OrderNotificationSnapshot) {
+    if (event === "orders.available") {
+      void this.notifyAvailableCouriers(order);
+    }
+
     if (event.includes("created")) {
       void this.notifyStore(order.storeId, {
         title: "Novo pedido recebido",
@@ -126,6 +131,39 @@ export class NotificationsService {
         title: "Entrega atualizada",
         body: order.statusLabel ?? "Uma entrega foi atualizada.",
         data: { type: "order.courier.updated", orderId: order.id }
+      });
+    }
+  }
+
+  private async notifyAvailableCouriers(order: OrderNotificationSnapshot) {
+    if (
+      process.env.PUSH_NOTIFICATIONS_ENABLED !== "true" ||
+      order.status !== "PENDING" ||
+      order.fulfillmentType === "PICKUP" ||
+      order.courierId
+    ) {
+      return;
+    }
+
+    try {
+      const links = await this.prisma.storeCourierLink.findMany({
+        where: {
+          storeId: order.storeId,
+          status: "APPROVED",
+          store: { active: true, status: "ACTIVE" },
+          courier: { role: "COURIER", active: true, status: "ACTIVE" }
+        },
+        select: { courierId: true }
+      });
+
+      await this.notifyUsers([...new Set(links.map((link) => link.courierId))], {
+        title: "Nova entrega dispon\u00edvel",
+        body: "Nova entrega dispon\u00edvel no Mototake. Abra o app para conferir e aceitar.",
+        data: { type: "order.available", orderId: order.id }
+      });
+    } catch {
+      structuredLog(this.logger, "warn", {
+        event: "courier_available_push_failed"
       });
     }
   }
@@ -173,26 +211,29 @@ export class NotificationsService {
       data: notification.data ?? {}
     }));
 
-    try {
-      const response = await fetch("https://exp.host/--/api/v2/push/send", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(messages)
-      });
+    // Expo accepts at most 100 notifications per request.
+    for (let start = 0; start < messages.length; start += 100) {
+      try {
+        const response = await fetch("https://exp.host/--/api/v2/push/send", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(messages.slice(start, start + 100)),
+          signal: AbortSignal.timeout(10_000)
+        });
 
-      if (!response.ok) {
+        if (!response.ok) {
+          structuredLog(this.logger, "warn", {
+            event: "push_notification_failed",
+            statusCode: response.status
+          });
+        }
+      } catch {
         structuredLog(this.logger, "warn", {
-          event: "push_notification_failed",
-          statusCode: response.status
+          event: "push_notification_failed"
         });
       }
-    } catch (error) {
-      structuredLog(this.logger, "warn", {
-        event: "push_notification_failed",
-        message: error instanceof Error ? error.message : "Erro desconhecido"
-      });
     }
   }
 }

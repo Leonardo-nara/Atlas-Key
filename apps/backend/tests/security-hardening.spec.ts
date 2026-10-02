@@ -17,8 +17,65 @@ import type { Socket } from "socket.io";
 import { sanitizeLogData, sanitizeRequestPath } from "../src/common/observability/sanitize-log-data";
 import { ImageStorageService } from "../src/common/storage/image-storage.service";
 import { PaymentProofStorageService } from "../src/orders/payment-proof-storage.service";
+import { NotificationsService } from "../src/notifications/notifications.service";
+import { PrismaService } from "../src/prisma/prisma.service";
 
 const secret = "synthetic-local-security-test-key-only";
+
+describe("courier available delivery push", () => {
+  for (const scenario of [
+    { event: "orders.available", clientId: null, enabled: true, expected: 3 },
+    { event: "orders.created", clientId: "client-a", enabled: true, expected: 0 },
+    { event: "orders.available", clientId: "client-a", enabled: true, expected: 3 },
+    { event: "orders.status_updated", clientId: null, enabled: true, expected: 0 },
+    { event: "orders.created", clientId: null, enabled: false, expected: 0 }
+  ]) {
+    it(`${scenario.event} client=${scenario.clientId} enabled=${scenario.enabled}`, async () => {
+      const originalFlag = process.env.PUSH_NOTIFICATIONS_ENABLED;
+      const originalFetch = global.fetch;
+      const batches: Array<Array<{ title: string; body: string; data: Record<string, string> }>> = [];
+      const prisma = {
+        store: { findUnique: async () => null },
+        storeCourierLink: { findMany: async (query: { where: unknown }) => {
+          assert.deepEqual(query.where, {
+            storeId: "store-a", status: "APPROVED",
+            store: { active: true, status: "ACTIVE" },
+            courier: { role: "COURIER", active: true, status: "ACTIVE" }
+          });
+          return [{ courierId: "courier-a" }];
+        } },
+        deviceToken: { findMany: async (query: { where: { userId: { in: string[] } } }) => {
+          if (!query.where.userId.in.includes("courier-a")) return [];
+          return Array.from({ length: 205 }, (_, i) => ({ id: String(i), token: `ExpoPushToken[synthetic-${i}]` }));
+        } }
+      } as unknown as PrismaService;
+      try {
+        process.env.PUSH_NOTIFICATIONS_ENABLED = String(scenario.enabled);
+        global.fetch = async (_url, options) => {
+          batches.push(JSON.parse(String(options?.body)));
+          return new Response("{}", { status: 200 });
+        };
+        new NotificationsService(prisma).notifyOrderEvent(scenario.event, {
+          id: "order-a", storeId: "store-a", clientId: scenario.clientId,
+          status: "PENDING", customerName: "Sensitive customer name"
+        });
+        await new Promise<void>((resolve) => setImmediate(resolve));
+        assert.equal(batches.length, scenario.expected);
+        for (const batch of batches) {
+          assert.ok(batch.length <= 100);
+          assert.equal(batch[0].title, "Nova entrega dispon\u00edvel");
+          assert.equal(batch[0].body, "Nova entrega dispon\u00edvel no Mototake. Abra o app para conferir e aceitar.");
+          assert.deepEqual(batch[0].data, { type: "order.available", orderId: "order-a" });
+          assert.ok(!JSON.stringify(batch).includes("Sensitive customer name"));
+        }
+      } finally {
+        global.fetch = originalFetch;
+        if (originalFlag === undefined) delete process.env.PUSH_NOTIFICATIONS_ENABLED;
+        else process.env.PUSH_NOTIFICATIONS_ENABLED = originalFlag;
+      }
+    });
+  }
+});
 
 async function authHarness() {
   const refreshToken = "session-a.synthetic-secret";

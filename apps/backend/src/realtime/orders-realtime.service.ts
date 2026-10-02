@@ -21,6 +21,7 @@ interface BroadcastableOrder {
   courierId?: string | null;
   clientId?: string | null;
   status: string;
+  fulfillmentType?: string;
   statusLabel?: string;
   customerName: string;
   total: number;
@@ -49,6 +50,10 @@ export class OrdersRealtimeService {
       order.clientId ? clientRoom(order.clientId) : null,
       order.courierId ? courierRoom(order.courierId) : null
     ]);
+  }
+
+  notifyOrderAvailable(order: BroadcastableOrder) {
+    this.notificationsService.notifyOrderEvent("orders.available", order);
   }
 
   emitOrderStatusUpdated(order: BroadcastableOrder) {

@@ -166,6 +166,7 @@ export class OrdersService {
 
     const serializedOrder = this.serializeOrder(order);
     this.ordersRealtimeService.emitOrderCreated(serializedOrder);
+    this.ordersRealtimeService.notifyOrderAvailable(serializedOrder);
 
     return serializedOrder;
   }
@@ -821,6 +822,10 @@ export class OrdersService {
       includePaymentProofDetails: true
     });
     this.ordersRealtimeService.emitOrderStatusUpdated(serializedOrder);
+
+    if (updatedOrder.clientId || updatedOrder.origin === "STOREFRONT") {
+      this.ordersRealtimeService.notifyOrderAvailable(serializedOrder);
+    }
 
     return serializedOrder;
   }

@@ -6,6 +6,7 @@ import { ExtractJwt, Strategy } from "passport-jwt";
 import type { AuthenticatedUser } from "../common/authenticated-user.interface";
 import { UserRole } from "../common/enums/user-role.enum";
 import { PrismaService } from "../prisma/prisma.service";
+import { validateAccessSession } from "./validate-access-session";
 
 interface JwtPayload {
   sub: string;
@@ -38,42 +39,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload): Promise<AuthenticatedUser> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: payload.sub },
-      select: {
-        id: true,
-        email: true,
-        role: true,
-        active: true,
-        status: true
-      }
-    });
-
-    if (!user || !user.active || user.status !== "ACTIVE") {
-      throw new UnauthorizedException("Sessao invalida");
-    }
-
-    if (payload.sid) {
-      const session = await this.prisma.authSession.findFirst({
-        where: {
-          id: payload.sid,
-          userId: user.id,
-          revokedAt: null,
-          expiresAt: { gt: new Date() }
-        },
-        select: { id: true }
-      });
-
-      if (!session) {
-        throw new UnauthorizedException("Sessao revogada");
-      }
-    }
-
-    return {
-      sub: user.id,
-      email: user.email,
-      role: user.role as UserRole,
-      sessionId: payload.sid
-    };
+    return validateAccessSession(this.prisma, payload);
   }
 }

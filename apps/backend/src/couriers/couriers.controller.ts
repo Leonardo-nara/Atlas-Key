@@ -49,7 +49,11 @@ export class CouriersController {
   @UseInterceptors(
     FileInterceptor("file", {
       limits: {
-        fileSize: IMAGE_MAX_FILE_SIZE_BYTES
+        fileSize: IMAGE_MAX_FILE_SIZE_BYTES,
+        files: 1,
+        fields: 16,
+        parts: 17,
+        fieldSize: 64 * 1024
       }
     })
   )

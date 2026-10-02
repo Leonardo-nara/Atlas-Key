@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 
 import { securityMetrics } from "./security-metrics";
 import { structuredLog } from "./structured-log";
+import { sanitizeRequestPath } from "./sanitize-log-data";
 
 interface RequestLike {
   method?: string;
@@ -34,7 +35,7 @@ export function requestLoggingMiddleware(
   response.setHeader("x-request-id", requestId);
 
   response.on("finish", () => {
-    const path = sanitizePath(request.originalUrl ?? request.url ?? "");
+    const path = sanitizeRequestPath(request.originalUrl ?? request.url ?? "");
     const durationMs = Date.now() - startedAt;
 
     securityMetrics.recordRequest({
@@ -68,8 +69,4 @@ function getHeader(request: RequestLike, name: string) {
   }
 
   return value;
-}
-
-function sanitizePath(path: string) {
-  return path.split("?")[0];
 }

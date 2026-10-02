@@ -193,6 +193,7 @@ export const securityMetrics = new SecurityMetricsStore();
 function normalizeEndpoint(method: string | undefined, path: string) {
   const normalizedPath = path
     .split("?")[0]
+    .replace(/(\/storefront\/orders\/)[^/]+/gi, "$1:trackingToken")
     .split("/")
     .map((part) => {
       if (!part) {

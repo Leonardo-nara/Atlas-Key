@@ -366,7 +366,6 @@ export class AuthService {
     const tokenMatches = await bcrypt.compare(dto.refreshToken, session.refreshTokenHash);
 
     if (!tokenMatches) {
-      await this.revokeSession(session.id, session.userId, context, "refresh_token_reuse_or_mismatch");
       await this.auditAuthEvent(AuthAuditEventType.REFRESH_FAILED, {
         userId: session.userId,
         email: session.user.email,
@@ -377,7 +376,7 @@ export class AuthService {
       throw new UnauthorizedException("Sessao invalida");
     }
 
-    const refreshToken = await this.rotateRefreshToken(session.id);
+    const refreshToken = await this.rotateRefreshToken(session.id, session.refreshTokenHash);
     const accessToken = await this.signAccessToken(session.user, session.id);
 
     await this.auditAuthEvent(AuthAuditEventType.REFRESH_SUCCESS, {
@@ -406,12 +405,15 @@ export class AuthService {
       include: { user: true }
     });
 
-    if (session && !session.revokedAt) {
-      await this.prisma.authSession.update({
-        where: { id: session.id },
-        data: { revokedAt: new Date() }
-      });
+    if (!session || session.revokedAt || !(await bcrypt.compare(dto.refreshToken, session.refreshTokenHash))) {
+      return { message: "Sessao encerrada" };
     }
+
+    const revoked = await this.prisma.authSession.updateMany({
+      where: { id: session.id, userId: session.userId, refreshTokenHash: session.refreshTokenHash, revokedAt: null },
+      data: { revokedAt: new Date() }
+    });
+    if (!revoked.count) return { message: "Sessao encerrada" };
 
     await this.auditAuthEvent(AuthAuditEventType.LOGOUT, {
       userId: session?.userId,
@@ -576,17 +578,23 @@ export class AuthService {
     };
   }
 
-  private async rotateRefreshToken(sessionId: string) {
+  private async rotateRefreshToken(sessionId: string, previousHash: string) {
     const refreshToken = this.createRefreshToken(sessionId);
     const refreshTokenHash = await bcrypt.hash(refreshToken, 12);
 
-    await this.prisma.authSession.update({
-      where: { id: sessionId },
+    // Compare-and-swap also works across replicas; only the current credential can rotate.
+    const rotated = await this.prisma.authSession.updateMany({
+      where: {
+        id: sessionId, refreshTokenHash: previousHash, revokedAt: null,
+        expiresAt: { gt: new Date() }, user: { active: true, status: "ACTIVE" }
+      },
       data: {
         refreshTokenHash,
         lastUsedAt: new Date()
       }
     });
+
+    if (rotated.count !== 1) throw new UnauthorizedException("Sessao invalida");
 
     return refreshToken;
   }

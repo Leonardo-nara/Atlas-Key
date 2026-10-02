@@ -306,57 +306,51 @@ export class PaymentGatewayService {
     const providerStatus = this.mapAsaasStatus(payment.status);
     const paidAt = this.extractAsaasPaidAt(payment);
     const validationFailure = this.validateAsaasPayment(transaction, payment);
-    const nextMetadata: Prisma.InputJsonValue = {
-      ...this.buildSafeAsaasMetadata(payment),
-      webhookEvent: parsedPayload.event,
-      processedWebhookIds: parsedPayload.webhookId
-        ? [...processedWebhookIds, parsedPayload.webhookId].slice(-20)
-        : processedWebhookIds,
-      validation: validationFailure ?? "ok"
-    };
-
-    if (validationFailure) {
-      await this.prismaService.paymentTransaction.update({
-        where: { id: transaction.id },
-        data: {
-          rawStatus: payment.status ?? "asaas_validation_failed",
-          metadataJson: nextMetadata
-        }
-      });
-
-      return {
-        status: transaction.status,
-        paidAt: transaction.paidAt ?? undefined,
-        rawStatus: payment.status ?? "asaas_validation_failed",
-        metadataJson: nextMetadata
+    // Serialize by persisted transaction, then re-read dedup/state under the lock.
+    // Provider I/O stays outside the transaction to avoid holding locks during network calls.
+    return this.prismaService.$transaction(async (prisma) => {
+      await prisma.$queryRaw(Prisma.sql`SELECT id FROM payment_transactions WHERE id = ${transaction.id} FOR UPDATE`);
+      const current = await prisma.paymentTransaction.findUnique({ where: { id: transaction.id } });
+      if (!current) throw new ServiceUnavailableException("Transacao indisponivel");
+      const metadata = this.asMetadataRecord(current.metadataJson);
+      const ids = this.getProcessedWebhookIds(metadata);
+      if (parsedPayload.webhookId && ids.includes(parsedPayload.webhookId)) {
+        return {
+          status: current.status, paidAt: current.paidAt ?? undefined,
+          rawStatus: current.rawStatus ?? "asaas_duplicate_webhook", metadataJson: metadata
+        };
+      }
+      const nextMetadata: Prisma.InputJsonValue = {
+        ...this.buildSafeAsaasMetadata(payment), webhookEvent: parsedPayload.event,
+        processedWebhookIds: parsedPayload.webhookId ? [...ids, parsedPayload.webhookId].slice(-20) : ids,
+        validation: validationFailure ?? "ok"
       };
-    }
-
-    await this.prismaService.$transaction(async (prisma) => {
+      // A stale provider response must not undo a confirmed payment.
+      const nextStatus = validationFailure || current.status === PaymentTransactionStatus.PAID
+        ? current.status : providerStatus;
+      const nextPaidAt = current.paidAt ?? (nextStatus === PaymentTransactionStatus.PAID ? paidAt ?? new Date() : null);
       await prisma.paymentTransaction.update({
-        where: { id: transaction.id },
+        where: { id: current.id },
         data: {
-          status: providerStatus,
-          paidAt: providerStatus === PaymentTransactionStatus.PAID ? paidAt ?? new Date() : null,
+          status: nextStatus,
+          paidAt: nextPaidAt,
           rawStatus: payment.status ?? "asaas_unknown",
           metadataJson: nextMetadata
         }
       });
 
-      if (
-        providerStatus === PaymentTransactionStatus.PAID &&
-        transaction.order.paymentStatus !== OrderPaymentStatus.PAID
-      ) {
-        await prisma.order.update({
-          where: { id: transaction.orderId },
+      if (!validationFailure && nextStatus === PaymentTransactionStatus.PAID) {
+        // Conditional update also deduplicates business effects across distinct transactions.
+        const changed = await prisma.order.updateMany({
+          where: { id: current.orderId, paymentStatus: { not: OrderPaymentStatus.PAID } },
           data: {
             paymentStatus: OrderPaymentStatus.PAID,
             paymentProvider: OrderPaymentProvider.FUTURE_GATEWAY,
-            paidAt: paidAt ?? new Date()
+            paidAt: nextPaidAt
           }
         });
 
-        await prisma.orderEvent.create({
+        if (changed.count === 1) await prisma.orderEvent.create({
           data: {
             orderId: transaction.orderId,
             type: OrderEventType.PAYMENT_PAID,
@@ -369,14 +363,11 @@ export class PaymentGatewayService {
           }
         });
       }
+      return {
+        status: nextStatus, paidAt: nextPaidAt ?? undefined,
+        rawStatus: payment.status ?? "asaas_unknown", metadataJson: nextMetadata
+      };
     });
-
-    return {
-      status: providerStatus,
-      paidAt: providerStatus === PaymentTransactionStatus.PAID ? paidAt ?? new Date() : undefined,
-      rawStatus: payment.status ?? "asaas_unknown",
-      metadataJson: nextMetadata
-    };
   }
 
   private async createAsaasCustomer(order: GatewayOrderInput) {

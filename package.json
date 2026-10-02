@@ -58,7 +58,7 @@
       "launch-editor": "2.14.1",
       "lodash": "4.18.1",
       "minimatch": "5.1.8",
-      "multer": "2.2.0",
+      "multer": "2.4.0",
       "nanoid": "3.3.17",
       "path-to-regexp": "8.4.0",
       "picomatch": "4.0.4",

@@ -9,6 +9,7 @@ import {
 
 import { reportUnhandledError } from "./external-error-reporter";
 import { structuredLog } from "./structured-log";
+import { sanitizeRequestPath } from "./sanitize-log-data";
 
 interface RequestLike {
   method?: string;
@@ -44,7 +45,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
         : HttpStatus.INTERNAL_SERVER_ERROR;
     const exceptionPayload = this.getExceptionPayload(exception);
     const requestId = request.requestId;
-    const path = sanitizePath(request.originalUrl ?? request.url ?? "");
+    const path = sanitizeRequestPath(request.originalUrl ?? request.url ?? "");
 
     structuredLog(this.logger, statusCode >= 500 ? "error" : "warn", {
       event: "http_error",
@@ -111,8 +112,4 @@ export class HttpExceptionFilter implements ExceptionFilter {
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR
     };
   }
-}
-
-function sanitizePath(path: string) {
-  return path.split("?")[0];
 }

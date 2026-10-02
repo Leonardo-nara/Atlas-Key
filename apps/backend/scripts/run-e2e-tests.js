@@ -36,7 +36,8 @@ runPnpm(["build:test"]);
 run("node", [
   "--test",
   "--test-concurrency=1",
-  "dist-test/tests/ownership-real.e2e-spec.js"
+  "dist-test/tests/ownership-real.e2e-spec.js",
+  "dist-test/tests/security-concurrency-real.e2e-spec.js"
 ]);
 
 function runPnpm(args) {
@@ -65,6 +66,10 @@ function run(command, args) {
 }
 
 function assertSafeE2eDatabaseUrl(url) {
+  const parsed = new URL(url);
+  if (!["localhost", "127.0.0.1", "[::1]"].includes(parsed.hostname) || parsed.searchParams.get("schema") === "public") {
+    throw new Error("E2E permite somente PostgreSQL local em banco/schema de teste, nunca remoto ou schema public.");
+  }
   const normalized = url.toLowerCase();
   const isProductionLike =
     normalized.includes("render.com") ||

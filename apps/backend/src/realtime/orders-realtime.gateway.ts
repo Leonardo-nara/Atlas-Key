@@ -1,4 +1,4 @@
-import { Logger, UnauthorizedException } from "@nestjs/common";
+import { Logger, UnauthorizedException, OnModuleDestroy } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import {
   ConnectedSocket,
@@ -11,6 +11,7 @@ import {
 import { createAdapter } from "@socket.io/redis-adapter";
 import { createClient } from "redis";
 import type { Server, Socket } from "socket.io";
+import { validateAccessSession, SessionAccessPayload } from "../auth/validate-access-session";
 
 import type { AuthenticatedUser } from "../common/authenticated-user.interface";
 import { UserRole } from "../common/enums/user-role.enum";
@@ -25,7 +26,8 @@ import {
   storeRoom
 } from "./realtime.constants";
 
-type SocketAuthPayload = AuthenticatedUser;
+type SocketAuthPayload = SessionAccessPayload;
+type AuthorizationBatch = Map<string, Promise<{ user: AuthenticatedUser; rooms: string[] }>>;
 
 @WebSocketGateway({
   cors: {
@@ -42,12 +44,14 @@ type SocketAuthPayload = AuthenticatedUser;
   transports: ["websocket"]
 })
 export class OrdersRealtimeGateway
-  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect, OnModuleDestroy
 {
   @WebSocketServer()
   server!: Server;
 
   private readonly logger = new Logger(OrdersRealtimeGateway.name);
+  private authorizationTimer?: ReturnType<typeof setInterval>;
+  private checkingConnections = false;
 
   constructor(
     private readonly jwtService: JwtService,
@@ -56,6 +60,16 @@ export class OrdersRealtimeGateway
 
   afterInit(server: Server) {
     void this.configureRedisAdapter(server);
+    this.authorizationTimer = setInterval(() => {
+      if (this.checkingConnections) return;
+      this.checkingConnections = true;
+      void this.revalidateConnections().finally(() => { this.checkingConnections = false; });
+    }, 30_000);
+    this.authorizationTimer.unref();
+  }
+
+  onModuleDestroy() {
+    clearInterval(this.authorizationTimer);
   }
 
   async handleConnection(@ConnectedSocket() client: Socket) {
@@ -63,40 +77,9 @@ export class OrdersRealtimeGateway
       const user = await this.authenticateClient(client);
       client.data.user = user;
 
-      if (user.role === UserRole.STORE_ADMIN) {
-        const store = await this.prisma.store.findUnique({
-          where: { ownerUserId: user.sub }
-        });
-
-        if (store) {
-          await client.join(storeRoom(store.id));
-        }
-      }
-
-      if (user.role === UserRole.COURIER) {
-        await client.join(courierRoom(user.sub));
-
-        const approvedLinks = await this.prisma.storeCourierLink.findMany({
-          where: {
-            courierId: user.sub,
-            status: StoreCourierLinkStatus.APPROVED
-          },
-          select: {
-            storeId: true
-          }
-        });
-
-        for (const link of approvedLinks) {
-          await client.join(availableOrdersStoreRoom(link.storeId));
-        }
-      }
-
-      if (user.role === UserRole.CLIENT) {
-        await client.join(clientRoom(user.sub));
-      }
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Falha na autenticacao realtime";
+      for (const room of await this.authorizedRooms(user)) await client.join(room);
+    } catch {
+      const message = "Sessao realtime invalida";
 
       structuredLog(this.logger, "warn", {
         event: "realtime_connection_rejected",
@@ -129,19 +112,81 @@ export class OrdersRealtimeGateway
     }
 
     const payload = await this.jwtService.verifyAsync<SocketAuthPayload>(token);
-    const user = await this.prisma.user.findUnique({
-      where: { id: payload.sub }
-    });
+    if (!payload.exp || payload.exp * 1000 <= Date.now()) throw new UnauthorizedException("Sessao invalida");
+    const user = await validateAccessSession(this.prisma, payload);
+    // Retain only validated claims, never the bearer credential in adapter data.
+    client.data.accessSession = { sub: payload.sub, sid: payload.sid, exp: payload.exp };
+    return user;
+  }
 
-    if (!user || !user.active) {
-      throw new UnauthorizedException("Usuario do socket nao encontrado ou inativo");
+  private async authorizedRooms(user: AuthenticatedUser): Promise<string[]> {
+    if (user.role === UserRole.CLIENT) return [clientRoom(user.sub)];
+    if (user.role === UserRole.STORE_ADMIN) {
+      const store = await this.prisma.store.findUnique({ where: { ownerUserId: user.sub } });
+      if (!store || !store.active || store.status !== "ACTIVE") throw new UnauthorizedException("Loja inativa");
+      return [storeRoom(store.id)];
     }
+    if (user.role === UserRole.COURIER) {
+      const links = await this.prisma.storeCourierLink.findMany({
+        where: { courierId: user.sub, status: StoreCourierLinkStatus.APPROVED, store: { active: true, status: "ACTIVE" } },
+        select: { storeId: true }
+      });
+      return [courierRoom(user.sub), ...links.map(link => availableOrdersStoreRoom(link.storeId))];
+    }
+    return [];
+  }
 
-    return {
-      sub: user.id,
-      email: user.email,
-      role: user.role as UserRole
-    };
+  private async revalidateConnections() {
+    try {
+      const sockets = await this.server.local.fetchSockets();
+      const checks: AuthorizationBatch = new Map();
+      await Promise.all(sockets.map(socket => this.refreshAuthorization(socket, checks)));
+    } catch {
+      this.logger.warn("Falha na revalidacao realtime");
+    }
+  }
+
+  private async refreshAuthorization(
+    socket: Awaited<ReturnType<Server["fetchSockets"]>>[number],
+    checks: AuthorizationBatch
+  ): Promise<string[]> {
+    try {
+      const payload = socket.data.accessSession as SocketAuthPayload | undefined;
+      if (!payload?.exp || payload.exp * 1000 <= Date.now()) throw new UnauthorizedException();
+      const key = `${payload.sub}:${payload.sid}`;
+      let check = checks.get(key);
+      if (!check) {
+        check = validateAccessSession(this.prisma, payload).then(async user => ({
+          user, rooms: await this.authorizedRooms(user)
+        }));
+        checks.set(key, check);
+      }
+      const { user, rooms } = await check;
+      if (socket.data.user?.role !== user.role) throw new UnauthorizedException();
+      for (const room of socket.rooms) {
+        if (room !== socket.id && !rooms.includes(room)) await socket.leave(room);
+      }
+      for (const room of rooms) await socket.join(room);
+      return rooms;
+    } catch {
+      socket.disconnect(true);
+      return [];
+    }
+  }
+
+  async emitAuthorized(event: string, payload: unknown, rooms: string[]) {
+    try {
+      // fetchSockets includes remote replicas when Redis is configured. Check before delivery,
+      // not only on the periodic sweep, so revoked sockets cannot receive the next event.
+      const sockets = await this.server.in(rooms).fetchSockets();
+      const checks: AuthorizationBatch = new Map();
+      await Promise.all(sockets.map(async socket => {
+        const allowedRooms = await this.refreshAuthorization(socket, checks);
+        if (rooms.some(room => allowedRooms.includes(room))) socket.emit(event, payload);
+      }));
+    } catch {
+      this.logger.warn("Falha no envio realtime autorizado");
+    }
   }
 
   private extractToken(client: Socket) {

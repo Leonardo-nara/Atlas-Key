@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/nestjs";
+import { sanitizeLogData } from "./common/observability/sanitize-log-data";
 
 const sentryDsn = process.env.SENTRY_DSN;
 
@@ -11,6 +12,12 @@ if (sentryDsn) {
     tracesSampleRate: Number(process.env.SENTRY_TRACES_SAMPLE_RATE ?? "0"),
     beforeSend(event) {
       return sanitizeSentryEvent(event);
+    },
+    beforeSendTransaction(event) {
+      return sanitizeLogData(event);
+    },
+    beforeBreadcrumb(breadcrumb) {
+      return sanitizeLogData(breadcrumb);
     }
   });
 }
@@ -28,7 +35,7 @@ function sanitizeSentryEvent(event: Sentry.ErrorEvent): Sentry.ErrorEvent {
   event.contexts = sanitizeRecord(event.contexts) as Sentry.ErrorEvent["contexts"];
   event.tags = sanitizeRecord(event.tags) as Sentry.ErrorEvent["tags"];
 
-  return event;
+  return sanitizeLogData(event);
 }
 
 function sanitizeRecord<T>(record: T): T {

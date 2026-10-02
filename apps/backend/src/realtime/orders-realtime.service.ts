@@ -4,7 +4,6 @@ import type {
   RealtimeOrderEventPayload,
   RealtimeOrderSnapshot
 } from "@deliveries/shared-types";
-import type { Server } from "socket.io";
 
 import { NotificationsService } from "../notifications/notifications.service";
 import { OrdersRealtimeGateway } from "./orders-realtime.gateway";
@@ -81,13 +80,7 @@ export class OrdersRealtimeService {
       occurredAt: new Date().toISOString()
     };
 
-    let emitter: Server | ReturnType<Server["to"]> = this.gateway.server;
-
-    for (const room of rooms.filter((value): value is string => Boolean(value))) {
-      emitter = emitter.to(room);
-    }
-
-    emitter.emit(event, payload);
+    void this.gateway.emitAuthorized(event, payload, rooms.filter((value): value is string => Boolean(value)));
     this.notificationsService.notifyOrderEvent(event, order);
   }
 

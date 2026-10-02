@@ -1,4 +1,5 @@
 import { Logger } from "@nestjs/common";
+import { sanitizeLogData } from "./sanitize-log-data";
 
 type LogLevel = "debug" | "error" | "log" | "warn";
 
@@ -13,10 +14,10 @@ export function structuredLog(
   level: LogLevel,
   input: StructuredLogInput
 ) {
-  const payload = JSON.stringify({
+  const payload = JSON.stringify(sanitizeLogData({
     timestamp: new Date().toISOString(),
     ...input
-  });
+  }));
 
   if (level === "error") {
     logger.error(payload);

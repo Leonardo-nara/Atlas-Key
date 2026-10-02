@@ -483,6 +483,29 @@ describe("backend smoke/security routes", () => {
     await app?.close();
   });
 
+  for (const upload of [
+    { path: "/stores/me/image", method: "PATCH", role: "store", max: 3 * 1024 * 1024 },
+    { path: "/orders/order-1/payment-proof/file", method: "POST", role: "client", max: 5 * 1024 * 1024 }
+  ] as const) {
+    it(`rejects oversized multipart on ${upload.path}`, async () => {
+      const body = new FormData();
+      body.append("file", new Blob([new Uint8Array(upload.max + 1)], { type: "image/png" }), "synthetic.png");
+      const response = await fetch(`${baseUrl}${upload.path}`, {
+        method: upload.method, headers: { Authorization: `Bearer ${tokens[upload.role]}` }, body
+      });
+      assert.equal(response.status, 413);
+    });
+
+    it(`rejects multiple files on ${upload.path}`, async () => {
+      const body = new FormData();
+      for (let i = 0; i < 2; i++) body.append("file", new Blob(["synthetic"], { type: "image/png" }), `synthetic-${i}.png`);
+      const response = await fetch(`${baseUrl}${upload.path}`, {
+        method: upload.method, headers: { Authorization: `Bearer ${tokens[upload.role]}` }, body
+      });
+      assert.equal(response.status, 400);
+    });
+  }
+
   async function request(
     path: string,
     options: RequestInit & { token?: keyof typeof actorByName } = {}
@@ -1086,16 +1109,18 @@ describe("payment gateway foundation", () => {
           },
           $transaction: async (callback: (prisma: unknown) => Promise<unknown>) =>
             callback({
+              $queryRaw: async () => [{ id: "tx-1" }],
               paymentTransaction: {
+                findUnique: async () => ({ id: "tx-1", orderId: "order-1", status: PaymentTransactionStatus.PENDING, paidAt: null, metadataJson: null }),
                 update: async (args: unknown) => {
                   paymentTransactionUpdateCalls.push(args);
                   return args;
                 }
               },
               order: {
-                update: async (args: unknown) => {
+                updateMany: async (args: unknown) => {
                   orderUpdateCalls.push(args);
-                  return args;
+                  return { count: 1 };
                 }
               },
               orderEvent: {

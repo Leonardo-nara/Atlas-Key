@@ -175,7 +175,11 @@ export class OrdersController {
   @UseInterceptors(
     FileInterceptor("file", {
       limits: {
-        fileSize: PAYMENT_PROOF_MAX_FILE_SIZE_BYTES
+        fileSize: PAYMENT_PROOF_MAX_FILE_SIZE_BYTES,
+        files: 1,
+        fields: 16,
+        parts: 17,
+        fieldSize: 64 * 1024
       }
     })
   )

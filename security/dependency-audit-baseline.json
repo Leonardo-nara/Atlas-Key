@@ -1,0 +1,426 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-10-01",
+  "entries": [
+    {
+      "advisoryId": 1139427,
+      "ghsa": "GHSA-2v37-7h3g-55p8",
+      "package": "nanoid",
+      "severity": "high",
+      "affectedRange": "<3.3.18",
+      "findings": [
+        {
+          "version": "3.3.17",
+          "paths": [
+            "apps__mobile>@react-navigation/native>nanoid"
+          ]
+        }
+      ],
+      "category": "D",
+      "context": "mobile/navigation",
+      "reason": "React Navigation uses nanoid/non-secure without a custom generator or attacker-controlled zero size.",
+      "approvedAt": "2026-10-01",
+      "reviewBy": "2026-10-31"
+    },
+    {
+      "advisoryId": 1145093,
+      "ghsa": "GHSA-ggr8-5vv4-36mx",
+      "package": "deepmerge-ts",
+      "severity": "high",
+      "affectedRange": "<8.0.0",
+      "findings": [
+        {
+          "version": "7.1.5",
+          "paths": [
+            "apps__backend>@prisma/client>prisma>@prisma/config>deepmerge-ts"
+          ]
+        }
+      ],
+      "category": "C",
+      "context": "backend/Prisma CLI startup",
+      "reason": "Used by trusted Prisma CLI configuration, not request-body merging.",
+      "approvedAt": "2026-10-01",
+      "reviewBy": "2026-10-31"
+    },
+    {
+      "advisoryId": 1153171,
+      "ghsa": "GHSA-c83g-rgw3-j3cx",
+      "package": "browserslist",
+      "severity": "high",
+      "affectedRange": "<=4.28.6",
+      "findings": [
+        {
+          "version": "4.28.1",
+          "paths": [
+            "apps__mobile>expo>@expo/metro-config>@babel/core>@babel/helper-compilation-targets>browserslist"
+          ]
+        }
+      ],
+      "category": "C",
+      "context": "mobile/Metro build",
+      "reason": "Build-time Babel targets; queries and stats are repository-controlled.",
+      "approvedAt": "2026-10-01",
+      "reviewBy": "2026-10-31"
+    },
+    {
+      "advisoryId": 1153172,
+      "ghsa": "GHSA-73wf-gq98-2v4g",
+      "package": "browserslist",
+      "severity": "high",
+      "affectedRange": "<=4.28.6",
+      "findings": [
+        {
+          "version": "4.28.1",
+          "paths": [
+            "apps__mobile>expo>@expo/metro-config>@babel/core>@babel/helper-compilation-targets>browserslist"
+          ]
+        }
+      ],
+      "category": "C",
+      "context": "mobile/Metro build",
+      "reason": "Build-time Babel targets; queries and stats are repository-controlled.",
+      "approvedAt": "2026-10-01",
+      "reviewBy": "2026-10-31"
+    },
+    {
+      "advisoryId": 1193689,
+      "ghsa": "GHSA-w2rr-34g9-rvrj",
+      "package": "@xmldom/xmldom",
+      "severity": "high",
+      "affectedRange": ">=0.7.0 <=0.8.13",
+      "findings": [
+        {
+          "version": "0.8.13",
+          "paths": [
+            "apps__mobile>expo>@expo/cli>@expo/plist>@xmldom/xmldom"
+          ]
+        }
+      ],
+      "category": "C",
+      "context": "mobile/Expo CLI plist",
+      "reason": "Expo CLI plist tooling, not an HTTP XML parser or Android runtime.",
+      "approvedAt": "2026-10-01",
+      "reviewBy": "2026-10-31"
+    },
+    {
+      "advisoryId": 1193692,
+      "ghsa": "GHSA-4w3w-2rp5-g8jm",
+      "package": "@xmldom/xmldom",
+      "severity": "high",
+      "affectedRange": ">=0.7.0 <=0.8.13",
+      "findings": [
+        {
+          "version": "0.8.13",
+          "paths": [
+            "apps__mobile>expo>@expo/cli>@expo/plist>@xmldom/xmldom"
+          ]
+        }
+      ],
+      "category": "C",
+      "context": "mobile/Expo CLI plist",
+      "reason": "Expo CLI plist tooling, not an HTTP XML parser or Android runtime.",
+      "approvedAt": "2026-10-01",
+      "reviewBy": "2026-10-31"
+    },
+    {
+      "advisoryId": 1193696,
+      "ghsa": "GHSA-c7q8-3ch8-vqpv",
+      "package": "@xmldom/xmldom",
+      "severity": "high",
+      "affectedRange": ">=0.7.0 <=0.8.14",
+      "findings": [
+        {
+          "version": "0.8.13",
+          "paths": [
+            "apps__mobile>expo>@expo/cli>@expo/plist>@xmldom/xmldom"
+          ]
+        }
+      ],
+      "category": "C",
+      "context": "mobile/Expo CLI plist",
+      "reason": "Expo CLI plist tooling, not an HTTP XML parser or Android runtime.",
+      "approvedAt": "2026-10-01",
+      "reviewBy": "2026-10-31"
+    },
+    {
+      "advisoryId": 1193700,
+      "ghsa": "GHSA-27p8-2357-5qqv",
+      "package": "@xmldom/xmldom",
+      "severity": "high",
+      "affectedRange": ">=0.7.0 <=0.8.14",
+      "findings": [
+        {
+          "version": "0.8.13",
+          "paths": [
+            "apps__mobile>expo>@expo/cli>@expo/plist>@xmldom/xmldom"
+          ]
+        }
+      ],
+      "category": "C",
+      "context": "mobile/Expo CLI plist",
+      "reason": "Expo CLI plist tooling, not an HTTP XML parser or Android runtime.",
+      "approvedAt": "2026-10-01",
+      "reviewBy": "2026-10-31"
+    },
+    {
+      "advisoryId": 1193708,
+      "ghsa": "GHSA-8344-3jmq-59r6",
+      "package": "@xmldom/xmldom",
+      "severity": "high",
+      "affectedRange": ">=0.7.0 <=0.8.14",
+      "findings": [
+        {
+          "version": "0.8.13",
+          "paths": [
+            "apps__mobile>expo>@expo/cli>@expo/plist>@xmldom/xmldom"
+          ]
+        }
+      ],
+      "category": "C",
+      "context": "mobile/Expo CLI plist",
+      "reason": "Expo CLI plist tooling, not an HTTP XML parser or Android runtime.",
+      "approvedAt": "2026-10-01",
+      "reviewBy": "2026-10-31"
+    },
+    {
+      "advisoryId": 1193709,
+      "ghsa": "GHSA-x4fp-j954-r2f4",
+      "package": "@xmldom/xmldom",
+      "severity": "high",
+      "affectedRange": ">=0.7.0 <=0.8.14",
+      "findings": [
+        {
+          "version": "0.8.13",
+          "paths": [
+            "apps__mobile>expo>@expo/cli>@expo/plist>@xmldom/xmldom"
+          ]
+        }
+      ],
+      "category": "C",
+      "context": "mobile/Expo CLI plist",
+      "reason": "Expo CLI plist tooling, not an HTTP XML parser or Android runtime.",
+      "approvedAt": "2026-10-01",
+      "reviewBy": "2026-10-31"
+    },
+    {
+      "advisoryId": 1193712,
+      "ghsa": "GHSA-965w-775f-mr7g",
+      "package": "@xmldom/xmldom",
+      "severity": "high",
+      "affectedRange": ">=0.7.0 <=0.8.14",
+      "findings": [
+        {
+          "version": "0.8.13",
+          "paths": [
+            "apps__mobile>expo>@expo/cli>@expo/plist>@xmldom/xmldom"
+          ]
+        }
+      ],
+      "category": "C",
+      "context": "mobile/Expo CLI plist",
+      "reason": "Expo CLI plist tooling, not an HTTP XML parser or Android runtime.",
+      "approvedAt": "2026-10-01",
+      "reviewBy": "2026-10-31"
+    },
+    {
+      "advisoryId": 1193715,
+      "ghsa": "GHSA-93r5-fhx6-vmg9",
+      "package": "@xmldom/xmldom",
+      "severity": "high",
+      "affectedRange": ">=0.7.0 <=0.8.14",
+      "findings": [
+        {
+          "version": "0.8.13",
+          "paths": [
+            "apps__mobile>expo>@expo/cli>@expo/plist>@xmldom/xmldom"
+          ]
+        }
+      ],
+      "category": "C",
+      "context": "mobile/Expo CLI plist",
+      "reason": "Expo CLI plist tooling, not an HTTP XML parser or Android runtime.",
+      "approvedAt": "2026-10-01",
+      "reviewBy": "2026-10-31"
+    },
+    {
+      "advisoryId": 1193727,
+      "ghsa": "GHSA-2883-xcg3-v3hh",
+      "package": "js-yaml",
+      "severity": "high",
+      "affectedRange": ">=4.0.0 <4.3.2",
+      "findings": [
+        {
+          "version": "4.3.1",
+          "paths": [
+            "apps__mobile>expo>@expo/cli>@expo/xcpretty>js-yaml"
+          ]
+        }
+      ],
+      "category": "C",
+      "context": "mobile/Expo CLI xcpretty",
+      "reason": "CLI/build configuration parsing; no application endpoint accepts YAML.",
+      "approvedAt": "2026-10-01",
+      "reviewBy": "2026-10-31"
+    },
+    {
+      "advisoryId": 1239765,
+      "ghsa": "GHSA-5p2g-fcmc-qvqq",
+      "package": "image-size",
+      "severity": "high",
+      "affectedRange": ">=1.2.0 <=2.0.2",
+      "findings": [
+        {
+          "version": "1.2.1",
+          "paths": [
+            "apps__mobile>react-native>@react-native/community-cli-plugin>metro>image-size"
+          ]
+        }
+      ],
+      "category": "C",
+      "context": "mobile/Metro assets",
+      "reason": "Metro build-time asset parsing, not Android runtime or backend uploads.",
+      "approvedAt": "2026-10-01",
+      "reviewBy": "2026-10-31"
+    },
+    {
+      "advisoryId": 1239766,
+      "ghsa": "GHSA-w3rx-r6r6-pgpr",
+      "package": "image-size",
+      "severity": "high",
+      "affectedRange": ">=0.6.3 <=2.0.2",
+      "findings": [
+        {
+          "version": "1.2.1",
+          "paths": [
+            "apps__mobile>react-native>@react-native/community-cli-plugin>metro>image-size"
+          ]
+        }
+      ],
+      "category": "C",
+      "context": "mobile/Metro assets",
+      "reason": "Metro build-time asset parsing, not Android runtime or backend uploads.",
+      "approvedAt": "2026-10-01",
+      "reviewBy": "2026-10-31"
+    },
+    {
+      "advisoryId": 1240042,
+      "ghsa": "GHSA-rfgv-xxqx-mfg5",
+      "package": "undici",
+      "severity": "high",
+      "affectedRange": ">=6.7.0 <6.28.1",
+      "findings": [
+        {
+          "version": "6.28.0",
+          "paths": [
+            "apps__mobile>expo>@expo/cli>undici"
+          ]
+        }
+      ],
+      "category": "C",
+      "context": "mobile/Expo CLI",
+      "reason": "Expo development CLI; not application HTTP or websocket runtime.",
+      "approvedAt": "2026-10-01",
+      "reviewBy": "2026-10-31"
+    },
+    {
+      "advisoryId": 1240056,
+      "ghsa": "GHSA-6h2x-m376-mqjq",
+      "package": "joi",
+      "severity": "high",
+      "affectedRange": ">=18.0.0 <18.2.6",
+      "findings": [
+        {
+          "version": "18.2.3",
+          "paths": [
+            "apps__mobile>react-native>@react-native/community-cli-plugin>@react-native-community/cli>@react-native-community/cli-config>joi"
+          ]
+        }
+      ],
+      "category": "C",
+      "context": "mobile/React Native CLI configuration",
+      "reason": "CLI configuration validation, not an application request validator.",
+      "approvedAt": "2026-10-01",
+      "reviewBy": "2026-10-31"
+    },
+    {
+      "advisoryId": 1240105,
+      "ghsa": "GHSA-qhr7-859c-m2p7",
+      "package": "brace-expansion",
+      "severity": "high",
+      "affectedRange": ">=2.0.0 <2.1.6",
+      "findings": [
+        {
+          "version": "2.1.4",
+          "paths": [
+            "apps__backend>@sentry/nestjs>@sentry/node>@fastify/otel>minimatch>brace-expansion"
+          ]
+        }
+      ],
+      "category": "D",
+      "context": "backend/Sentry Fastify instrumentation",
+      "reason": "Backend uses Express; the vulnerable Fastify glob path is absent in examined code.",
+      "approvedAt": "2026-10-01",
+      "reviewBy": "2026-10-31"
+    },
+    {
+      "advisoryId": 1240109,
+      "ghsa": "GHSA-6j4f-fj2g-mc7p",
+      "package": "brace-expansion",
+      "severity": "high",
+      "affectedRange": ">=2.0.0 <2.1.5",
+      "findings": [
+        {
+          "version": "2.1.4",
+          "paths": [
+            "apps__backend>@sentry/nestjs>@sentry/node>@fastify/otel>minimatch>brace-expansion"
+          ]
+        }
+      ],
+      "category": "D",
+      "context": "backend/Sentry Fastify instrumentation",
+      "reason": "Backend uses Express; the vulnerable Fastify glob path is absent in examined code.",
+      "approvedAt": "2026-10-01",
+      "reviewBy": "2026-10-31"
+    },
+    {
+      "advisoryId": 1240112,
+      "ghsa": "GHSA-2gc4-cqfq-p2gv",
+      "package": "engine.io",
+      "severity": "high",
+      "affectedRange": ">=6.6.0 <6.6.10",
+      "findings": [
+        {
+          "version": "6.6.9",
+          "paths": [
+            "apps__backend>socket.io>engine.io"
+          ]
+        }
+      ],
+      "category": "D",
+      "context": "backend/realtime",
+      "reason": "Server allows websocket transport only; the transport-upgrade path is unavailable in examined configuration.",
+      "approvedAt": "2026-10-01",
+      "reviewBy": "2026-10-31"
+    },
+    {
+      "advisoryId": 1240912,
+      "ghsa": "GHSA-86w9-cpqp-85rv",
+      "package": "node-forge",
+      "severity": "high",
+      "affectedRange": "<=1.4.0",
+      "findings": [
+        {
+          "version": "1.4.0",
+          "paths": [
+            "apps__mobile>expo>@expo/cli>node-forge"
+          ]
+        }
+      ],
+      "category": "C",
+      "context": "mobile/Expo CLI signing",
+      "reason": "Expo CLI iOS signing tooling; not Android runtime or backend authentication.",
+      "approvedAt": "2026-10-01",
+      "reviewBy": "2026-10-31"
+    }
+  ]
+}

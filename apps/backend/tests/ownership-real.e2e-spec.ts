@@ -28,10 +28,11 @@ import * as bcrypt from "bcryptjs";
 
 import { AppModule } from "../src/app.module";
 import { PrismaService } from "../src/prisma/prisma.service";
+import { OrdersRealtimeService } from "../src/realtime/orders-realtime.service";
 
 const TEST_PASSWORD = "SenhaE2e!12345";
 
-type LoginKey = "platform" | "storeA" | "storeB" | "clientA" | "clientB" | "courierA";
+type LoginKey = "platform" | "storeA" | "storeB" | "clientA" | "clientB" | "courierA" | "courierB";
 
 type SeedData = {
   users: Record<LoginKey | "courierB", { id: string; email: string }>;
@@ -78,7 +79,7 @@ describe("backend real e2e ownership/security", () => {
     const address = app.getHttpServer().address() as { port: number };
     baseUrl = `http://127.0.0.1:${address.port}/api`;
 
-    for (const loginKey of ["platform", "storeA", "storeB", "clientA", "clientB", "courierA"] as const) {
+    for (const loginKey of ["platform", "storeA", "storeB", "clientA", "clientB", "courierA", "courierB"] as const) {
       tokens.set(loginKey, await login(loginKey));
     }
   });
@@ -304,6 +305,82 @@ describe("backend real e2e ownership/security", () => {
         (event: { type: string }) => event.type === "sale_cancelled"
       )
     );
+  });
+
+  it("storefront manual methods, confirmation, pickup and concurrent courier acceptance", async () => {
+    await prisma.store.update({ where: { id: seed.stores.storeA.id }, data: {
+      slug: "qa-e2e-public-store", storefrontEnabled: true, pickupEnabled: true
+    } });
+    await prisma.product.update({ where: { id: seed.products.productA.id }, data: { showInStorefront: true } });
+    await prisma.storeDeliveryZone.create({ data: {
+      storeId: seed.stores.storeA.id, name: "Centro QA", district: "Centro", districtNormalized: "centro", fee: 3
+    } });
+    const catalog = await requestJson("GET", "/storefront/stores/qa-e2e-public-store");
+    assert.equal(catalog.status, 200);
+    assert.ok(catalog.body.products.some((product: { id: string }) => product.id === seed.products.productA.id));
+    assert.ok(catalog.body.products.every((product: { id: string }) => product.id !== seed.products.productB.id));
+    assert.ok(!catalog.body.paymentOptions.methods.includes("ONLINE"));
+    const realtime = app.get(OrdersRealtimeService);
+    const originalNotify = realtime.notifyOrderAvailable;
+    const notices: string[] = [];
+    realtime.notifyOrderAvailable = (order) => { notices.push(order.id); originalNotify.call(realtime, order); };
+    try {
+      for (const method of ["CASH", "CARD_DEBIT_ON_DELIVERY", "CARD_CREDIT_ON_DELIVERY", "PIX_MANUAL"]) {
+        const created = await requestJson("POST", "/storefront/stores/qa-e2e-public-store/checkout", undefined, {
+          idempotencyKey: `qa-e2e-method-${method}`, customerName: "Cliente Sintetico QA",
+          customerPhone: "14900000000", fulfillmentType: "DELIVERY", addressDistrict: "Centro",
+          addressStreet: "Rua Sintetica", addressNumber: "1", paymentMethod: method,
+          items: [{ productId: seed.products.productA.id, quantity: 1 }]
+        });
+        assert.equal(created.status, 201);
+        const order = await prisma.order.findUniqueOrThrow({ where: { publicTrackingToken: created.body.trackingToken } });
+        assert.equal(order.clientId, null);
+        assert.equal(order.origin, "STOREFRONT");
+        assert.equal(Number(order.total), 15.5);
+        assert.equal(order.paymentMethod, method.startsWith("CARD_") ? "CARD_ON_DELIVERY" : method);
+        assert.ok(!notices.includes(order.id));
+        const before = await requestJson("GET", "/orders/available", tokens.get("courierA"));
+        assert.ok(before.body.items.every((item: { id: string }) => item.id !== order.id));
+        await expectStatus("PATCH", `/orders/${order.id}/accept`, tokens.get("courierA"), 400);
+        await expectStatus("PATCH", `/orders/${order.id}/accept`, tokens.get("courierB"), 403);
+        await expectStatus("GET", `/orders/${order.id}/history`, tokens.get("storeA"), 200);
+        await expectStatus("PATCH", `/orders/${order.id}/confirm`, tokens.get("storeA"), 200, {});
+        assert.equal(notices.filter((id) => id === order.id).length, 1);
+        const available = await requestJson("GET", "/orders/available", tokens.get("courierA"));
+        assert.ok(available.body.items.some((item: { id: string }) => item.id === order.id));
+      }
+      const pending = await prisma.order.findFirstOrThrow({ where: { storeId: seed.stores.storeA.id, origin: "STOREFRONT" } });
+      const link = await prisma.storeCourierLink.create({ data: {
+        storeId: seed.stores.storeA.id, courierId: seed.users.courierB.id,
+        status: "APPROVED", requestedBy: "STORE_ADMIN", approvedAt: new Date()
+      } });
+      try {
+        const results = await Promise.all([
+          requestJson("PATCH", `/orders/${pending.id}/accept`, tokens.get("courierA")),
+          requestJson("PATCH", `/orders/${pending.id}/accept`, tokens.get("courierB"))
+        ]);
+        assert.equal(results.filter((result) => result.status === 200).length, 1);
+        assert.equal(await prisma.orderEvent.count({ where: { orderId: pending.id, actorRole: "COURIER", type: "ACCEPTED" } }), 1);
+      } finally { await prisma.storeCourierLink.delete({ where: { id: link.id } }); }
+      const pickup = await requestJson("POST", "/storefront/stores/qa-e2e-public-store/checkout", undefined, {
+        idempotencyKey: "qa-e2e-pickup-1", customerName: "Cliente Sintetico QA", customerPhone: "14900000000",
+        fulfillmentType: "PICKUP", paymentMethod: "CASH", items: [{ productId: seed.products.productA.id, quantity: 1 }]
+      });
+      assert.equal(pickup.status, 201);
+      const order = await prisma.order.findUniqueOrThrow({ where: { publicTrackingToken: pickup.body.trackingToken } });
+      await expectStatus("PATCH", `/orders/${order.id}/confirm`, tokens.get("storeA"), 200, {});
+      await expectStatus("PATCH", `/orders/${order.id}/accept`, tokens.get("courierA"), 400);
+      const available = await requestJson("GET", "/orders/available", tokens.get("courierA"));
+      assert.ok(available.body.items.every((item: { id: string }) => item.id !== order.id));
+      const manual = await requestJson("POST", "/orders", tokens.get("storeA"), {
+        customerName: "Cliente Manual QA", customerPhone: "14900000000",
+        customerAddress: "Rua Sintetica QA, 1", deliveryFee: 0, paymentMethod: "CASH",
+        items: [{ productId: seed.products.productA.id, quantity: 1 }]
+      });
+      assert.equal(manual.status, 201);
+      await expectStatus("PATCH", `/orders/${manual.body.id}/accept`, tokens.get("courierA"), 200);
+      assert.equal(await prisma.paymentTransaction.count({ where: { order: { storeId: seed.stores.storeA.id, origin: "STOREFRONT" } } }), 0);
+    } finally { realtime.notifyOrderAvailable = originalNotify; }
   });
 
   it("bloqueia login de usuario suspenso", async () => {

@@ -464,6 +464,10 @@ export class PaymentGatewayService {
       throw new ServiceUnavailableException("ASAAS_API_BASE_URL nao configurada");
     }
 
+    if (apiBaseUrl.replace(/\/+$/, "") !== "https://api-sandbox.asaas.com") {
+      throw new ServiceUnavailableException("Asaas permite somente a URL oficial de sandbox nesta fase");
+    }
+
     if (!apiKey) {
       throw new ServiceUnavailableException("ASAAS_API_KEY nao configurada");
     }
@@ -512,15 +516,20 @@ export class PaymentGatewayService {
     transaction: {
       orderId: string;
       amount: Prisma.Decimal;
+      providerPaymentId?: string | null;
     },
     payment: AsaasPaymentResponse
   ) {
-    if (payment.externalReference && payment.externalReference !== transaction.orderId) {
+    if (!transaction.providerPaymentId || payment.id !== transaction.providerPaymentId || payment.billingType !== "PIX") {
+      return "cobranca_divergente";
+    }
+
+    if (payment.externalReference !== transaction.orderId) {
       return "external_reference_divergente";
     }
 
     if (
-      typeof payment.value === "number" &&
+      typeof payment.value !== "number" || !Number.isFinite(payment.value) ||
       this.toCents(payment.value) !== this.toCents(transaction.amount)
     ) {
       return "valor_divergente";

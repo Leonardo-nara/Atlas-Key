@@ -22,6 +22,8 @@ interface BroadcastableOrder {
   clientId?: string | null;
   status: string;
   fulfillmentType?: string;
+  origin?: string;
+  storeConfirmedAt?: string | Date | null;
   statusLabel?: string;
   customerName: string;
   total: number;
@@ -85,7 +87,11 @@ export class OrdersRealtimeService {
       occurredAt: new Date().toISOString()
     };
 
-    void this.gateway.emitAuthorized(event, payload, rooms.filter((value): value is string => Boolean(value)));
+    const deliveryHidden = order.fulfillmentType === "PICKUP" ||
+      ((order.origin === "STOREFRONT" || order.clientId) && !order.storeConfirmedAt);
+    void this.gateway.emitAuthorized(event, payload, rooms.filter((value): value is string =>
+      Boolean(value) && !(deliveryHidden && value === availableOrdersStoreRoom(order.storeId))
+    ));
     this.notificationsService.notifyOrderEvent(event, order);
   }
 

@@ -1137,6 +1137,9 @@ export class StorefrontService {
   private serializeRealtimeOrder(order: PublicOrderWithRelations) {
     return {
       id: order.id,
+      origin: order.origin,
+      storeConfirmedAt: order.storeConfirmedAt,
+      fulfillmentType: order.fulfillmentType,
       storeId: order.storeId,
       courierId: order.courierId,
       status: order.status.toLowerCase(),

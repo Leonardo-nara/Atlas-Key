@@ -17,6 +17,8 @@ interface OrderNotificationSnapshot {
   courierId?: string | null;
   status: string;
   fulfillmentType?: string;
+  origin?: string;
+  storeConfirmedAt?: string | Date | null;
   statusLabel?: string;
   customerName: string;
 }
@@ -140,6 +142,7 @@ export class NotificationsService {
       process.env.PUSH_NOTIFICATIONS_ENABLED !== "true" ||
       order.status !== "PENDING" ||
       order.fulfillmentType === "PICKUP" ||
+      ((order.origin === "STOREFRONT" || order.clientId) && !order.storeConfirmedAt) ||
       order.courierId
     ) {
       return;

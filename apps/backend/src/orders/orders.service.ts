@@ -558,10 +558,7 @@ export class OrdersService {
         },
         courierId: null,
         status: OrderStatus.PENDING,
-        OR: [
-          { clientId: null },
-          { storeConfirmedAt: { not: null } }
-        ]
+        ...this.courierDeliveryEligibility()
       },
       query
     );
@@ -634,11 +631,19 @@ export class OrdersService {
         throw new ForbiddenException("Pedido ja aceito por outro motoboy");
       }
 
+      if (
+        order.fulfillmentType === OrderFulfillmentType.PICKUP ||
+        ((order.origin === "STOREFRONT" || order.clientId) && !order.storeConfirmedAt)
+      ) {
+        throw new BadRequestException("Pedido ainda nao disponivel para entrega");
+      }
+
       const updated = await transaction.order.updateMany({
         where: {
           id: orderId,
           status: PrismaOrderStatus.PENDING,
-          courierId: null
+          courierId: null,
+          ...this.courierDeliveryEligibility()
         },
         data: {
           courierId: courierUserId,
@@ -1491,6 +1496,16 @@ export class OrdersService {
     return parts.length > 0
       ? parts.join(", ")
       : dto.customerAddress?.trim() ?? "";
+  }
+
+  private courierDeliveryEligibility(): Prisma.OrderWhereInput {
+    return {
+      fulfillmentType: OrderFulfillmentType.DELIVERY,
+      OR: [
+        { clientId: null, origin: { not: "STOREFRONT" } },
+        { storeConfirmedAt: { not: null } }
+      ]
+    };
   }
 
   private async getApprovedStoreIdsForCourier(courierUserId: string) {

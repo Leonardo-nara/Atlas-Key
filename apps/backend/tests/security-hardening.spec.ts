@@ -19,6 +19,8 @@ import { ImageStorageService } from "../src/common/storage/image-storage.service
 import { PaymentProofStorageService } from "../src/orders/payment-proof-storage.service";
 import { NotificationsService } from "../src/notifications/notifications.service";
 import { PrismaService } from "../src/prisma/prisma.service";
+import { OrdersService } from "../src/orders/orders.service";
+import { OrdersRealtimeService } from "../src/realtime/orders-realtime.service";
 
 const secret = "synthetic-local-security-test-key-only";
 
@@ -26,7 +28,10 @@ describe("courier available delivery push", () => {
   for (const scenario of [
     { event: "orders.available", clientId: null, enabled: true, expected: 3 },
     { event: "orders.created", clientId: "client-a", enabled: true, expected: 0 },
-    { event: "orders.available", clientId: "client-a", enabled: true, expected: 3 },
+    { event: "orders.available", clientId: "client-a", confirmed: true, enabled: true, expected: 3 },
+    { event: "orders.available", clientId: null, origin: "STOREFRONT", enabled: true, expected: 0 },
+    { event: "orders.available", clientId: "client-a", enabled: true, expected: 0 },
+    { event: "orders.available", clientId: null, fulfillmentType: "PICKUP", enabled: true, expected: 0 },
     { event: "orders.status_updated", clientId: null, enabled: true, expected: 0 },
     { event: "orders.created", clientId: null, enabled: false, expected: 0 }
   ]) {
@@ -57,6 +62,8 @@ describe("courier available delivery push", () => {
         };
         new NotificationsService(prisma).notifyOrderEvent(scenario.event, {
           id: "order-a", storeId: "store-a", clientId: scenario.clientId,
+          origin: scenario.origin, fulfillmentType: scenario.fulfillmentType,
+          storeConfirmedAt: scenario.confirmed ? new Date() : null,
           status: "PENDING", customerName: "Sensitive customer name"
         });
         await new Promise<void>((resolve) => setImmediate(resolve));
@@ -75,6 +82,82 @@ describe("courier available delivery push", () => {
       }
     });
   }
+});
+
+describe("courier delivery eligibility", () => {
+  it("uses the same delivery/confirmation predicate for the available list", async () => {
+    const prisma = {
+      storeCourierLink: { findMany: async () => [{ storeId: "store-a" }] },
+      order: {
+        findMany: async ({ where }: { where: unknown }) => {
+          assert.deepEqual(where, {
+            storeId: { in: ["store-a"] }, courierId: null, status: "PENDING",
+            fulfillmentType: "DELIVERY", OR: [
+              { clientId: null, origin: { not: "STOREFRONT" } },
+              { storeConfirmedAt: { not: null } }
+            ]
+          });
+          return [];
+        },
+        count: async () => 0
+      },
+      $transaction: (queries: Promise<unknown>[]) => Promise.all(queries)
+    };
+    const service = new OrdersService(prisma as never, {} as never, {} as never,
+      {} as never, {} as never, {} as never);
+    await service.listAvailableForCourier("courier-a", UserRole.COURIER, { page: 1, limit: 10 });
+  });
+
+  for (const scenario of [
+    { origin: "STOREFRONT", clientId: null, confirmed: false, pickup: false, allowed: false },
+    { origin: "STOREFRONT", clientId: null, confirmed: true, pickup: false, allowed: true },
+    { origin: "MANUAL", clientId: null, confirmed: false, pickup: false, allowed: true },
+    { origin: "MANUAL", clientId: "client-a", confirmed: false, pickup: false, allowed: false },
+    { origin: "STOREFRONT", clientId: null, confirmed: true, pickup: true, allowed: false }
+  ]) {
+    it(`accept by ID: ${JSON.stringify(scenario)}`, async () => {
+      const order = { id: "order-a", storeId: "store-a", status: "PENDING", courierId: null,
+        origin: scenario.origin, clientId: scenario.clientId, items: [], total: 10,
+        fulfillmentType: scenario.pickup ? "PICKUP" : "DELIVERY",
+        storeConfirmedAt: scenario.confirmed ? new Date() : null };
+      let writes = 0;
+      const tx = { order: {
+        findUnique: async () => order,
+        findUniqueOrThrow: async () => order,
+        updateMany: async ({ where }: { where: Prisma.OrderWhereInput }) => {
+          assert.equal(where.fulfillmentType, "DELIVERY");
+          assert.equal(where.courierId, null);
+          assert.equal(where.status, "PENDING");
+          assert.deepEqual(where.OR, [
+            { clientId: null, origin: { not: "STOREFRONT" } },
+            { storeConfirmedAt: { not: null } }
+          ]);
+          writes++;
+          return { count: 1 };
+        }
+      }, orderEvent: { create: async () => ({}) } };
+      const prisma = { storeCourierLink: { findMany: async () => [{ storeId: "store-a" }] },
+        $transaction: (callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx) };
+      const service = new OrdersService(prisma as never, {} as never,
+        { emitOrderAccepted() {} } as never, {} as never, {} as never, {} as never);
+      if (scenario.allowed) await service.acceptOrder("order-a", "courier-a", UserRole.COURIER);
+      else await assert.rejects(() => service.acceptOrder("order-a", "courier-a", UserRole.COURIER), BadRequestException);
+      assert.equal(writes, scenario.allowed ? 1 : 0);
+    });
+  }
+
+  it("realtime hides unconfirmed storefront and pickup from courier rooms only", () => {
+    const calls: string[][] = [];
+    const service = new OrdersRealtimeService({ emitAuthorized: async (_event: string, _payload: unknown, rooms: string[]) => {
+      calls.push(rooms);
+    } } as never, { notifyOrderEvent() {} } as never);
+    const order = { id: "order-a", storeId: "store-a", origin: "STOREFRONT",
+      status: "PENDING", customerName: "Synthetic", total: 10, updatedAt: new Date() };
+    service.emitOrderCreated(order);
+    service.emitOrderStatusUpdated({ ...order, storeConfirmedAt: new Date() });
+    service.emitOrderCreated({ ...order, fulfillmentType: "PICKUP", storeConfirmedAt: new Date() });
+    assert.deepEqual(calls, [["store:store-a"], ["store:store-a", "orders:available:store-a"], ["store:store-a"]]);
+  });
 });
 
 async function authHarness() {
@@ -196,6 +279,37 @@ export function webhookHarness() {
 }
 
 describe("security hardening: webhook", () => {
+  it("sandbox provider rejects a production API URL before any request", async () => {
+    const service = new PaymentGatewayService(new ConfigService({
+      PAYMENT_GATEWAY_ENABLED: "true", PAYMENT_GATEWAY_PROVIDER: "asaas",
+      ASAAS_ENV: "sandbox", ASAAS_API_BASE_URL: "https://api.asaas.com",
+      ASAAS_API_KEY: "synthetic", ASAAS_WEBHOOK_TOKEN: "synthetic"
+    }));
+    await assert.rejects(() => service.createPixPayment({
+      id: "order-qa", paymentMethod: "ONLINE", paymentStatus: "PENDING", total: 50,
+      asaasCustomerId: "customer-qa"
+    }), /URL oficial de sandbox/);
+  });
+  for (const invalid of [
+    { value: undefined }, { value: 49 }, { externalReference: undefined },
+    { externalReference: "other-order" }, { id: "other-payment" }, { billingType: "BOLETO" }
+  ]) {
+    it(`rejects incomplete/divergent provider response ${JSON.stringify(invalid)}`, async () => {
+      const { service, transaction, eventCount } = webhookHarness();
+      const original = globalThis.fetch;
+      globalThis.fetch = (async () => new Response(JSON.stringify({
+        id: "pay-qa", status: "RECEIVED", value: 50, billingType: "PIX",
+        externalReference: "order-qa", ...invalid
+      }), { status: 200 })) as typeof fetch;
+      try {
+        await service.handleWebhook({ id: "invalid-event", payment: { id: "pay-qa" } },
+          { "asaas-access-token": "synthetic-webhook-token" });
+        assert.equal(transaction.status, "PENDING");
+        assert.equal(transaction.order.paymentStatus, "PENDING");
+        assert.equal(eventCount(), 0);
+      } finally { globalThis.fetch = original; }
+    });
+  }
   it("unknown provider payment never calls the provider or changes data", async () => {
     const service = new PaymentGatewayService(new ConfigService({
       PAYMENT_GATEWAY_ENABLED: "true", PAYMENT_GATEWAY_PROVIDER: "asaas", ASAAS_ENV: "sandbox",

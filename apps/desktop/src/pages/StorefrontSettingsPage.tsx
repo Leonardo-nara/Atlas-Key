@@ -20,7 +20,7 @@ const DEFAULT_STORE_URL_BASE =
   import.meta.env.VITE_STOREFRONT_URL ??
     (import.meta.env.DEV
       ? "http://localhost:5174"
-      : "https://pedido.mototake.com.br");
+      : "https://mototake-pedidos.netlify.app");
 
 const DAYS = [
   "Domingo",

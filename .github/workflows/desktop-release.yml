@@ -1,0 +1,67 @@
+name: Desktop release
+
+on:
+  push:
+    tags:
+      - "desktop-v*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.repository == 'Leonardo-nara/Atlas-Key'
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    env:
+      VITE_API_URL: https://rotapronta-api-production.up.railway.app/api
+      VITE_SOCKET_URL: https://rotapronta-api-production.up.railway.app
+      VITE_STOREFRONT_URL: https://mototake-pedidos.netlify.app
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.7.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Validate tag and version
+        shell: pwsh
+        run: |
+          $version = (Get-Content apps/desktop/package.json -Raw | ConvertFrom-Json).version
+          if ($env:GITHUB_REF_NAME -ne "desktop-v$version" -or $version -notmatch '^\d+\.\d+\.\d+$') { throw 'Tag/version mismatch' }
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Validate desktop
+        run: |
+          pnpm --filter @deliveries/desktop typecheck
+          if ($LASTEXITCODE -ne 0) { throw 'Typecheck failed' }
+          pnpm --filter @deliveries/desktop lint
+          if ($LASTEXITCODE -ne 0) { throw 'Lint failed' }
+          pnpm --filter @deliveries/desktop test:updater
+          if ($LASTEXITCODE -ne 0) { throw 'Updater tests failed' }
+      - name: Build NSIS without publishing
+        run: pnpm --filter @deliveries/desktop dist:win
+      - name: Validate update artifacts
+        run: node scripts/validate-desktop-update.cjs
+      - name: Publish complete release
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          $version = (Get-Content apps/desktop/package.json -Raw | ConvertFrom-Json).version
+          $tag = $env:GITHUB_REF_NAME
+          gh release create $tag --verify-tag --draft --title "Mototake Desktop $version" --notes "Instalador Windows NSIS com atualizacao automatica. Instale por cima da versao anterior, sem desinstalar. Sem assinatura de codigo: o Windows pode exibir SmartScreen. Reiniciar para atualizar exige acao do usuario." --repo $env:GITHUB_REPOSITORY
+          if ($LASTEXITCODE -ne 0) { throw 'Release creation failed' }
+          gh release upload $tag "apps/desktop/release/Mototake-Setup-$version.exe" "apps/desktop/release/Mototake-Setup-$version.exe.blockmap" "apps/desktop/release/Mototake-Setup-$version.exe.sha256.txt" "apps/desktop/release/latest.yml" --repo $env:GITHUB_REPOSITORY
+          if ($LASTEXITCODE -ne 0) { throw 'Asset upload failed; release remains draft' }
+          gh release edit $tag --draft=false --latest --repo $env:GITHUB_REPOSITORY
+          if ($LASTEXITCODE -ne 0) { throw 'Release publication failed' }

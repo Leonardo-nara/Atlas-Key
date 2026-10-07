@@ -1,6 +1,6 @@
 {
   "name": "@deliveries/desktop",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "productName": "Mototake",
   "description": "Painel desktop Mototake para operacao de pedidos, PDV, caixa e estoque.",
@@ -19,7 +19,8 @@
     "build:renderer": "vite build",
     "build:electron": "tsc -p tsconfig.electron.json",
     "dist": "pnpm build && electron-builder",
-    "dist:win": "pnpm build && electron-builder --win nsis",
+    "dist:win": "pnpm build && electron-builder --win nsis --publish never",
+    "test:updater": "pnpm build:electron && node --test tests/updater.test.cjs",
     "dist:dir": "pnpm build && electron-builder --dir",
     "lint": "eslint \"src/**/*.{ts,tsx}\" \"electron/**/*.ts\" vite.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.electron.json --noEmit",
@@ -27,6 +28,7 @@
   },
   "dependencies": {
     "@deliveries/shared-types": "workspace:*",
+    "electron-updater": "6.8.9",
     "qrcode": "^1.5.4",
     "react": "19.0.0",
     "react-dom": "19.0.0",
@@ -66,11 +68,17 @@
           "**/*"
         ]
       },
-      "package.json",
-      "!node_modules/**"
+      "package.json"
     ],
     "extraMetadata": {
       "main": "dist-electron/electron/main.js"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "Leonardo-nara",
+      "repo": "Atlas-Key",
+      "tagNamePrefix": "desktop-v",
+      "releaseType": "release"
     },
     "win": {
       "target": [
@@ -85,6 +93,7 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false,
       "artifactName": "Mototake-Setup-${version}.${ext}"
     }
   }

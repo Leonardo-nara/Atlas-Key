@@ -1,6 +1,8 @@
 import { app, BrowserWindow, shell } from "electron";
 import path from "node:path";
 
+import { setupUpdater } from "./updater";
+
 const isDev = !app.isPackaged;
 const bundledRendererPath = path.join(__dirname, "../../dist/index.html");
 const devHost = ["local", "host"].join("");
@@ -62,7 +64,9 @@ function createWindow() {
     console.error(`Renderer failed to load (${code}): ${description} - ${url}`);
   });
 
-  const rendererUrl = process.env.ELECTRON_RENDERER_URL;
+  setupUpdater(window, bundledRendererPath);
+
+  const rendererUrl = isDev ? process.env.ELECTRON_RENDERER_URL : undefined;
   const shouldUseDevServer = Boolean(rendererUrl?.startsWith("http"));
 
   if (shouldUseDevServer) {

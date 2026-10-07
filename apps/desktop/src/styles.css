@@ -3529,6 +3529,35 @@ p {
   --rp-shadow-soft: 0 14px 34px rgba(0, 0, 0, 0.22);
 }
 
+.desktop-update-notice {
+  position: fixed;
+  right: var(--rp-space-5);
+  bottom: var(--rp-space-5);
+  z-index: 1000;
+  width: min(420px, calc(100vw - 48px));
+  padding: var(--rp-space-5);
+  border: 1px solid var(--rp-primary);
+  border-radius: var(--rp-radius-md);
+  background: var(--rp-surface-strong);
+  box-shadow: var(--rp-shadow);
+}
+
+.desktop-update-notice p {
+  color: var(--rp-text-muted);
+  line-height: 1.5;
+}
+
+.desktop-update-notice progress {
+  width: 100%;
+  accent-color: var(--rp-primary);
+}
+
+.desktop-update-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--rp-space-2);
+}
+
 body {
   background:
     radial-gradient(circle at 0% 0%, rgba(56, 189, 248, 0.1), transparent 22%),
